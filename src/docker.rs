@@ -2,12 +2,37 @@ use futures::StreamExt;
 use shiplift::rep::ContainerCreateInfo;
 use shiplift::tty::TtyChunk;
 use shiplift::{BuildOptions, ContainerOptions, Docker, ExecContainerOptions};
-use std::str::from_utf8;
 
 use super::{DockerErrors, OutputStd};
 
 // TODO: config
 const DATA_PATH: &str = "/home/ctf/Documents/rust/angrapa/data";
+
+trait VecBuffBytes {
+    fn to_string(self) -> Result<String, String>;
+}
+
+impl VecBuffBytes for Vec<Vec<u8>> {
+    /// Flattens a `Vec<Vec<u8>>` and converts to a String
+    ///
+    /// # Examples
+    /// ```
+    /// let stdout = match stdout_vec.to_string() {
+    ///     Ok(stdout) => stdout,
+    ///     Err(e) => return Err(e),
+    /// };
+    /// ```
+    fn to_string(self) -> Result<String, String> {
+        use std::str::from_utf8;
+
+        let flat = self.into_iter().flatten().collect::<Vec<u8>>();
+
+        match from_utf8(&flat) {
+            Ok(s) => Ok(s.to_owned()),
+            Err(e) => Err(format!("{:?}", e)),
+        }
+    }
+}
 
 /// Builds docker image and starts container for a given exploit, returns container id on success
 ///
@@ -130,11 +155,11 @@ pub async fn run_exploit(
     flag_store: String,
 ) -> Result<OutputStd, DockerErrors> {
     // Initalize vector of env vars that are passed to the exploit
-    let ip_env = ["IP", ip.as_str()].join("=");
-    let flag_store_env = ["FLAG_STORE", flag_store.as_str()].join("=");
+    let ip_env = format!("IP={ip}");
+    let flag_store_env = format!("FLAG_STORE={flag_store}");
     let environment_vec = vec![ip_env.as_str(), flag_store_env.as_str()];
 
-    // Initalize exec builder with entrypointd and env vargs, then later exec
+    // Initalize exec builder with entrypoint and env args, then later exec
     let docker = Docker::new();
     let options = ExecContainerOptions::builder()
         .cmd(vec!["/exploit/run.sh"])
@@ -166,27 +191,22 @@ pub async fn run_exploit(
     }
 
     // "Dechunk" the data and convert to strings
-    let stdout_vec = stdout_vec.into_iter().flatten().collect::<Vec<u8>>();
-    let stderr_vec = stderr_vec.into_iter().flatten().collect::<Vec<u8>>();
-
-    let stdout = match from_utf8(&stdout_vec) {
+    let stdout = match stdout_vec.to_string() {
         Ok(stdout) => stdout,
         Err(e) => {
             return Err(DockerErrors::OutputParse(format!(
-                "Failed to convert utf_8 of container exec with id \"{}\"\n\t{:?}",
+                "Failed to convert utf_8 of container exec with id \"{}\"\n\t{e}",
                 &id[..12],
-                e
             )))
         }
     };
 
-    let stderr = match from_utf8(&stderr_vec) {
+    let stderr = match stderr_vec.to_string() {
         Ok(stderr) => stderr,
         Err(e) => {
             return Err(DockerErrors::OutputParse(format!(
-                "Failed to convert utf_8 of container exec with id \"{}\"\n\t{:?}",
+                "Failed to convert utf_8 of container exec with id \"{}\"\n\t{e}",
                 &id[..12],
-                e
             )))
         }
     };
