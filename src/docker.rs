@@ -9,27 +9,47 @@ use super::{DockerErrors, OutputStd};
 // TODO: config
 const DATA_PATH: &str = "/home/ctf/Documents/rust/angrapa/data";
 
+/// Builds docker image and starts container for a given exploit, returns container id on success
+///
+/// `exploit_id`: name of the exploit directory in data/exploits
+///
+/// # Examples
+/// ```
+/// let container_id = match init_exploit("exploit_name").await {
+///     Ok(id) => id,
+///     Err(e) => return handle_docker_errors(e),
+/// };
+/// ```
 pub async fn init_exploit(exploit_id: &str) -> Result<String, DockerErrors> {
     let tag = match image_build(exploit_id).await {
         Ok(tag) => tag,
         Err(e) => return Err(e),
     };
 
-    match container_create_and_start(tag).await {
-        Ok(info) => Ok(info.id),
-        Err(e) => Err(e),
-    }
+    container_create_and_start(tag).await
 }
 
+/// Builds docker image, returns the image tag on success
+///
+/// `exploit_id`: name of the exploit directory in data/exploits
+///
+/// # Examples
+/// ```
+/// let tag = match image_build(exploit_id).await {
+///     Ok(tag) => tag,
+///     Err(e) => return Err(e),
+/// };
+/// ```
 async fn image_build(exploit_id: &str) -> Result<String, DockerErrors> {
-    let docker = Docker::new();
-
     let tag = format!("angrapa/exploit-{exploit_id}");
     let exploit_path = format!("{DATA_PATH}/exploits/{exploit_id}");
 
+    // Initalize image builder and build the image
+    let docker = Docker::new();
     let options = BuildOptions::builder(exploit_path).tag(&tag).build();
-
     let mut stream = docker.images().build(&options);
+
+    // Read the output from the build process
     while let Some(build_result) = stream.next().await {
         match build_result {
             // Ok(output) => println!("{:?}", output), // TODO? print this if theres some sort of debug mode enabled?
@@ -46,10 +66,22 @@ async fn image_build(exploit_id: &str) -> Result<String, DockerErrors> {
     Ok(tag)
 }
 
-async fn container_create_and_start(tag: String) -> Result<ContainerCreateInfo, DockerErrors> {
+/// Creates and start a docker container, returns the container id on success
+///
+/// `tag`: tag of the docker image
+///
+/// # Examples
+/// ```
+/// let container_id = match container_create_and_start(tag).await {
+///     Ok(id) => id,
+///     Err(e) => return Err(e),
+/// };
+/// ```
+async fn container_create_and_start(tag: String) -> Result<String, DockerErrors> {
     let docker = Docker::new();
 
-    let info = match docker
+    // Create container
+    let info: ContainerCreateInfo = match docker
         .containers()
         .create(&ContainerOptions::builder(&tag).build())
         .await
@@ -63,41 +95,59 @@ async fn container_create_and_start(tag: String) -> Result<ContainerCreateInfo, 
         }
     };
 
-    let container = docker.containers().get(&info.id);
-
-    if let Err(e) = container.start().await {
+    // Start container
+    if let Err(e) = docker.containers().get(&info.id).start().await {
         return Err(DockerErrors::ContainerStart(format!(
             "Failed to start container for exploit: \"{tag}\"\n\t{:?}",
             e
         )));
     }
 
-    Ok(info)
+    Ok(info.id)
 }
 
 // TODO: exploit related stuff in seperate file
+/// Execs a containers run.sh, returns stdout and stderr on success
+///
+/// `id`: container id
+///
+/// `ip`: ip of team to attack. passed as an env variable to docker
+///
+/// `flag_store`: flag_store, can be an empty string. passed as an env variable to docker
+///
+/// # Examples
+/// ```
+/// let output = match run_exploit(&container_id, ip, flag_id).await {
+///     Ok(output) => output,
+///     Err(e) => return handle_docker_errors(e),
+/// };
+///
+/// println!("{output}");
+/// ```
 pub async fn run_exploit(
     id: &String,
     ip: String,
     flag_store: String,
 ) -> Result<OutputStd, DockerErrors> {
-    let docker = Docker::new();
-
+    // Initalize vector of env vars that are passed to the exploit
     let ip_env = ["IP", ip.as_str()].join("=");
     let flag_store_env = ["FLAG_STORE", flag_store.as_str()].join("=");
+    let environment_vec = vec![ip_env.as_str(), flag_store_env.as_str()];
 
+    // Initalize exec builder with entrypointd and env vargs, then later exec
+    let docker = Docker::new();
     let options = ExecContainerOptions::builder()
         .cmd(vec!["/exploit/run.sh"])
-        .env(vec![ip_env.as_str(), flag_store_env.as_str()])
+        .env(environment_vec)
         .attach_stdout(true)
         .attach_stderr(true)
         .build();
-
     let mut execd = docker.containers().get(id).exec(&options);
 
     let mut stdout_vec: Vec<Vec<u8>> = vec![];
     let mut stderr_vec: Vec<Vec<u8>> = vec![];
 
+    // Read the chunked output and store in vectors
     while let Some(exec_result) = execd.next().await {
         match exec_result {
             Ok(chunk) => match chunk {
@@ -115,6 +165,7 @@ pub async fn run_exploit(
         }
     }
 
+    // "Dechunk" the data and convert to strings
     let stdout_vec = stdout_vec.into_iter().flatten().collect::<Vec<u8>>();
     let stderr_vec = stderr_vec.into_iter().flatten().collect::<Vec<u8>>();
 
