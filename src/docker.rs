@@ -17,7 +17,7 @@ pub async fn init_exploit(exploit_id: &str) -> Result<String, DockerErrors> {
 
     match container_create_and_start(tag).await {
         Ok(info) => Ok(info.id),
-        Err(e) => return Err(e),
+        Err(e) => Err(e),
     }
 }
 

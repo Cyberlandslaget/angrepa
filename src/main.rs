@@ -24,19 +24,19 @@ impl std::fmt::Display for OutputStd {
 fn handle_docker_errors(e: DockerErrors) {
     match e {
         DockerErrors::Build(e) => {
-            return println!("{} {}", "Image build error:".red().bold(), e.red())
+            println!("{} {}", "Image build error:".red().bold(), e.red())
         }
         DockerErrors::ContainerCreate(e) => {
-            return println!("{} {}", "Container create error:".red().bold(), e.red())
+            println!("{} {}", "Container create error:".red().bold(), e.red())
         }
         DockerErrors::ContainerStart(e) => {
-            return println!("{} {}", "Container start error:".red().bold(), e.red())
+            println!("{} {}", "Container start error:".red().bold(), e.red())
         }
         DockerErrors::ExecuteError(e) => {
-            return println!("{} {}", "Container execute error:".red().bold(), e.red())
+            println!("{} {}", "Container execute error:".red().bold(), e.red())
         }
         DockerErrors::OutputParse(e) => {
-            return println!("{} {}", "Stdout/err parse error:".red().bold(), e.red())
+            println!("{} {}", "Stdout/err parse error:".red().bold(), e.red())
         }
     }
 }
