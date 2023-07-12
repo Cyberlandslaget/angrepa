@@ -1,6 +1,13 @@
 # angrapa
 ## Attack script runner for attack-defense CTFs
 
+Currently in testing phase, code is not structured correctly.
+
+## Near-future TODOS:
+- Regex extract flags
+- Constants config file (TOML)
+- Testing with threads and multiple exploits
+
 ## Temporary Long-term Plan Suggestions:
 Have an API (perhaps a separate project in a separate docker but using a shared db and data folder?) where users can upload and activate/deactivate exploits (as well as lots of other endpoints for the frontend of course).
 
