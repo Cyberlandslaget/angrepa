@@ -7,7 +7,7 @@ use std::str::from_utf8;
 use super::{DockerErrors, OutputStd};
 
 // TODO: config
-const DATA_PATH: &str = "/home/ctf/Documents/rust/angrapa/data";
+const DATA_PATH: &str = "/home/user/git/angrapa/data";
 
 pub async fn init_exploit(exploit_id: &str) -> Result<String, DockerErrors> {
     let tag = match image_build(exploit_id).await {

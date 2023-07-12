@@ -1,6 +1,6 @@
 use colored::Colorize;
-
 mod docker;
+mod exploit;
 
 pub enum DockerErrors {
     Build(String),
@@ -43,13 +43,12 @@ fn handle_docker_errors(e: DockerErrors) {
 
 #[tokio::main]
 async fn main() {
-    let container_id = match docker::init_exploit("test").await {
-        Ok(id) => id,
+    let exp = match exploit::Exploit::init("test").await {
+        Ok(exp) => exp,
         Err(e) => return handle_docker_errors(e),
     };
-
-    let output = match docker::run_exploit(
-        &container_id,
+    
+    let output = match exp.run(
         "127.0.0.1".to_string(),
         "flagid_rfre".to_string(),
     )
