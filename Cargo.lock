@@ -45,6 +45,7 @@ dependencies = [
 name = "angrapa"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bollard",
  "color-eyre",
  "colored",
@@ -57,6 +58,17 @@ dependencies = [
  "tar",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.71"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a564d521dd56509c4c47480d00b80ee55f7e385ae48db5744c67ad50c92d2ebf"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.25",
 ]
 
 [[package]]

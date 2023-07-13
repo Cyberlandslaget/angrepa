@@ -7,6 +7,7 @@ default-run = "runner"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1.71"
 bollard = "0.14.0"
 color-eyre = "0.6.2"
 colored = "2.0.4"
