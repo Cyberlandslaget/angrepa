@@ -5,8 +5,10 @@ use color_eyre::eyre;
 use colored::Colorize;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::time::Duration;
 
 const FLAG_REGEX_STR: &str = r"ECSC_[A-Za-z0-9\\+/]{32}";
+const TICK_TIME: Duration = Duration::from_secs(6);
 lazy_static! {
     static ref FLAG_REGEX: Regex = Regex::new(FLAG_REGEX_STR).unwrap();
 }
@@ -15,10 +17,10 @@ lazy_static! {
 pub enum DockerErrors {
     Build(String),
     ContainerCreate(String),
-    ContainerNotRunning(String),
+    ContainerKill(String),
     ContainerStart(String),
-    ContainerStop(String),
     ExecuteError(String),
+    InvalidArg(String),
     OutputParse(String),
 }
 
@@ -63,17 +65,17 @@ pub fn handle_docker_errors(e: DockerErrors) {
         DockerErrors::ContainerCreate(e) => {
             println!("{} {}", "Container create error:".red().bold(), e.red())
         }
-        DockerErrors::ContainerNotRunning(e) => {
-            println!("{} {}", "Container running error:".red().bold(), e.red())
+        DockerErrors::ContainerKill(e) => {
+            println!("{} {}", "Container kill error:".red().bold(), e.red())
         }
         DockerErrors::ContainerStart(e) => {
             println!("{} {}", "Container start error:".red().bold(), e.red())
         }
-        DockerErrors::ContainerStop(e) => {
-            println!("{} {}", "Container stop error:".red().bold(), e.red())
-        }
         DockerErrors::ExecuteError(e) => {
             println!("{} {}", "Container execute error:".red().bold(), e.red())
+        }
+        DockerErrors::InvalidArg(e) => {
+            println!("{} {}", "Invalid argument error:".red().bold(), e.red())
         }
         DockerErrors::OutputParse(e) => {
             println!("{} {}", "Stdout/err parse error:".red().bold(), e.red())
