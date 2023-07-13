@@ -1,11 +1,14 @@
-use colored::Colorize;
-
 mod docker;
+mod exploit;
+
+use colored::Colorize;
 
 pub enum DockerErrors {
     Build(String),
     ContainerCreate(String),
+    ContainerNotRunning(String),
     ContainerStart(String),
+    ContainerStop(String),
     ExecuteError(String),
     OutputParse(String),
 }
@@ -29,8 +32,14 @@ fn handle_docker_errors(e: DockerErrors) {
         DockerErrors::ContainerCreate(e) => {
             println!("{} {}", "Container create error:".red().bold(), e.red())
         }
+        DockerErrors::ContainerNotRunning(e) => {
+            println!("{} {}", "Container running error:".red().bold(), e.red())
+        }
         DockerErrors::ContainerStart(e) => {
             println!("{} {}", "Container start error:".red().bold(), e.red())
+        }
+        DockerErrors::ContainerStop(e) => {
+            println!("{} {}", "Container stop error:".red().bold(), e.red())
         }
         DockerErrors::ExecuteError(e) => {
             println!("{} {}", "Container execute error:".red().bold(), e.red())
@@ -43,21 +52,22 @@ fn handle_docker_errors(e: DockerErrors) {
 
 #[tokio::main]
 async fn main() {
-    let container_id = match docker::init_exploit("test").await {
-        Ok(id) => id,
+    let exp = match exploit::Exploit::init("test", 1, true).await {
+        Ok(exp) => exp,
         Err(e) => return handle_docker_errors(e),
     };
 
-    let output = match docker::run_exploit(
-        &container_id,
-        "127.0.0.1".to_string(),
-        "flagid_rfre".to_string(),
-    )
-    .await
+    let output = match exp
+        .run(
+            &exp.containers[0], // TODO: Smarter way to do this, maybe som automated selector inside the run function
+            "127.0.0.1".to_string(),
+            "flagid_rfre".to_string(),
+        )
+        .await
     {
         Ok(output) => output,
         Err(e) => return handle_docker_errors(e),
     };
 
-    println!("{output}");
+    println!("{output}")
 }
