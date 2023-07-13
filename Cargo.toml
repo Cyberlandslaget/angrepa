@@ -2,6 +2,7 @@
 name = "angrapa"
 version = "0.1.0"
 edition = "2021"
+default-run = "runner"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,3 +12,11 @@ futures = "0.3.28"
 regex = "1.9.1"
 shiplift = "0.7.0"
 tokio = { version = "1.29.1", features = ["full"] }
+
+[[bin]]
+name = "runner"
+path = "src/runner.rs"
+
+[[bin]]
+name = "manager"
+path = "src/manager.rs"
