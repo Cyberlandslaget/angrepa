@@ -61,11 +61,9 @@ pub async fn container_create(tag: &String) -> Result<ContainerCreateInfo, Docke
         .await
     {
         Ok(info) => Ok(info),
-        Err(e) => {
-            return Err(DockerErrors::ContainerCreate(format!(
-                "Failed to create container for exploit: \"{tag}\"\n\t{:?}",
-                e
-            )))
-        }
+        Err(e) => Err(DockerErrors::ContainerCreate(format!(
+            "Failed to create container for exploit: \"{tag}\"\n\t{:?}",
+            e
+        ))),
     }
 }
