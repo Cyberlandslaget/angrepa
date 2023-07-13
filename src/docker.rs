@@ -4,7 +4,7 @@ use shiplift::{rep::ContainerCreateInfo, BuildOptions, ContainerOptions, Docker}
 use super::DockerErrors;
 
 // TODO: config
-const DATA_PATH: &str = "/home/user/git/angrapa/data";
+const DATA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data");
 
 /// Builds docker image, returns the image tag on success
 ///
