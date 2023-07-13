@@ -1,5 +1,5 @@
 use bollard::{
-    container::{Config, LogsOptions, LogOutput},
+    container::{Config, CreateContainerOptions, LogOutput, LogsOptions},
     image::BuildImageOptions,
     Docker,
 };
@@ -24,7 +24,11 @@ impl DockerExploit {
         host: String,
         flagid: String,
     ) -> Result<DockerExploitInstance, DockerError> {
-        // todo set name based on host and flagid
+        let name = format!(
+            "instance_{image}_{host}",
+            image = self.image,
+            host = host.replace(".", "-"),
+        );
 
         let config = Config {
             image: Some(self.image.clone()),
@@ -33,10 +37,12 @@ impl DockerExploit {
             ..Default::default()
         };
 
-        let container = self
-            .docker
-            .create_container::<&str, _>(None, config)
-            .await?;
+        let options = CreateContainerOptions {
+            name: name.clone(),
+            ..Default::default()
+        };
+
+        let container = self.docker.create_container(Some(options), config).await?;
 
         self.docker
             .start_container::<String>(&container.id, None)
@@ -57,14 +63,14 @@ pub struct DockerExploitInstance {
 }
 
 impl DockerExploitInstance {
-    pub async fn wait_for_join(&self) -> Result<Vec<LogOutput>, DockerError>{
+    pub async fn wait_for_join(&self) -> Result<Vec<LogOutput>, DockerError> {
         let mut waits = self.docker.wait_container::<&str>(&self.container_id, None);
         // shouldnt print anything
         while let Some(msg) = waits.next().await {
             let msg = msg?;
             eprintln!("Message: {:?}", msg);
         }
-        
+
         let log_options = LogsOptions {
             stdout: true,
             stderr: true,
