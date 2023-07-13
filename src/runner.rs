@@ -70,17 +70,14 @@ async fn futures_main() {
         let local_exp = exp.clone();
         tasks.push(tokio::spawn(async move {
             let now = Instant::now();
-            let output = match local_exp.run(
-                format!("172.17.0.{}", i),
-                "flagid_rfre".to_string(),
-            )
-            .await
+            let output = match local_exp
+                .run(format!("172.17.0.{}", i), "flagid_rfre".to_string())
+                .await
             {
                 Ok(output) => output,
                 Err(_e) => return println!("error"),
             };
         }));
-        
     }
 
     futures::future::join_all(tasks).await;
