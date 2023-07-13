@@ -2,6 +2,7 @@ mod docker;
 mod exploit_futures;
 mod exploit_pool;
 
+use color_eyre::eyre;
 use colored::Colorize;
 use tokio::time::Instant;
 
@@ -85,10 +86,14 @@ async fn futures_main() {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> eyre::Result<()> {
+    color_eyre::install()?;
+
     if true {
         futures_main().await;
     } else {
         pool_main().await;
     }
+
+    Ok(())
 }
