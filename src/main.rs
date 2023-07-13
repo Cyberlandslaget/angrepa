@@ -1,4 +1,9 @@
+use std::{sync::Arc, ops::Deref};
+
 use colored::Colorize;
+use exploit::Exploit;
+use futures::future;
+use tokio::time::Instant;
 mod docker;
 mod exploit;
 
@@ -47,16 +52,24 @@ async fn main() {
         Ok(exp) => exp,
         Err(e) => return handle_docker_errors(e),
     };
-    
-    let output = match exp.run(
-        "127.0.0.1".to_string(),
-        "flagid_rfre".to_string(),
-    )
-    .await
-    {
-        Ok(output) => output,
-        Err(e) => return handle_docker_errors(e),
-    };
+    let mut tasks = Vec::new();
+    for i in 0..100 {
+        let local_exp = exp.clone();
+        tasks.push(tokio::spawn(async move {
+            let now = Instant::now();
+            let output = match local_exp.run(
+                format!("172.17.0.{}", i),
+                "flagid_rfre".to_string(),
+            )
+            .await
+            {
+                Ok(output) => output,
+                Err(_e) => return println!("error"),
+            };
+        }));
+        
+    }
 
-    println!("{output}");
+    futures::future::join_all(tasks).await;
+    println!("All done!");
 }
