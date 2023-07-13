@@ -3,7 +3,14 @@ mod exploit_futures;
 mod exploit_pool;
 
 use colored::Colorize;
+use lazy_static::lazy_static;
+use regex::Regex;
 use tokio::time::Instant;
+
+const FLAG_REGEX_STR: &str = r"ECSC_[A-Za-z0-9\\+/]{32}";
+lazy_static! {
+    static ref FLAG_REGEX: Regex = Regex::new(FLAG_REGEX_STR).unwrap();
+}
 
 pub enum DockerErrors {
     Build(String),
@@ -18,6 +25,28 @@ pub enum DockerErrors {
 pub struct OutputStd {
     stdout: String,
     stderr: String,
+}
+
+impl OutputStd {
+    /// Function to extract all flags from stdout and stderr
+    ///
+    /// # Example
+    /// ```
+    /// println!("{}", output.flags().join("\n"));
+    /// ```
+    pub fn flags(&self) -> Vec<String> {
+        let mut flags: Vec<String> = vec![];
+
+        for cap in FLAG_REGEX.captures_iter(&self.stdout) {
+            flags.push(cap[0].to_string());
+        }
+
+        for cap in FLAG_REGEX.captures_iter(&self.stderr) {
+            flags.push(cap[0].to_string());
+        }
+
+        flags
+    }
 }
 
 impl std::fmt::Display for OutputStd {

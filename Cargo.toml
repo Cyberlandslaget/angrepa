@@ -9,6 +9,7 @@ default-run = "runner"
 [dependencies]
 colored = "2.0.4"
 futures = "0.3.28"
+lazy_static = "1.4.0"
 regex = "1.9.1"
 shiplift = "0.7.0"
 tokio = { version = "1.29.1", features = ["full"] }
