@@ -48,6 +48,7 @@ dependencies = [
  "color-eyre",
  "colored",
  "futures",
+ "lazy_static",
  "regex",
  "shiplift",
  "tokio",
