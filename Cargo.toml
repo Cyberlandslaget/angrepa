@@ -7,12 +7,17 @@ default-run = "runner"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bollard = "0.14.0"
 color-eyre = "0.6.2"
 colored = "2.0.4"
 futures = "0.3.28"
+hex = "0.4.3"
 lazy_static = "1.4.0"
+rand = "0.8.5"
 regex = "1.9.1"
 shiplift = "0.7.0"
+tar = "0.4.39"
+thiserror = "1.0.43"
 tokio = { version = "1.29.1", features = ["full"] }
 
 [[bin]]
