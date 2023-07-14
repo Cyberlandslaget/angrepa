@@ -98,7 +98,7 @@ async fn attack_example(container_count: u8) {
     // run the attack
     match exp.tick_attack(ips, "flagid_rfre".to_string()).await {
         Ok(_) => (),
-        Err(e) => return handle_docker_errors(e),
+        Err(e) => handle_docker_errors(e),
     }
 }
 

@@ -5,6 +5,7 @@ use super::DockerErrors;
 
 // TODO: config
 const DATA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data");
+const CONTAINER_MAX_MEM: u64 = 1024 * 1024 * 1024; // 1GB
 
 /// Builds docker image, returns the image tag on success
 ///
@@ -57,7 +58,11 @@ pub async fn image_build(exploit_name: &str) -> Result<String, DockerErrors> {
 pub async fn container_create(tag: &String) -> Result<ContainerCreateInfo, DockerErrors> {
     match Docker::new()
         .containers()
-        .create(&ContainerOptions::builder(tag).build())
+        .create(
+            &ContainerOptions::builder(tag)
+                .memory(CONTAINER_MAX_MEM)
+                .build(),
+        )
         .await
     {
         Ok(info) => Ok(info),
