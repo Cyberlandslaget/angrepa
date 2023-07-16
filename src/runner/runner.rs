@@ -34,6 +34,7 @@ impl Runner {
             for exp in &self.exploits {
                 let exp = exp.clone();
                 tokio::spawn(async move {
+                    let before = tokio::time::Instant::now();
                     let log = match exp {
                         Holder::DockerPool(pool) => {
                             let inst = pool
@@ -50,7 +51,8 @@ impl Runner {
                             inst.wait_for_exit().await.unwrap()
                         }
                     };
-                    println!("Got output {}", log.output);
+                    let elapsed = before.elapsed();
+                    println!("Execution took {:?}, output: {:?}", elapsed, log.output);
                 });
             }
         }
@@ -79,6 +81,7 @@ async fn main() -> eyre::Result<()> {
     let pool = exploit.spawn_pool().await?;
 
     runner.exploits.push(Holder::DockerPool(pool));
+    runner.exploits.push(Holder::Docker(exploit));
 
     runner.run().await;
 
