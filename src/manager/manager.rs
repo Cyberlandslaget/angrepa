@@ -34,7 +34,7 @@ async fn main() -> Result<(), Report> {
     // run web listener on another thread
     let web_handle = {
         let flag_tx = flag_tx.clone();
-        let web = Web::new("127.0.0.1:3030");
+        let web = Web::new("0.0.0.0:8000");
 
         tokio::spawn(async move {
             web.run(flag_tx).await.unwrap();
