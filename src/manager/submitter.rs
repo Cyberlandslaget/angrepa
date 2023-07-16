@@ -23,6 +23,8 @@ pub enum FlagStatus {
     Invalid,
     /// Server refused flag
     Error,
+    /// Didn't understand the response
+    Unknown,
 }
 
 /// Implements the low-level operation of submitting a bunch of flags

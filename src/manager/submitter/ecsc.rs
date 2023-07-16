@@ -73,8 +73,7 @@ impl Submitter for ECSCSubmitter {
                     // todo use a logger or something
                     eprintln!("Unknown flag status: {} for flag {}", code, flag);
 
-                    // ignore error, the caller should try to resubmit
-                    continue;
+                    FlagStatus::Unknown
                 }
             };
 
