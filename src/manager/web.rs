@@ -23,7 +23,7 @@ impl Web {
                 (tx, body)
             })
             .and_then(|(tx, body): (flume::Sender<String>, Bytes)| async move {
-                let body = String::from_utf8(body.into()).unwrap();
+                let body = String::from_utf8_lossy(&body).to_string();
                 tx.send_async(body).await.unwrap();
                 Ok::<_, warp::Rejection>("ok")
             });
