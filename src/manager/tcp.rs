@@ -21,7 +21,7 @@ impl Tcp {
             tokio::spawn(async move {
                 // read everything for 30s, then timeout if it is not closed
                 let read_text =
-                    tokio::time::timeout(Duration::from_secs(2), Tcp::read_all(socket)).await;
+                    tokio::time::timeout(Duration::from_secs(30), Tcp::read_all(socket)).await;
 
                 let inner = match read_text {
                     Ok(inner) => inner,
