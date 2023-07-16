@@ -1,4 +1,4 @@
-use color_eyre::eyre;
+use color_eyre::{eyre, Report};
 use tokio::time::{interval_at, MissedTickBehavior};
 
 mod exploit;
@@ -74,7 +74,7 @@ async fn main() -> eyre::Result<()> {
     };
 
     // read data/exploits/test.tar
-    let tar = std::fs::read("data/exploits/new.tar")?;
+    let tar = tarify("data/exploits/new")?;
     let docker = DockerInstance::new()?;
 
     let exploit = docker.new_exploit(tar).await?;
@@ -86,4 +86,16 @@ async fn main() -> eyre::Result<()> {
     runner.run().await;
 
     Ok(())
+}
+
+fn tarify(path: &str) -> eyre::Result<Vec<u8>> {
+    use tar::Builder;
+
+    let mut tar = Builder::new(Vec::new());
+
+    tar.append_dir_all(".", path)?;
+    tar.finish()?;
+
+    let tar = tar.into_inner()?;
+    Ok(tar)
 }
