@@ -73,7 +73,6 @@ async fn main() -> eyre::Result<()> {
         exploits: vec![],
     };
 
-    // read data/exploits/test.tar
     let tar = tarify("data/exploits/new")?;
     let docker = DockerInstance::new()?;
 
