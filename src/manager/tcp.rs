@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use color_eyre::eyre::Report;
 use tokio::io::AsyncReadExt;
 
@@ -10,18 +12,37 @@ impl Tcp {
         Self { host }
     }
 
-    pub async fn run(&self) -> Result<(), Report> {
+    pub async fn run(&self, tx: flume::Sender<String>) -> Result<(), Report> {
         let listener = tokio::net::TcpListener::bind(&self.host).await?;
 
         loop {
             let (socket, _) = listener.accept().await?;
+            let tx = tx.clone();
             tokio::spawn(async move {
                 // read everything for 30s, then timeout if it is not closed
                 let read_text =
-                    tokio::time::timeout(std::time::Duration::from_secs(30), Tcp::read_all(socket))
-                        .await;
+                    tokio::time::timeout(Duration::from_secs(2), Tcp::read_all(socket)).await;
 
-                dbg!(String::from_utf8(read_text.unwrap().unwrap()));
+                let inner = match read_text {
+                    Ok(inner) => inner,
+                    Err(err) => {
+                        // timeout
+                        eprintln!("Timedout {:?}", err);
+                        return;
+                    }
+                };
+
+                let text = match inner {
+                    Ok(text) => text,
+                    Err(err) => {
+                        // read_all failed
+                        eprintln!("Readall failed {:?}", err);
+                        return;
+                    }
+                };
+
+                let text = String::from_utf8(text).unwrap();
+                tx.send(text).unwrap();
             });
         }
     }
