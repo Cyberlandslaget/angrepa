@@ -1,8 +1,5 @@
-use std::net::SocketAddr;
-
 use color_eyre::Report;
 use futures::future::join_all;
-use warp::Filter;
 
 mod submitter;
 
@@ -10,8 +7,6 @@ mod tcp;
 use tcp::Tcp;
 mod web;
 use web::Web;
-
-struct Manager {}
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
