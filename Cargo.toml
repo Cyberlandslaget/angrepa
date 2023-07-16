@@ -24,8 +24,8 @@ tokio = { version = "1.29.1", features = ["full"] }
 
 [[bin]]
 name = "runner"
-path = "src/runner.rs"
+path = "src/runner/runner.rs"
 
 [[bin]]
 name = "manager"
-path = "src/manager.rs"
+path = "src/manager/manager.rs"
