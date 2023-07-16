@@ -1,5 +1,7 @@
 use color_eyre::Report;
 use futures::future::join_all;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 mod submitter;
 
@@ -7,6 +9,13 @@ mod tcp;
 use tcp::Tcp;
 mod web;
 use web::Web;
+
+use crate::submitter::Submitter;
+
+const FLAG_REGEX_STR: &str = r"ECSC_[A-Za-z0-9\\+/]{32}";
+lazy_static! {
+    static ref FLAG_REGEX: Regex = Regex::new(FLAG_REGEX_STR).unwrap();
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
@@ -38,9 +47,18 @@ async fn main() -> Result<(), Report> {
 
     // run submitter on another thread
     let sub_handle = tokio::spawn(async move {
-        while let Ok(flag) = flag_rx.recv_async().await {
-            let flag = flag.trim();
-            println!("Received flags: {}", flag);
+        let submitter = submitter::DummySubmitter {};
+
+        while let Ok(raw) = flag_rx.recv_async().await {
+            // extract the flags
+            let mut flags = Vec::new();
+
+            for cap in FLAG_REGEX.captures_iter(&raw) {
+                flags.push(cap[0].to_string());
+            }
+
+            let r = submitter.submit(flags).await.unwrap();
+            dbg!(&r);
         }
     });
 

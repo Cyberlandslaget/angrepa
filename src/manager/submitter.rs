@@ -18,6 +18,7 @@ pub enum SubmitError {
 }
 
 /// Adapted from https://web.archive.org/web/20230325144340/https://docs.ecsc2022.eu/ad_platform/
+#[derive(Debug, Clone, Copy)]
 pub enum FlagStatus {
     Accepted,
     Duplicate,
