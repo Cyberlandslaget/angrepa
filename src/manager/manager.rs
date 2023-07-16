@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use color_eyre::Report;
 use futures::future::join_all;
 use warp::Filter;
@@ -6,6 +8,8 @@ mod submitter;
 
 mod tcp;
 use tcp::Tcp;
+mod web;
+use web::Web;
 
 struct Manager {}
 
@@ -24,9 +28,9 @@ async fn main() -> Result<(), Report> {
     });
 
     // run web listener on another thread
-    let routes = warp::any().map(|| "Hello, World!");
+    let web = Web::new("127.0.0.1:3030");
     let web_handle = tokio::spawn(async move {
-        warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+        web.run().await.unwrap();
     });
 
     // run submitter on another thread
