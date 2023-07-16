@@ -3,6 +3,9 @@ use thiserror::Error;
 
 // implementations
 mod ecsc;
+pub use ecsc::ECSCSubmitter;
+mod dummy;
+pub use dummy::DummySubmitter;
 
 /// Did not manage to submit
 #[derive(Error, Debug)]
