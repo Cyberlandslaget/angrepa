@@ -22,16 +22,24 @@ async fn main() -> Result<(), Report> {
     let (flag_tx, flag_rx) = flume::unbounded::<String>();
 
     // run tcp listener on another thread
-    let tcp = Tcp::new("0.0.0.0:8001".to_string());
-    let tcp_handle = tokio::spawn(async move {
-        tcp.run(flag_tx).await.unwrap();
-    });
+    let tcp_handle = {
+        let flag_tx = flag_tx.clone();
+
+        let tcp = Tcp::new("0.0.0.0:8001".to_string());
+        tokio::spawn(async move {
+            tcp.run(flag_tx).await.unwrap();
+        })
+    };
 
     // run web listener on another thread
-    let web = Web::new("127.0.0.1:3030");
-    let web_handle = tokio::spawn(async move {
-        web.run().await.unwrap();
-    });
+    let web_handle = {
+        let flag_tx = flag_tx.clone();
+        let web = Web::new("127.0.0.1:3030");
+
+        tokio::spawn(async move {
+            web.run(flag_tx).await.unwrap();
+        })
+    };
 
     // run submitter on another thread
     let sub_handle = tokio::spawn(async move {
