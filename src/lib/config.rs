@@ -1,3 +1,4 @@
+use argh::FromArgs;
 use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Common {
@@ -31,4 +32,13 @@ pub struct Root {
     pub common: Common,
     pub manager: Manager,
     pub runner: toml::Value,
+}
+
+// common args, used by both manager and runner
+#[derive(FromArgs)]
+/// Angrapa
+pub struct Args {
+    /// path to toml configuration file
+    #[argh(positional)]
+    pub toml: String,
 }

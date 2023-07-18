@@ -1,4 +1,3 @@
-use argh::FromArgs;
 use color_eyre::eyre;
 use tokio::time::{interval_at, MissedTickBehavior};
 
@@ -60,20 +59,12 @@ impl Runner {
     }
 }
 
-#[derive(FromArgs)]
-/// Runner
-struct Args {
-    /// path to toml configuration file
-    #[argh(positional)]
-    toml: String,
-}
-
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
     // get toml
-    let args = argh::from_env::<Args>();
+    let args = argh::from_env::<angrapa::config::Args>();
     let toml = std::fs::read_to_string(args.toml)?;
     let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
 
