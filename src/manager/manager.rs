@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use angrapa::config;
 use color_eyre::eyre::eyre;
 use color_eyre::Report;
@@ -61,15 +63,16 @@ where
     // TODO chunk the submissions
     // IMPORTANT!!!!!!!!!!!!!!!!!
 
+    let mut seen: HashSet<String> = HashSet::new();
+
     while let Ok(raw) = flag_rx.recv_async().await {
-        // extract the flags
-        let mut flags = Vec::new();
+        let new_flags = flag_regex
+            .captures_iter(&raw)
+            .map(|cap| cap[0].to_string()) // take the one and only capture
+            .filter(|flag| seen.insert(flag.clone()))
+            .collect::<Vec<_>>();
 
-        for cap in flag_regex.captures_iter(&raw) {
-            flags.push(cap[0].to_string());
-        }
-
-        let r = submitter.submit(flags).await.unwrap();
+        let r = submitter.submit(new_flags).await.unwrap();
         dbg!(&r);
     }
 }
