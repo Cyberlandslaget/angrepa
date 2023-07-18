@@ -1,8 +1,9 @@
 use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
+use serde::Deserialize;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct ECSCSubmitter {
     host: String,
     /// Reads until this is found
