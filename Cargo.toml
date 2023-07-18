@@ -9,6 +9,7 @@ default-run = "runner"
 [dependencies]
 async-trait = "0.1.71"
 bollard = "0.14.0"
+chrono = "0.4.26"
 color-eyre = "0.6.2"
 colored = "2.0.4"
 flume = "0.10.14"
