@@ -7,6 +7,7 @@ default-run = "runner"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+argh = "0.1.10"
 async-trait = "0.1.71"
 bollard = "0.14.0"
 chrono = "0.4.26"
@@ -18,10 +19,12 @@ hex = "0.4.3"
 lazy_static = "1.4.0"
 rand = "0.8.5"
 regex = "1.9.1"
+serde = "1.0.171"
 shiplift = "0.7.0"
 tar = "0.4.39"
 thiserror = "1.0.43"
 tokio = { version = "1.29.1", features = ["full"] }
+toml = "0.7.6"
 warp = "0.3.5"
 
 [[bin]]
