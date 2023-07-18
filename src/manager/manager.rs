@@ -1,6 +1,5 @@
 use color_eyre::Report;
 use futures::future::join_all;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 mod submitter;
@@ -12,14 +11,17 @@ use web::Web;
 
 use crate::submitter::Submitter;
 
-const FLAG_REGEX_STR: &str = r"ECSC_[A-Za-z0-9\\+/]{32}";
-lazy_static! {
-    static ref FLAG_REGEX: Regex = Regex::new(FLAG_REGEX_STR).unwrap();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Report> {
     color_eyre::install()?;
+
+    // get toml
+    let args = argh::from_env::<angrapa::config::Args>();
+    let toml = std::fs::read_to_string(args.toml)?;
+    let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
+
+    let flag_regex = Regex::new(&common.format)?;
+
     println!("manager");
 
     // set up channels
@@ -53,7 +55,7 @@ async fn main() -> Result<(), Report> {
             // extract the flags
             let mut flags = Vec::new();
 
-            for cap in FLAG_REGEX.captures_iter(&raw) {
+            for cap in flag_regex.captures_iter(&raw) {
                 flags.push(cap[0].to_string());
             }
 
