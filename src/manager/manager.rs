@@ -1,3 +1,4 @@
+use angrapa::config;
 use color_eyre::Report;
 use futures::future::join_all;
 use regex::Regex;
@@ -10,6 +11,81 @@ mod web;
 use web::Web;
 
 use crate::submitter::Submitter;
+use crate::submitter::{DummySubmitter, ECSCSubmitter};
+
+#[derive(Debug)]
+enum Submitters {
+    Dummy(DummySubmitter),
+    ECSC(ECSCSubmitter),
+}
+
+impl Submitters {
+    fn from_conf(manager: config::Manager) -> Result<Self, Report> {
+        match manager.submitter_name.as_str() {
+            "dummy" => Ok(Self::Dummy(DummySubmitter {})),
+            "ecsc" => {
+                let host = manager
+                    .submitter
+                    .get("host")
+                    .ok_or(color_eyre::eyre::eyre!("ECSC submitter requires host"))?;
+
+                let host = match host {
+                    toml::Value::String(s) => s.clone(),
+                    _ => {
+                        return Err(color_eyre::eyre::eyre!(
+                            "ECSC submitter host must be a string"
+                        ))
+                    }
+                };
+
+                let header_suffix =
+                    manager
+                        .submitter
+                        .get("header_suffix")
+                        .ok_or(color_eyre::eyre::eyre!(
+                            "ECSC submitter requires header_suffix"
+                        ))?;
+
+                let header_suffix = match header_suffix {
+                    toml::Value::String(s) => s.clone(),
+                    _ => {
+                        return Err(color_eyre::eyre::eyre!(
+                            "ECSC submitter header_suffix must be a string"
+                        ))
+                    }
+                };
+
+                let ecsc = ECSCSubmitter::new(host, header_suffix);
+
+                Ok(Self::ECSC(ecsc))
+            }
+            _ => Err(color_eyre::eyre::eyre!(
+                "Unknown submitter name {}",
+                manager.submitter_name
+            )),
+        }
+    }
+}
+
+async fn submitter_loop<S>(submitter: S, flag_rx: flume::Receiver<String>, flag_regex: Regex)
+where
+    S: Submitter + Send + Sync + 'static,
+{
+    // TODO chunk the submissions
+    // IMPORTANT!!!!!!!!!!!!!!!!!
+
+    while let Ok(raw) = flag_rx.recv_async().await {
+        // extract the flags
+        let mut flags = Vec::new();
+
+        for cap in flag_regex.captures_iter(&raw) {
+            flags.push(cap[0].to_string());
+        }
+
+        let r = submitter.submit(flags).await.unwrap();
+        dbg!(&r);
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
@@ -18,11 +94,13 @@ async fn main() -> Result<(), Report> {
     // get toml
     let args = argh::from_env::<angrapa::config::Args>();
     let toml = std::fs::read_to_string(args.toml)?;
-    let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
+    let config = toml::from_str::<angrapa::config::Root>(&toml)?;
 
-    let flag_regex = Regex::new(&common.format)?;
+    let flag_regex = Regex::new(&config.common.format)?;
 
     println!("manager");
+
+    let sub = Submitters::from_conf(config.manager)?;
 
     // set up channels
     let (flag_tx, flag_rx) = flume::unbounded::<String>();
@@ -49,18 +127,9 @@ async fn main() -> Result<(), Report> {
 
     // run submitter on another thread
     let sub_handle = tokio::spawn(async move {
-        let submitter = submitter::DummySubmitter {};
-
-        while let Ok(raw) = flag_rx.recv_async().await {
-            // extract the flags
-            let mut flags = Vec::new();
-
-            for cap in flag_regex.captures_iter(&raw) {
-                flags.push(cap[0].to_string());
-            }
-
-            let r = submitter.submit(flags).await.unwrap();
-            dbg!(&r);
+        match sub {
+            Submitters::Dummy(submitter) => submitter_loop(submitter, flag_rx, flag_regex).await,
+            Submitters::ECSC(submitter) => submitter_loop(submitter, flag_rx, flag_regex).await,
         }
     });
 

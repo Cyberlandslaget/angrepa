@@ -2,10 +2,20 @@ use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+#[derive(Debug)]
 pub struct ECSCSubmitter {
     host: String,
     /// Reads until this is found
     header_suffix: String,
+}
+
+impl ECSCSubmitter {
+    pub fn new(host: String, header_suffix: String) -> Self {
+        Self {
+            host,
+            header_suffix,
+        }
+    }
 }
 
 #[async_trait]
