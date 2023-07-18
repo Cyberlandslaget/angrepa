@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ECSCSubmitter {
     host: String,
     /// Reads until this is found

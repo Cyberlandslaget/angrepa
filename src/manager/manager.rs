@@ -1,14 +1,16 @@
-use std::collections::HashSet;
-
 use angrapa::config;
 use color_eyre::eyre::eyre;
 use color_eyre::Report;
 use futures::future::join_all;
 use regex::Regex;
+use std::collections::{HashMap, HashSet};
+use tokio::select;
+use tokio::task::spawn;
 
 mod submitter;
 
 mod tcp;
+use submitter::FlagStatus;
 use tcp::Tcp;
 mod web;
 use web::Web;
@@ -56,24 +58,83 @@ impl Submitters {
     }
 }
 
-async fn submitter_loop<S>(submitter: S, flag_rx: flume::Receiver<String>, flag_regex: Regex)
+struct SubmitterManager<S> {
+    submitter: S,
+    flag_regex: Regex,
+}
+
+impl<S> SubmitterManager<S>
 where
-    S: Submitter + Send + Sync + 'static,
+    S: Submitter + Send + Sync + Clone + 'static,
 {
-    // TODO chunk the submissions
-    // IMPORTANT!!!!!!!!!!!!!!!!!
+    /// Submits flags
+    async fn submit(
+        submitter: S,
+        flags: Vec<String>,
+        result_tx: flume::Sender<(String, FlagStatus)>,
+    ) {
+        println!("Submitting {:?}", flags);
+        let results = submitter.submit(flags).await.unwrap();
+        for res in results {
+            result_tx.send_async(res).await.unwrap();
+        }
+    }
 
-    let mut seen: HashSet<String> = HashSet::new();
+    /// Extracts out flags
+    async fn getter(
+        raw_flag_rx: flume::Receiver<String>,
+        parsed_tx: flume::Sender<String>,
+        flag_regex: Regex,
+    ) {
+        while let Ok(raw) = raw_flag_rx.recv_async().await {
+            for flag in flag_regex.captures_iter(&raw) {
+                let flag = flag[0].to_string();
+                println!("Recieved flag {}", flag);
+                parsed_tx.send_async(flag).await.unwrap();
+            }
+        }
+    }
 
-    while let Ok(raw) = flag_rx.recv_async().await {
-        let new_flags = flag_regex
-            .captures_iter(&raw)
-            .map(|cap| cap[0].to_string()) // take the one and only capture
-            .filter(|flag| seen.insert(flag.clone()))
-            .collect::<Vec<_>>();
+    async fn run(&self, raw_flag_rx: flume::Receiver<String>) {
+        let (parsed_tx, parsed_rx) = flume::unbounded::<String>();
+        let (result_tx, result_rx) = flume::unbounded::<(String, FlagStatus)>();
 
-        let r = submitter.submit(new_flags).await.unwrap();
-        dbg!(&r);
+        spawn(SubmitterManager::<S>::getter(
+            raw_flag_rx,
+            parsed_tx,
+            self.flag_regex.clone(),
+        ));
+
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut status: HashMap<String, FlagStatus> = HashMap::new();
+        let mut flag_queue = Vec::new();
+
+        let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
+        send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+        loop {
+            select!(
+                _ = send_signal.tick() => {
+                    let mut to_submit = Vec::new();
+                    std::mem::swap(&mut flag_queue, &mut to_submit);
+
+                    let result_tx = result_tx.clone();
+
+                    spawn(SubmitterManager::<S>::submit(self.submitter.clone(), to_submit, result_tx));
+                },
+                f = parsed_rx.recv_async() => {
+                    let f = f.unwrap();
+                    if seen.insert(f.clone()) {
+                        flag_queue.push(f);
+                    }
+                },
+                res = result_rx.recv_async() => {
+                    let (flag, flag_status) = res.unwrap();
+                    status.insert(flag.clone(), flag_status);
+                    println!("Got status  {}: {:?}", flag, flag_status);
+                }
+            )
+        }
     }
 }
 
@@ -118,8 +179,22 @@ async fn main() -> Result<(), Report> {
     // run submitter on another thread
     let sub_handle = tokio::spawn(async move {
         match sub {
-            Submitters::Dummy(submitter) => submitter_loop(submitter, flag_rx, flag_regex).await,
-            Submitters::ECSC(submitter) => submitter_loop(submitter, flag_rx, flag_regex).await,
+            Submitters::Dummy(submitter) => {
+                SubmitterManager {
+                    submitter,
+                    flag_regex,
+                }
+                .run(flag_rx)
+                .await
+            }
+            Submitters::ECSC(submitter) => {
+                SubmitterManager {
+                    submitter,
+                    flag_regex,
+                }
+                .run(flag_rx)
+                .await
+            }
         }
     });
 
