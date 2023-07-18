@@ -1,4 +1,4 @@
-use color_eyre::{eyre, Report};
+use color_eyre::eyre;
 use tokio::time::{interval_at, MissedTickBehavior};
 
 mod exploit;
@@ -63,9 +63,25 @@ impl Runner {
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    // set previous time to simulate starting the program after CTF start
-    let start = tokio::time::Instant::now() - tokio::time::Duration::from_secs(1000);
-    let tick = tokio::time::Duration::from_secs(5);
+    // get toml
+    let args = argh::from_env::<angrapa::config::Args>();
+    let toml = std::fs::read_to_string(args.toml)?;
+    let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
+
+    // time until start
+    common.sleep_until_start().await;
+    assert!(chrono::Utc::now() >= common.start);
+    println!("Started!");
+
+    let time_since_start = chrono::Utc::now() - common.start;
+
+    let start = tokio::time::Instant::now() - time_since_start.to_std()?
+        // start 1 sec into the tick just in case
+        + tokio::time::Duration::from_secs(1);
+
+    println!("Started {:?} ago", time_since_start);
+
+    let tick = tokio::time::Duration::from_secs(common.tick);
 
     let mut runner = Runner {
         start,

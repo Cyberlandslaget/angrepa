@@ -1,0 +1,13 @@
+[common]
+# this is one hour before network opens!
+start = "2023-07-22T12:00:00Z"
+format = 'ENO[A-Za-z0-9+\/=]{48}'
+tick = 60
+
+[manager]
+submitter_name = 'ecsc'
+[manager.submitter]
+host = '10.0.13.37:1337'
+header_suffix = "\n\n"
+
+[runner]
