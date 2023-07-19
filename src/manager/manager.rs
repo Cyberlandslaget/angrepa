@@ -17,8 +17,7 @@ async fn main() -> Result<(), Report> {
 
     // get config
     let args = argh::from_env::<angrapa::config::Args>();
-    let toml = std::fs::read_to_string(&args.toml)?;
-    let config = toml::from_str::<angrapa::config::Root>(&toml)?;
+    let config = args.get_config()?;
 
     // setup logging
     args.setup_logging()?;

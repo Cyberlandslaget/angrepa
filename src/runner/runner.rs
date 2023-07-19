@@ -66,8 +66,8 @@ async fn main() -> eyre::Result<()> {
 
     // get config
     let args = argh::from_env::<angrapa::config::Args>();
-    let toml = std::fs::read_to_string(&args.toml)?;
-    let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
+    let toml = args.get_config()?;
+    let common = toml.common;
 
     // setup logging
     args.setup_logging()?;
