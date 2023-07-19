@@ -70,8 +70,8 @@ where
         loop {
             select!(
                 _ = send_signal.tick() => {
-                    let mut to_submit = Vec::new();
-                    std::mem::swap(&mut flag_queue, &mut to_submit);
+                    let to_submit = flag_queue.clone();
+                    flag_queue.clear();
 
                     let result_tx = result_tx.clone();
 
