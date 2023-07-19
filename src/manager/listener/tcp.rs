@@ -1,14 +1,14 @@
-use std::time::Duration;
+use std::{net::SocketAddr, time::Duration};
 
 use color_eyre::eyre::Report;
 use tokio::io::AsyncReadExt;
 
 pub struct Tcp {
-    host: String,
+    host: SocketAddr,
 }
 
 impl Tcp {
-    pub fn new(host: String) -> Self {
+    pub fn new(host: SocketAddr) -> Self {
         Self { host }
     }
 

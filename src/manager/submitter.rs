@@ -46,7 +46,7 @@ pub trait Submitter {
 }
 
 impl Submitters {
-    pub fn from_conf(manager: config::Manager) -> Result<Self, Report> {
+    pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
         match manager.submitter_name.as_str() {
             "dummy" => Ok(Self::Dummy(DummySubmitter {})),
             "ecsc" => {

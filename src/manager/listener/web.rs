@@ -7,8 +7,7 @@ pub struct Web {
 }
 
 impl Web {
-    pub fn new(host: &str) -> Self {
-        let host = host.parse().unwrap();
+    pub fn new(host: SocketAddr) -> Self {
         Self { host }
     }
 

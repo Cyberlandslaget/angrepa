@@ -106,7 +106,7 @@ async fn main() -> Result<(), Report> {
 
     println!("manager");
 
-    let sub = Submitters::from_conf(config.manager)?;
+    let sub = Submitters::from_conf(&config.manager)?;
 
     // set up channels
     let (flag_tx, flag_rx) = flume::unbounded::<String>();
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Report> {
     let tcp_handle = {
         let flag_tx = flag_tx.clone();
 
-        let tcp = Tcp::new("0.0.0.0:8001".to_string());
+        let tcp = Tcp::new(config.manager.tcp_listener.parse()?);
         tokio::spawn(async move {
             tcp.run(flag_tx).await.unwrap();
         })
@@ -124,7 +124,7 @@ async fn main() -> Result<(), Report> {
     // run web listener on another thread
     let web_handle = {
         let flag_tx = flag_tx.clone();
-        let web = Web::new("0.0.0.0:8000");
+        let web = Web::new(config.manager.http_listener.parse()?);
 
         tokio::spawn(async move {
             web.run(flag_tx).await.unwrap();
