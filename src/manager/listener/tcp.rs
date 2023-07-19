@@ -2,6 +2,7 @@ use std::{net::SocketAddr, time::Duration};
 
 use color_eyre::eyre::Report;
 use tokio::io::AsyncReadExt;
+use tracing::warn;
 
 pub struct Tcp {
     host: SocketAddr,
@@ -26,8 +27,7 @@ impl Tcp {
                 let inner = match read_text {
                     Ok(inner) => inner,
                     Err(err) => {
-                        // timeout
-                        eprintln!("Timedout {:?}", err);
+                        warn!("Timeout {:?}", err);
                         return;
                     }
                 };
@@ -35,8 +35,7 @@ impl Tcp {
                 let text = match inner {
                     Ok(text) => text,
                     Err(err) => {
-                        // read_all failed
-                        eprintln!("Readall failed {:?}", err);
+                        warn!("Readall failed {:?}", err);
                         return;
                     }
                 };

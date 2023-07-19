@@ -1,7 +1,7 @@
 use argh::FromArgs;
 use color_eyre::Report;
 use serde::Deserialize;
-use tracing::Level;
+use tracing::{debug, info};
 
 #[derive(Debug, Deserialize)]
 pub struct Common {
@@ -16,8 +16,12 @@ impl Common {
         let difference =
             std::cmp::max(self.start, current_time) - std::cmp::min(self.start, current_time);
 
+        debug!("Start time: {:?}", self.start);
+        debug!("Current time: {:?}", current_time);
+        debug!("Difference: {:?}", difference);
+
         if current_time <= self.start {
-            println!("Starts in {:?}. Sleeping...", difference.to_std().unwrap());
+            info!("Starts in {:?}. Sleeping...", difference.to_std().unwrap());
             tokio::time::sleep_until(tokio::time::Instant::now() + difference.to_std().unwrap())
                 .await;
         }
@@ -55,10 +59,10 @@ pub struct Args {
 impl Args {
     pub fn setup_logging(&self) -> Result<(), Report> {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()
-            .with_max_level(if self.debug {
-                Level::DEBUG
+            .with_env_filter(if self.debug {
+                "debug,hyper=info"
             } else {
-                Level::INFO
+                "info"
             })
             .finish();
 

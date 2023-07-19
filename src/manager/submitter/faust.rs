@@ -2,6 +2,7 @@ use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
 use serde::Deserialize;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tracing::warn;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct FaustSubmitter {
@@ -81,8 +82,7 @@ impl Submitter for FaustSubmitter {
                 "INV" => FlagStatus::Invalid,
                 "ERR" => FlagStatus::Error,
                 _ => {
-                    // todo use a logger or something
-                    eprintln!("Unknown flag status: {} for flag {}", code, flag);
+                    warn!("Unknown flag status: {} for flag {}", code, flag);
 
                     FlagStatus::Unknown
                 }

@@ -6,6 +6,7 @@ use exploit::exploit2::{
     docker::{DockerExploit, DockerExploitPool, DockerInstance},
     Exploit, ExploitInstance,
 };
+use tracing::info;
 
 #[derive(Clone)]
 enum Holder {
@@ -29,7 +30,7 @@ impl Runner {
 
             // print clock
             let date = chrono::Utc::now();
-            println!("tick UTC {}", date.format("%Y-%m-%d %H:%M:%S.%f"));
+            info!("tick UTC {}", date.format("%Y-%m-%d %H:%M:%S.%f"));
 
             for exp in &self.exploits {
                 let exp = exp.clone();
@@ -52,7 +53,7 @@ impl Runner {
                         }
                     };
                     let elapsed = before.elapsed();
-                    println!("Execution took {:?}, output: {:?}", elapsed, log.output);
+                    info!("Execution took {:?}, output: {:?}", elapsed, log.output)
                 });
             }
         }
@@ -63,15 +64,18 @@ impl Runner {
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    // get toml
+    // get config
     let args = argh::from_env::<angrapa::config::Args>();
-    let toml = std::fs::read_to_string(args.toml)?;
+    let toml = std::fs::read_to_string(&args.toml)?;
     let common = toml::from_str::<angrapa::config::Root>(&toml)?.common;
+
+    // setup logging
+    args.setup_logging()?;
 
     // time until start
     common.sleep_until_start().await;
     assert!(chrono::Utc::now() >= common.start);
-    println!("Started!");
+    info!("Manager started!");
 
     let time_since_start = chrono::Utc::now() - common.start;
 
@@ -79,7 +83,7 @@ async fn main() -> eyre::Result<()> {
         // start 1 sec into the tick just in case
         + tokio::time::Duration::from_secs(1);
 
-    println!("Started {:?} ago", time_since_start);
+    info!("CTF started {:?} ago", time_since_start);
 
     let tick = tokio::time::Duration::from_secs(common.tick);
 
