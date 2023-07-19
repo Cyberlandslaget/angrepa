@@ -5,7 +5,9 @@ format = 'ENO[A-Za-z0-9+\/=]{48}'
 tick = 60
 
 [manager]
-submitter_name = 'ecsc'
+http_listener = "0.0.0.0:8000"
+tcp_listener = "0.0.0.0:8001"
+submitter_name = 'faust'
 [manager.submitter]
 host = '10.0.13.37:1337'
 header_suffix = "\n\n"
