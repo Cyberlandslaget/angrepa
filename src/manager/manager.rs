@@ -8,12 +8,10 @@ use tokio::select;
 use tokio::task::spawn;
 
 mod submitter;
-
-mod tcp;
 use submitter::FlagStatus;
-use tcp::Tcp;
-mod web;
-use web::Web;
+
+mod listener;
+use listener::{Tcp, Web};
 
 use crate::submitter::Submitter;
 use crate::submitter::{DummySubmitter, ECSCSubmitter};
