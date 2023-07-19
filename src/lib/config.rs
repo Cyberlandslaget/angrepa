@@ -1,5 +1,8 @@
 use argh::FromArgs;
+use color_eyre::Report;
 use serde::Deserialize;
+use tracing::Level;
+
 #[derive(Debug, Deserialize)]
 pub struct Common {
     pub tick: u64,
@@ -43,4 +46,24 @@ pub struct Args {
     /// path to toml configuration file
     #[argh(positional)]
     pub toml: String,
+
+    /// enable debug logging
+    #[argh(switch)]
+    pub debug: bool,
+}
+
+impl Args {
+    pub fn setup_logging(&self) -> Result<(), Report> {
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            .with_max_level(if self.debug {
+                Level::DEBUG
+            } else {
+                Level::INFO
+            })
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)?;
+
+        Ok(())
+    }
 }
