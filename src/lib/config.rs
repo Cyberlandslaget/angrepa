@@ -23,6 +23,8 @@ impl Common {
 
 #[derive(Debug, Deserialize)]
 pub struct Manager {
+    pub http_listener: String,
+    pub tcp_listener: String,
     pub submitter_name: String,
     pub submitter: toml::Table,
 }
