@@ -142,7 +142,7 @@ async fn main() -> Result<(), Report> {
                 .run(flag_rx)
                 .await
             }
-            Submitters::ECSC(submitter) => {
+            Submitters::Faust(submitter) => {
                 SubmitterManager {
                     submitter,
                     flag_regex,

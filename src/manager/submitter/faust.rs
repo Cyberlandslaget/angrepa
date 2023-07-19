@@ -4,13 +4,13 @@ use serde::Deserialize;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct ECSCSubmitter {
+pub struct FaustSubmitter {
     host: String,
     /// Reads until this is found
     header_suffix: String,
 }
 
-impl ECSCSubmitter {
+impl FaustSubmitter {
     pub fn new(host: String, header_suffix: String) -> Self {
         Self {
             host,
@@ -20,7 +20,7 @@ impl ECSCSubmitter {
 }
 
 #[async_trait]
-impl Submitter for ECSCSubmitter {
+impl Submitter for FaustSubmitter {
     async fn submit(&self, flags: Vec<String>) -> Result<Vec<(String, FlagStatus)>, SubmitError> {
         let mut socket = tokio::net::TcpStream::connect(&self.host).await?;
 

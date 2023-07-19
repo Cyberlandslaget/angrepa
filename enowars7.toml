@@ -7,7 +7,7 @@ tick = 60
 [manager]
 http_listener = "0.0.0.0:8000"
 tcp_listener = "0.0.0.0:8001"
-submitter_name = 'ecsc'
+submitter_name = 'faust'
 [manager.submitter]
 host = '10.0.13.37:1337'
 header_suffix = "\n\n"

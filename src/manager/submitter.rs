@@ -4,15 +4,15 @@ use color_eyre::{eyre::eyre, Report};
 use thiserror::Error;
 
 // implementations
-mod ecsc;
-pub use ecsc::ECSCSubmitter;
+mod faust;
+pub use faust::FaustSubmitter;
 mod dummy;
 pub use dummy::DummySubmitter;
 
 #[derive(Debug)]
 pub enum Submitters {
     Dummy(DummySubmitter),
-    ECSC(ECSCSubmitter),
+    Faust(FaustSubmitter),
 }
 
 /// Did not manage to submit
@@ -49,30 +49,30 @@ impl Submitters {
     pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
         match manager.submitter_name.as_str() {
             "dummy" => Ok(Self::Dummy(DummySubmitter {})),
-            "ecsc" => {
+            "faust" => {
                 let host = manager
                     .submitter
                     .get("host")
-                    .ok_or(eyre!("ECSC submitter requires host"))?;
+                    .ok_or(eyre!("Faust submitter requires host"))?;
 
                 let host = match host {
                     toml::Value::String(s) => s.clone(),
-                    _ => return Err(eyre!("ECSC submitter host must be a string")),
+                    _ => return Err(eyre!("Faust submitter host must be a string")),
                 };
 
                 let header_suffix = manager
                     .submitter
                     .get("header_suffix")
-                    .ok_or(eyre!("ECSC submitter requires header_suffix"))?;
+                    .ok_or(eyre!("Faust submitter requires header_suffix"))?;
 
                 let header_suffix = match header_suffix {
                     toml::Value::String(s) => s.clone(),
-                    _ => return Err(eyre!("ECSC submitter header_suffix must be a string")),
+                    _ => return Err(eyre!("Faust submitter header_suffix must be a string")),
                 };
 
-                let ecsc = ECSCSubmitter::new(host, header_suffix);
+                let faust = FaustSubmitter::new(host, header_suffix);
 
-                Ok(Self::ECSC(ecsc))
+                Ok(Self::Faust(faust))
             }
             _ => Err(eyre!("Unknown submitter name {}", manager.submitter_name)),
         }
