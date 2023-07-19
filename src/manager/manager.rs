@@ -1,5 +1,3 @@
-use angrapa::config;
-use color_eyre::eyre::eyre;
 use color_eyre::Report;
 use futures::future::join_all;
 use regex::Regex;
@@ -13,48 +11,7 @@ use submitter::FlagStatus;
 mod listener;
 use listener::{Tcp, Web};
 
-use crate::submitter::Submitter;
-use crate::submitter::{DummySubmitter, ECSCSubmitter};
-
-#[derive(Debug)]
-enum Submitters {
-    Dummy(DummySubmitter),
-    ECSC(ECSCSubmitter),
-}
-
-impl Submitters {
-    fn from_conf(manager: config::Manager) -> Result<Self, Report> {
-        match manager.submitter_name.as_str() {
-            "dummy" => Ok(Self::Dummy(DummySubmitter {})),
-            "ecsc" => {
-                let host = manager
-                    .submitter
-                    .get("host")
-                    .ok_or(eyre!("ECSC submitter requires host"))?;
-
-                let host = match host {
-                    toml::Value::String(s) => s.clone(),
-                    _ => return Err(eyre!("ECSC submitter host must be a string")),
-                };
-
-                let header_suffix = manager
-                    .submitter
-                    .get("header_suffix")
-                    .ok_or(eyre!("ECSC submitter requires header_suffix"))?;
-
-                let header_suffix = match header_suffix {
-                    toml::Value::String(s) => s.clone(),
-                    _ => return Err(eyre!("ECSC submitter header_suffix must be a string")),
-                };
-
-                let ecsc = ECSCSubmitter::new(host, header_suffix);
-
-                Ok(Self::ECSC(ecsc))
-            }
-            _ => Err(eyre!("Unknown submitter name {}", manager.submitter_name)),
-        }
-    }
-}
+use crate::submitter::{Submitter, Submitters};
 
 struct SubmitterManager<S> {
     submitter: S,
