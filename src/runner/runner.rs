@@ -6,7 +6,7 @@ use exploit::exploit2::{
     docker::{DockerExploit, DockerExploitPool, DockerInstance},
     Exploit, ExploitInstance,
 };
-use tracing::info;
+use tracing::{debug, info};
 
 #[derive(Clone)]
 enum Holder {
