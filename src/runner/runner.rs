@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use angrapa::config::Common;
 use color_eyre::eyre;
 use futures::future::join_all;
@@ -22,6 +24,8 @@ pub enum Exploits {
 
 #[derive(Debug, Clone)]
 pub struct ExploitHolder {
+    /// a UNIQUE id
+    pub id: String,
     pub enabled: bool,
     pub target: AttackTarget,
     pub exploit: Exploits,
@@ -37,14 +41,14 @@ pub enum AttackTarget {
 }
 
 struct Runner {
-    exploits: Vec<ExploitHolder>,
+    exploits: HashMap<String, ExploitHolder>,
     exploit_rx: flume::Receiver<ExploitHolder>,
 }
 
 impl Runner {
     async fn register_exp(&mut self, exp: ExploitHolder) {
         info!("Registering new exploit. {:?}", exp);
-        self.exploits.push(exp);
+        self.exploits.insert(exp.id.clone(), exp);
     }
 
     async fn tick(&self, conf: &Common) {
@@ -56,7 +60,7 @@ impl Runner {
             date.format("%Y-%m-%d %H:%M:%S.%f")
         );
 
-        for holder in &self.exploits {
+        for (_id, holder) in &self.exploits {
             let holder = holder.clone();
             tokio::spawn(async move {
                 let before = tokio::time::Instant::now();
@@ -136,6 +140,7 @@ async fn main() -> eyre::Result<()> {
 
         exploit_tx
             .send_async(ExploitHolder {
+                id: "test1".to_string(),
                 enabled: false,
                 target: AttackTarget::Ips,
                 exploit: Exploits::Docker(exploit),
@@ -145,6 +150,7 @@ async fn main() -> eyre::Result<()> {
 
         exploit_tx
             .send_async(ExploitHolder {
+                id: "test2".to_string(),
                 enabled: false,
                 target: AttackTarget::Ips,
                 exploit: Exploits::DockerPool(pool),
@@ -154,7 +160,7 @@ async fn main() -> eyre::Result<()> {
     });
 
     let runner = Runner {
-        exploits: Vec::new(),
+        exploits: HashMap::new(),
         exploit_rx,
     };
 

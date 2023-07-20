@@ -1,4 +1,5 @@
 use futures::TryStreamExt;
+use serde_json::json;
 use std::{collections::HashMap, net::SocketAddr};
 use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
@@ -44,7 +45,7 @@ impl Server {
             tar
         } else {
             return Ok(reply::with_status(
-                "missing tar",
+                reply::json(&json!({ "error": "missing tar" })),
                 warp::http::StatusCode::BAD_REQUEST,
             ));
         };
@@ -59,7 +60,7 @@ impl Server {
             Ok(exploit) => exploit,
             Err(_e) => {
                 return Ok(reply::with_status(
-                    "error building exploit",
+                    reply::json(&json!({ "error": format!("{:?}", _e) })),
                     warp::http::StatusCode::BAD_REQUEST,
                 ));
             }
@@ -67,7 +68,10 @@ impl Server {
 
         let pool = exploit.spawn_pool().await.unwrap();
 
+        let id = format!("{:x}", rand::random::<u64>());
+
         let exp = ExploitHolder {
+            id: id.clone(),
             enabled: false,
             // TODO, actually select target
             target: AttackTarget::Ips,
@@ -77,7 +81,10 @@ impl Server {
         info!("Successfully build new exploit");
         exploit_tx.send_async(exp).await.unwrap();
 
-        Ok(reply::with_status("ok", warp::http::StatusCode::OK))
+        Ok(reply::with_status(
+            reply::json(&json!({ "id": id })),
+            warp::http::StatusCode::OK,
+        ))
     }
 
     pub async fn run(&self) {
