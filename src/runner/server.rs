@@ -10,23 +10,15 @@ use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits, Runner};
 /// - Returns stats for exploits
 pub struct Server {
     host: SocketAddr,
-    exploit_tx: flume::Sender<ExploitHolder>,
     runner: Runner,
 }
 
 impl Server {
-    pub fn new(host: SocketAddr, exploit_tx: flume::Sender<ExploitHolder>, runner: Runner) -> Self {
-        Self {
-            host,
-            exploit_tx,
-            runner,
-        }
+    pub fn new(host: SocketAddr, runner: Runner) -> Self {
+        Self { host, runner }
     }
 
-    async fn form(
-        form: FormData,
-        exploit_tx: flume::Sender<ExploitHolder>,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn form(form: FormData, mut runner: Runner) -> Result<impl warp::Reply, warp::Rejection> {
         let fields = form
             .and_then(|mut field| async move {
                 let mut bytes: Vec<u8> = Vec::new();
@@ -84,7 +76,7 @@ impl Server {
         };
 
         info!("Successfully build new exploit");
-        exploit_tx.send_async(exp).await.unwrap();
+        runner.register_exp(exp).await;
 
         Ok(reply::with_status(
             reply::json(&json!({ "id": id })),
@@ -144,15 +136,15 @@ impl Server {
         // warp server
         let hello = warp::get().map(|| "This is the runner");
 
-        let exploit_tx = self.exploit_tx.clone();
+        let rnr = self.runner.clone();
         let upload = warp::post()
             .and(warp::path("upload"))
             .and(warp::multipart::form().max_length(5_000_000))
             .map(move |form: FormData| {
-                let tx = exploit_tx.clone();
-                (form, tx)
+                let rnr = rnr.clone();
+                (form, rnr)
             })
-            .and_then(|(f, tx)| Server::form(f, tx));
+            .and_then(|(f, rnr)| Server::form(f, rnr));
 
         let rnr = self.runner.clone();
         let start = warp::post()

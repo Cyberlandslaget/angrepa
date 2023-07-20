@@ -133,7 +133,7 @@ impl Runner {
         }
     }
 
-    async fn run(mut self, conf: &Common, exploit_rx: flume::Receiver<ExploitHolder>) {
+    async fn run(self, conf: &Common) {
         let mut interval = conf
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
@@ -143,12 +143,6 @@ impl Runner {
         loop {
             select! {
                 _ = interval.tick() => self.tick(conf).await,
-                exp = exploit_rx.recv_async() => {
-                    match exp {
-                        Ok(exp) => self.register_exp(exp).await,
-                        Err(err) => warn!("Failed to recv exploit: {:?}", err),
-                    }
-                },
             };
         }
     }
@@ -174,10 +168,7 @@ async fn main() -> Result<(), Report> {
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    let (exploit_tx, exploit_rx) = flume::unbounded();
-
     // keep original around, otherwise closed errors
-    let exploit_tx2 = exploit_tx.clone();
     //spawn(async move {
     //    let tar = tarify("data/exploits/new")?;
     //    let docker = DockerInstance::new()?;
@@ -209,10 +200,10 @@ async fn main() -> Result<(), Report> {
     let runner = Runner::new();
     let runner2 = runner.clone();
 
-    let runner_handle = spawn(async move { runner.run(&common, exploit_rx).await });
+    let runner_handle = spawn(async move { runner.run(&common).await });
 
     let host = config.runner.http_server.parse()?;
-    let server = Server::new(host, exploit_tx2, runner2);
+    let server = Server::new(host, runner2);
     let server_handle = spawn(async move { server.run().await });
 
     join_all(vec![runner_handle, server_handle]).await;
