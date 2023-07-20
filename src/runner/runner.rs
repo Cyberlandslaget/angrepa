@@ -170,37 +170,37 @@ async fn main() -> Result<(), Report> {
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    let tar = tarify("data/exploits/new")?;
-    let docker = DockerInstance::new()?;
-
     let (exploit_tx, exploit_rx) = flume::unbounded();
 
     // keep original around, otherwise closed errors
     let exploit_tx2 = exploit_tx.clone();
-    spawn(async move {
-        let exploit = docker.new_exploit(&tar).await.unwrap();
-        let pool = exploit.spawn_pool().await.unwrap();
+    //spawn(async move {
+    //    let tar = tarify("data/exploits/new")?;
+    //    let docker = DockerInstance::new()?;
 
-        exploit_tx
-            .send_async(ExploitHolder {
-                id: "test1".to_string(),
-                enabled: false,
-                target: AttackTarget::Ips,
-                exploit: Exploits::Docker(exploit),
-            })
-            .await
-            .unwrap();
+    //    let exploit = docker.new_exploit(&tar).await.unwrap();
+    //    let pool = exploit.spawn_pool().await.unwrap();
 
-        exploit_tx
-            .send_async(ExploitHolder {
-                id: "test2".to_string(),
-                enabled: false,
-                target: AttackTarget::Ips,
-                exploit: Exploits::DockerPool(pool),
-            })
-            .await
-            .unwrap();
-    });
+    //    exploit_tx
+    //        .send_async(ExploitHolder {
+    //            id: "test1".to_string(),
+    //            enabled: false,
+    //            target: AttackTarget::Ips,
+    //            exploit: Exploits::Docker(exploit),
+    //        })
+    //        .await
+    //        .unwrap();
+
+    //    exploit_tx
+    //        .send_async(ExploitHolder {
+    //            id: "test2".to_string(),
+    //            enabled: false,
+    //            target: AttackTarget::Ips,
+    //            exploit: Exploits::DockerPool(pool),
+    //        })
+    //        .await
+    //        .unwrap();
+    //});
 
     let runner = Runner::new();
     let runner2 = runner.clone();
@@ -216,6 +216,7 @@ async fn main() -> Result<(), Report> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn tarify(path: &str) -> Result<Vec<u8>, Report> {
     use tar::Builder;
 
