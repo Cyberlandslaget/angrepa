@@ -4,26 +4,22 @@ use std::{collections::HashMap, net::SocketAddr};
 use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
 
-use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits, RunnerRequest};
+use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits, Runner};
 
 /// - Accepts new exploits over HTTP.
 /// - Returns stats for exploits
 pub struct Server {
     host: SocketAddr,
     exploit_tx: flume::Sender<ExploitHolder>,
-    request_tx: flume::Sender<RunnerRequest>,
+    runner: Runner,
 }
 
 impl Server {
-    pub fn new(
-        host: SocketAddr,
-        exploit_tx: flume::Sender<ExploitHolder>,
-        request_tx: flume::Sender<RunnerRequest>,
-    ) -> Self {
+    pub fn new(host: SocketAddr, exploit_tx: flume::Sender<ExploitHolder>, runner: Runner) -> Self {
         Self {
             host,
             exploit_tx,
-            request_tx,
+            runner,
         }
     }
 
@@ -98,7 +94,7 @@ impl Server {
 
     async fn start(
         id: Option<String>,
-        request_tx: flume::Sender<RunnerRequest>,
+        mut runner: Runner,
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let id = if let Some(id) = id {
             id
@@ -109,10 +105,7 @@ impl Server {
             ));
         };
 
-        request_tx
-            .send_async(RunnerRequest::Start(id.to_string()))
-            .await
-            .unwrap();
+        runner.start(&id).await;
 
         Ok(reply::with_status(
             reply::json(&json!({ "msg": "ok" })),
@@ -122,7 +115,7 @@ impl Server {
 
     async fn stop(
         id: Option<String>,
-        request_tx: flume::Sender<RunnerRequest>,
+        mut runner: Runner,
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let id = if let Some(id) = id {
             id
@@ -133,10 +126,7 @@ impl Server {
             ));
         };
 
-        request_tx
-            .send_async(RunnerRequest::Stop(id.to_string()))
-            .await
-            .unwrap();
+        runner.stop(&id).await;
 
         Ok(reply::with_status(
             reply::json(&json!({ "msg": "ok" })),
@@ -158,25 +148,25 @@ impl Server {
             })
             .and_then(|(f, tx)| Server::form(f, tx));
 
-        let rtx = self.request_tx.clone();
+        let rnr = self.runner.clone();
         let start = warp::post()
             .and(warp::path("start"))
             .and(warp::query::<HashMap<String, String>>())
             .map(move |query: HashMap<String, String>| {
-                let tx = rtx.clone();
-                (query.get("id").map(|s| s.to_string()), tx)
+                let rnr = rnr.clone();
+                (query.get("id").map(|s| s.to_string()), rnr)
             })
-            .and_then(|(id, tx)| Server::start(id, tx));
+            .and_then(|(id, rnr)| Server::start(id, rnr));
 
-        let rtx = self.request_tx.clone();
+        let rnr = self.runner.clone();
         let stop = warp::post()
             .and(warp::path("stop"))
             .and(warp::query::<HashMap<String, String>>())
             .map(move |query: HashMap<String, String>| {
-                let tx = rtx.clone();
-                (query.get("id").map(|s| s.to_string()), tx)
+                let rnr = rnr.clone();
+                (query.get("id").map(|s| s.to_string()), rnr)
             })
-            .and_then(|(id, tx)| Server::stop(id, tx));
+            .and_then(|(id, rnr)| Server::stop(id, rnr));
 
         let routes = hello.or(upload).or(start).or(stop);
         warp::serve(routes).run(self.host).await;

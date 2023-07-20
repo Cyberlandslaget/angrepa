@@ -46,7 +46,8 @@ pub enum RunnerRequest {
     Stop(String),
 }
 
-struct Runner {
+#[derive(Debug, Clone)]
+pub struct Runner {
     // TODO possibly wrap this in a mutex so we can access this from multiple
     // places..? channels aren't that nice when the code is this complex, and
     // we want to get the result value (i.e. error if starting a non-existant
@@ -107,6 +108,7 @@ impl Runner {
         let mut lock = self.exploits.lock();
         if let Some(holder) = lock.get_mut(id) {
             holder.enabled = true;
+            info!("Starting exploit {}", id)
         } else {
             warn!("Tried to start non-existant exploit {}", id);
         }
@@ -116,17 +118,13 @@ impl Runner {
         let mut lock = self.exploits.lock();
         if let Some(holder) = lock.get_mut(id) {
             holder.enabled = false;
+            info!("Stopping exploit {}", id)
         } else {
             warn!("Tried to stop non-existant exploit {}", id);
         }
     }
 
-    async fn run(
-        mut self,
-        conf: &Common,
-        exploit_rx: flume::Receiver<ExploitHolder>,
-        request_rx: flume::Receiver<RunnerRequest>,
-    ) {
+    async fn run(mut self, conf: &Common, exploit_rx: flume::Receiver<ExploitHolder>) {
         let mut interval = conf
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
@@ -142,13 +140,6 @@ impl Runner {
                         Err(err) => warn!("Failed to recv exploit: {:?}", err),
                     }
                 },
-                req = request_rx.recv_async() => {
-                    match req {
-                        Ok(RunnerRequest::Start(id)) => self.start(&id).await,
-                        Ok(RunnerRequest::Stop(id)) => self.stop(&id).await,
-                        Err(err) => warn!("Failed to recv request: {:?}", err),
-                    }
-                }
             };
         }
     }
@@ -178,7 +169,6 @@ async fn main() -> eyre::Result<()> {
     let docker = DockerInstance::new()?;
 
     let (exploit_tx, exploit_rx) = flume::unbounded();
-    let (request_tx, request_rx) = flume::unbounded();
 
     // keep original around, otherwise closed errors
     let exploit_tx2 = exploit_tx.clone();
@@ -208,11 +198,12 @@ async fn main() -> eyre::Result<()> {
     });
 
     let runner = Runner::new();
+    let runner2 = runner.clone();
 
-    let runner_handle = spawn(async move { runner.run(&common, exploit_rx, request_rx).await });
+    let runner_handle = spawn(async move { runner.run(&common, exploit_rx).await });
 
     let host = config.runner.http_server.parse()?;
-    let server = Server::new(host, exploit_tx2, request_tx);
+    let server = Server::new(host, exploit_tx2, runner2);
     let server_handle = spawn(async move { server.run().await });
 
     join_all(vec![runner_handle, server_handle]).await;
