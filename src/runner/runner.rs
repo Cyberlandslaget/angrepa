@@ -136,7 +136,7 @@ async fn main() -> eyre::Result<()> {
     spawn(async move {
         let docker = DockerInstance::new().unwrap();
 
-        let exploit = docker.new_exploit(tar).await.unwrap();
+        let exploit = docker.new_exploit(&tar).await.unwrap();
         let pool = exploit.spawn_pool().await.unwrap();
 
         exploit_tx
