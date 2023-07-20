@@ -1,3 +1,4 @@
+use angrapa::config::Common;
 use color_eyre::eyre;
 use tokio::time::{interval_at, MissedTickBehavior};
 
@@ -21,7 +22,7 @@ struct Runner {
 }
 
 impl Runner {
-    async fn run(&self) {
+    async fn run(&self, conf: &Common) {
         let mut interval = interval_at(self.start, self.tick);
         interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
@@ -30,7 +31,12 @@ impl Runner {
 
             // print clock
             let date = chrono::Utc::now();
-            info!("tick UTC {}", date.format("%Y-%m-%d %H:%M:%S.%f"));
+            let current_tick = conf.current_tick(date);
+            info!(
+                "tick {} (UTC {})",
+                current_tick,
+                date.format("%Y-%m-%d %H:%M:%S.%f")
+            );
 
             for exp in &self.exploits {
                 let exp = exp.clone();
@@ -102,7 +108,7 @@ async fn main() -> eyre::Result<()> {
     runner.exploits.push(Holder::DockerPool(pool));
     runner.exploits.push(Holder::Docker(exploit));
 
-    runner.run().await;
+    runner.run(&common).await;
 
     Ok(())
 }

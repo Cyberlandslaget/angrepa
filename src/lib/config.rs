@@ -1,4 +1,5 @@
 use argh::FromArgs;
+use chrono::DateTime;
 use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
 use tracing::{debug, info};
@@ -8,9 +9,10 @@ use super::wh::WebhookLayer;
 
 #[derive(Debug, Deserialize)]
 pub struct Common {
+    /// round length
     pub tick: u64,
     pub format: String,
-    pub start: chrono::DateTime<chrono::Utc>,
+    pub start: DateTime<chrono::Utc>,
 }
 
 impl Common {
@@ -28,6 +30,14 @@ impl Common {
             tokio::time::sleep_until(tokio::time::Instant::now() + difference.to_std().unwrap())
                 .await;
         }
+    }
+
+    pub fn current_tick(&self, current_time: DateTime<chrono::Utc>) -> i64 {
+        let seconds_after_start = current_time - self.start;
+
+        let ticks_after_start = seconds_after_start.num_seconds() / (self.tick as i64);
+
+        ticks_after_start
     }
 }
 
