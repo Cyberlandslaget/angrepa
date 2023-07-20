@@ -25,6 +25,9 @@ impl WebhookLayer {
                         if format!("{:?}", err).contains("rate limited") {
                             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                             continue;
+                        } else {
+                            // unknown error, dont retry
+                            break;
                         }
                     } else {
                         // success
