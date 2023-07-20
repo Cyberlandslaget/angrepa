@@ -22,5 +22,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: build
         run: cargo build
-      - name: build
+      - name: test
         run: cargo test --nocapture
