@@ -73,6 +73,7 @@ impl Server {
             // TODO, actually select target
             target: AttackTarget::Ips,
             exploit: Exploits::DockerPool(pool),
+            run_logs: HashMap::new(),
         };
 
         info!("Successfully build new exploit");

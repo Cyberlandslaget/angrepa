@@ -5,12 +5,12 @@ use angrapa::config::Common;
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 mod exploit;
 use exploit::exploit2::{
     docker::{DockerExploit, DockerExploitPool, DockerInstance},
-    Exploit, ExploitInstance,
+    Exploit, ExploitInstance, RunLog,
 };
 
 use crate::server::Server;
@@ -30,6 +30,9 @@ pub struct ExploitHolder {
     pub enabled: bool,
     pub target: AttackTarget,
     pub exploit: Exploits,
+
+    // stats
+    pub run_logs: HashMap<i64, RunLog>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +75,7 @@ impl Runner {
         let date = chrono::Utc::now();
         let current_tick = conf.current_tick(date);
 
+        let rnr = self.clone();
         let lock = self.exploits.lock();
 
         info!(
@@ -83,6 +87,7 @@ impl Runner {
         );
 
         for (_id, holder) in lock.iter() {
+            let rnr = rnr.clone();
             let holder = holder.clone();
             tokio::spawn(async move {
                 let before = tokio::time::Instant::now();
@@ -102,6 +107,17 @@ impl Runner {
                         inst.wait_for_exit().await.unwrap()
                     }
                 };
+
+                // append log
+                let mut lock = rnr.exploits.lock();
+                let real_holder = lock.get_mut(&holder.id).unwrap();
+                real_holder.run_logs.insert(current_tick, log.clone());
+                drop(lock);
+                debug!(
+                    "inserted run log for tick {} for exploit {}",
+                    current_tick, holder.id
+                );
+
                 let elapsed = before.elapsed();
                 info!("Execution took {:?}, output: {:?}", elapsed, log.output)
             });
