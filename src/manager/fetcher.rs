@@ -7,10 +7,13 @@ use serde::{Deserialize, Serialize};
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
+mod dummy;
+pub use dummy::DummyFetcher;
 
 #[derive(Debug)]
 pub enum Fetchers {
     Enowars(EnowarsFetcher),
+    Dummy(DummyFetcher),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -26,6 +29,7 @@ pub trait Fetcher {
 impl Fetchers {
     pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
         match manager.fetcher_name.as_str() {
+            "dummy" => Ok(Self::Dummy(DummyFetcher {})),
             "enowars" => {
                 let endpoint = manager
                     .fetcher
