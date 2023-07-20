@@ -1,0 +1,14 @@
+[common]
+start = "2023-07-18T12:00:00Z"
+format = 'ENO[A-Za-z0-9+\/=]{48}'
+tick = 15
+
+[manager]
+http_listener = "0.0.0.0:8000"
+tcp_listener = "0.0.0.0:8001"
+submitter_name = 'dummy'
+[manager.submitter]
+host = 'localhost:1337'
+header_suffix = "\n\n"
+
+[runner]
