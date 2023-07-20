@@ -1,6 +1,6 @@
 use futures::TryStreamExt;
 use std::{collections::HashMap, net::SocketAddr};
-use tracing::info;
+use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
 
 use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits};
@@ -21,8 +21,6 @@ impl Server {
         form: FormData,
         exploit_tx: flume::Sender<ExploitHolder>,
     ) -> Result<impl warp::Reply, warp::Rejection> {
-        let mut bytes: Vec<u8> = Vec::new();
-
         let fields = form
             .and_then(|mut field| async move {
                 let mut bytes: Vec<u8> = Vec::new();
@@ -51,7 +49,7 @@ impl Server {
             ));
         };
 
-        info!("got tar: {}", tar.len());
+        debug!("got tar of length {}", tar.len());
 
         // spawn a task to build the exploit
         let docker = DockerInstance::new().unwrap();
@@ -73,9 +71,10 @@ impl Server {
             enabled: false,
             // TODO, actually select target
             target: AttackTarget::Ips,
-            exploit: Exploits::Docker(exploit),
+            exploit: Exploits::DockerPool(pool),
         };
 
+        info!("Successfully build new exploit");
         exploit_tx.send_async(exp).await.unwrap();
 
         Ok(reply::with_status("ok", warp::http::StatusCode::OK))

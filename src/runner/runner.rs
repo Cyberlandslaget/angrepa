@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use angrapa::config::Common;
-use color_eyre::{eyre, Report};
+use color_eyre::eyre;
 use futures::future::join_all;
 use tokio::{select, spawn};
 use tracing::{info, warn};
@@ -38,15 +38,7 @@ pub enum AttackTarget {
     Ips,
 }
 
-struct UploadRequest {
-    /// The exploit tar
-    tar: Vec<u8>,
-    /// What to attack
-    target: AttackTarget,
-}
-
 struct Runner {
-    docker: DockerInstance,
     exploits: Vec<ExploitHolder>,
     exploit_rx: flume::Receiver<ExploitHolder>,
 }
@@ -141,8 +133,6 @@ async fn main() -> eyre::Result<()> {
     // keep original around, otherwise closed errors
     let exploit_tx2 = exploit_tx.clone();
     spawn(async move {
-        let docker = DockerInstance::new().unwrap();
-
         let exploit = docker.new_exploit(&tar).await.unwrap();
         let pool = exploit.spawn_pool().await.unwrap();
 
@@ -166,7 +156,6 @@ async fn main() -> eyre::Result<()> {
     });
 
     let runner = Runner {
-        docker,
         exploits: Vec::new(),
         exploit_rx,
     };
