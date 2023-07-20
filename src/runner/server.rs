@@ -4,18 +4,27 @@ use std::{collections::HashMap, net::SocketAddr};
 use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
 
-use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits};
+use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits, RunnerRequest};
 
 /// - Accepts new exploits over HTTP.
 /// - Returns stats for exploits
 pub struct Server {
     host: SocketAddr,
     exploit_tx: flume::Sender<ExploitHolder>,
+    request_tx: flume::Sender<RunnerRequest>,
 }
 
 impl Server {
-    pub fn new(host: SocketAddr, exploit_tx: flume::Sender<ExploitHolder>) -> Self {
-        Self { host, exploit_tx }
+    pub fn new(
+        host: SocketAddr,
+        exploit_tx: flume::Sender<ExploitHolder>,
+        request_tx: flume::Sender<RunnerRequest>,
+    ) -> Self {
+        Self {
+            host,
+            exploit_tx,
+            request_tx,
+        }
     }
 
     async fn form(
@@ -87,6 +96,54 @@ impl Server {
         ))
     }
 
+    async fn start(
+        id: Option<String>,
+        request_tx: flume::Sender<RunnerRequest>,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let id = if let Some(id) = id {
+            id
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing id" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        request_tx
+            .send_async(RunnerRequest::Start(id.to_string()))
+            .await
+            .unwrap();
+
+        Ok(reply::with_status(
+            reply::json(&json!({ "msg": "ok" })),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    async fn stop(
+        id: Option<String>,
+        request_tx: flume::Sender<RunnerRequest>,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let id = if let Some(id) = id {
+            id
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing id" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        request_tx
+            .send_async(RunnerRequest::Stop(id.to_string()))
+            .await
+            .unwrap();
+
+        Ok(reply::with_status(
+            reply::json(&json!({ "msg": "ok" })),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
     pub async fn run(&self) {
         // warp server
         let hello = warp::get().map(|| "This is the runner");
@@ -101,7 +158,27 @@ impl Server {
             })
             .and_then(|(f, tx)| Server::form(f, tx));
 
-        let routes = hello.or(upload);
+        let rtx = self.request_tx.clone();
+        let start = warp::post()
+            .and(warp::path("start"))
+            .and(warp::query::<HashMap<String, String>>())
+            .map(move |query: HashMap<String, String>| {
+                let tx = rtx.clone();
+                (query.get("id").map(|s| s.to_string()), tx)
+            })
+            .and_then(|(id, tx)| Server::start(id, tx));
+
+        let rtx = self.request_tx.clone();
+        let stop = warp::post()
+            .and(warp::path("stop"))
+            .and(warp::query::<HashMap<String, String>>())
+            .map(move |query: HashMap<String, String>| {
+                let tx = rtx.clone();
+                (query.get("id").map(|s| s.to_string()), tx)
+            })
+            .and_then(|(id, tx)| Server::stop(id, tx));
+
+        let routes = hello.or(upload).or(start).or(stop);
         warp::serve(routes).run(self.host).await;
     }
 }

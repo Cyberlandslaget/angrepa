@@ -40,9 +40,15 @@ pub enum AttackTarget {
     Ips,
 }
 
+pub enum RunnerRequest {
+    Start(String),
+    Stop(String),
+}
+
 struct Runner {
     exploits: HashMap<String, ExploitHolder>,
     exploit_rx: flume::Receiver<ExploitHolder>,
+    request_rx: flume::Receiver<RunnerRequest>,
 }
 
 impl Runner {
@@ -86,6 +92,22 @@ impl Runner {
         }
     }
 
+    async fn start(&mut self, id: &str) {
+        if let Some(holder) = self.exploits.get_mut(id) {
+            holder.enabled = true;
+        } else {
+            warn!("Tried to start non-existant exploit {}", id);
+        }
+    }
+
+    async fn stop(&mut self, id: &str) {
+        if let Some(holder) = self.exploits.get_mut(id) {
+            holder.enabled = false;
+        } else {
+            warn!("Tried to stop non-existant exploit {}", id);
+        }
+    }
+
     async fn run(mut self, conf: &Common) {
         let mut interval = conf
             // make sure the tick has started
@@ -102,6 +124,13 @@ impl Runner {
                         Err(err) => warn!("Failed to recv exploit: {:?}", err),
                     }
                 },
+                req = self.request_rx.recv_async() => {
+                    match req {
+                        Ok(RunnerRequest::Start(id)) => self.start(&id).await,
+                        Ok(RunnerRequest::Stop(id)) => self.stop(&id).await,
+                        Err(err) => warn!("Failed to recv request: {:?}", err),
+                    }
+                }
             };
         }
     }
@@ -131,6 +160,7 @@ async fn main() -> eyre::Result<()> {
     let docker = DockerInstance::new()?;
 
     let (exploit_tx, exploit_rx) = flume::unbounded();
+    let (request_tx, request_rx) = flume::unbounded();
 
     // keep original around, otherwise closed errors
     let exploit_tx2 = exploit_tx.clone();
@@ -162,12 +192,13 @@ async fn main() -> eyre::Result<()> {
     let runner = Runner {
         exploits: HashMap::new(),
         exploit_rx,
+        request_rx,
     };
 
     let runner_handle = spawn(async move { runner.run(&common).await });
 
     let host = config.runner.http_server.parse()?;
-    let server = Server::new(host, exploit_tx2);
+    let server = Server::new(host, exploit_tx2, request_tx);
     let server_handle = spawn(async move { server.run().await });
 
     join_all(vec![runner_handle, server_handle]).await;
