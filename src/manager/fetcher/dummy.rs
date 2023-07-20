@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use rand::Rng;
 use serde::{self};
 use serde_json::json;
 use std::collections::HashMap;
@@ -12,8 +13,20 @@ pub struct DummyFetcher {}
 impl Fetcher for DummyFetcher {
     async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
         // do it with an iterator and collect
+
+        let random_ip = || {
+            let mut rng = rand::thread_rng();
+            format!(
+                "{}.{}.{}.{}",
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+                rng.gen_range(0..255)
+            )
+        };
+
         let test_service = [(
-            "10.4.3.1".to_string(),
+            random_ip(),
             json!({
                 "5": [
                     ["user49"],
