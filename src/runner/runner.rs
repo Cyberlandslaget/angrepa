@@ -46,6 +46,10 @@ pub enum RunnerRequest {
 }
 
 struct Runner {
+    // TODO possibly wrap this in a mutex so we can access this from multiple
+    // places..? channels aren't that nice when the code is this complex, and
+    // we want to get the result value (i.e. error if starting a non-existant
+    // exploit...)
     exploits: HashMap<String, ExploitHolder>,
     exploit_rx: flume::Receiver<ExploitHolder>,
     request_rx: flume::Receiver<RunnerRequest>,
