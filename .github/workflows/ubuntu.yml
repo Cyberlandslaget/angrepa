@@ -15,7 +15,7 @@ jobs:
         with:
           submodules: recursive
       - name: install rust
-        uses: actions-rs/toolchain@v2
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
