@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};
 
-use angrapa::config::Common;
+use angrapa::config::{self, Common};
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
@@ -83,7 +83,7 @@ impl Runner {
         debug!("inserted run log for tick {} for exploit {}", tick, id);
     }
 
-    async fn send_flags(&self) {
+    async fn send_flags(&self, conf: &config::Root) {
         let output = {
             let mut lock = self.output_queue.lock();
             lock.drain(..).collect::<Vec<_>>()
@@ -93,20 +93,17 @@ impl Runner {
             return;
         }
 
-        info!("Sending {} flags", output.len());
+        // yank this from the *manager* config
+        let url = format!("http://{host}/submit", host = conf.manager.http_listener);
+        info!("Sending {} flags to {}", output.len(), url);
 
         let client = reqwest::Client::new();
 
         for o in output {
-            // POST to /submit
             let client = client.clone();
+            let url = url.clone();
             spawn(async move {
-                let res = client
-                    .post("http://localhost:8080/submit")
-                    .body(o)
-                    .send()
-                    .await
-                    .unwrap();
+                client.post(url).body(o).send().await.unwrap();
             });
         }
     }
@@ -188,8 +185,9 @@ impl Runner {
         }
     }
 
-    async fn run(self, conf: &Common) {
+    async fn run(self, conf: &config::Root) {
         let mut tick_interval = conf
+            .common
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
             .await
@@ -199,9 +197,9 @@ impl Runner {
 
         loop {
             select! {
-                _ = tick_interval.tick() => self.tick(conf).await,
+                _ = tick_interval.tick() => self.tick(&conf.common).await,
                 // on another thread
-                _ = flag_interval.tick() => self.send_flags().await,
+                _ = flag_interval.tick() => self.send_flags(conf).await,
             }
         }
     }
