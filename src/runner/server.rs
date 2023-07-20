@@ -222,7 +222,7 @@ impl Server {
         };
 
         Ok(reply::with_status(
-            reply::json(&json!({ "log": log.output })),
+            reply::json(&json!({ "log": log.log.output })),
             warp::http::StatusCode::OK,
         ))
     }

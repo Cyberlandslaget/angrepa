@@ -32,7 +32,7 @@ pub struct ExploitHolder {
     pub exploit: Exploits,
 
     // stats
-    pub run_logs: HashMap<i64, RunLog>,
+    pub run_logs: HashMap<i64, StampedRunLog>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +44,15 @@ pub enum AttackTarget {
     Ips,
 }
 
+/// RunLog with metadata
+#[derive(Debug, Clone)]
+pub struct StampedRunLog {
+    pub tick: i64,
+    // the task
+    pub flagstore: Option<String>,
+    pub log: RunLog,
+}
+
 #[derive(Debug, Clone)]
 pub struct Runner {
     // TODO possibly wrap this in a mutex so we can access this from multiple
@@ -53,7 +62,7 @@ pub struct Runner {
     exploits: Arc<Mutex<HashMap<String, ExploitHolder>>>,
 
     /// Queue of output data to be sent to the manager (for flag submission)
-    output_queue: Arc<Mutex<Vec<String>>>,
+    output_queue: Arc<Mutex<Vec<StampedRunLog>>>,
 }
 
 impl Runner {
@@ -64,23 +73,23 @@ impl Runner {
         }
     }
 
-    async fn log_run(&self, id: &str, tick: i64, log: RunLog) {
+    async fn log_run(&self, id: &str, log: StampedRunLog) {
         info!("Logging run for exploit {}", id);
 
         // insert into queue
         {
             let mut lock = self.output_queue.lock();
-            lock.push(log.output.clone());
+            lock.push(log.clone());
         }
 
         // insert into log database
         {
             let mut lock = self.exploits.lock();
             let holder = lock.get_mut(id).unwrap();
-            holder.run_logs.insert(tick, log.clone());
+            holder.run_logs.insert(log.tick, log.clone());
         }
 
-        debug!("inserted run log for tick {} for exploit {}", tick, id);
+        debug!("inserted run log for tick {} for exploit {}", log.tick, id);
     }
 
     async fn send_flags(&self, conf: &config::Root) {
@@ -101,9 +110,16 @@ impl Runner {
 
         for o in output {
             let client = client.clone();
-            let url = url.clone();
+            let mut url = url.clone();
             spawn(async move {
-                client.post(url).body(o).send().await.unwrap();
+                url += &format!("?tick={}", o.tick);
+                if let Some(flagstore) = o.flagstore {
+                    url += &format!("&flagstore={}", flagstore);
+                }
+                debug!("sending to {}", url);
+                // todo warn! here if it fails
+                let r = client.post(url).body(o.log.output).send().await.unwrap();
+                debug!("got response: {}", r.text().await.unwrap());
             });
         }
     }
@@ -152,10 +168,15 @@ impl Runner {
                 };
 
                 // append log
-                rnr.log_run(&holder.id, current_tick, log.clone()).await;
+                let log = StampedRunLog {
+                    tick: current_tick,
+                    flagstore: None,
+                    log: log,
+                };
+                rnr.log_run(&holder.id, log.clone()).await;
 
                 let elapsed = before.elapsed();
-                info!("Execution took {:?}, output: {:?}", elapsed, log.output)
+                info!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
             });
         }
     }
@@ -212,7 +233,7 @@ async fn main() -> Result<(), Report> {
     // get config
     let args = argh::from_env::<angrapa::config::Args>();
     let config = args.get_config()?;
-    let common = config.common;
+    let common = &config.common;
 
     // setup logging
     args.setup_logging()?;
@@ -257,11 +278,11 @@ async fn main() -> Result<(), Report> {
     let runner = Runner::new();
     let runner2 = runner.clone();
 
-    let runner_handle = spawn(async move { runner.run(&common).await });
-
     let host = config.runner.http_server.parse()?;
     let server = Server::new(host, runner2);
     let server_handle = spawn(async move { server.run().await });
+
+    let runner_handle = spawn(async move { runner.run(&config).await });
 
     join_all(vec![runner_handle, server_handle]).await;
 
