@@ -1,13 +1,20 @@
+use std::net::SocketAddr;
+
 use angrapa::config::Common;
 use color_eyre::{eyre, Report};
+use futures::future::join_all;
+use tokio::{select, spawn};
+use tracing::{info, warn};
 
 mod exploit;
 use exploit::exploit2::{
     docker::{DockerExploit, DockerExploitPool, DockerInstance},
     Exploit, ExploitInstance,
 };
-use tokio::{select, spawn};
-use tracing::{info, warn};
+
+use crate::server::Server;
+
+mod server;
 
 #[derive(Debug, Clone)]
 pub enum Exploits {
@@ -94,7 +101,7 @@ impl Runner {
 
         loop {
             select! {
-                _ = interval.tick() => self.tick(conf).await,
+                _ = interval.tick() => self.tick(&conf).await,
                 exp = self.exploit_rx.recv_async() => {
                     match exp {
                         Ok(exp) => self.register_exp(exp).await,
@@ -132,7 +139,7 @@ async fn main() -> eyre::Result<()> {
     let (exploit_tx, exploit_rx) = flume::unbounded();
 
     // keep original around, otherwise closed errors
-    let exploit_tx = exploit_tx.clone();
+    let exploit_tx2 = exploit_tx.clone();
     spawn(async move {
         let docker = DockerInstance::new().unwrap();
 
@@ -164,7 +171,12 @@ async fn main() -> eyre::Result<()> {
         exploit_rx,
     };
 
-    runner.run(&common).await;
+    let runner_handle = spawn(async move { runner.run(&common).await });
+
+    let server = Server::new(SocketAddr::from(([0, 0, 0, 0], 8888)), exploit_tx2);
+    let server_handle = spawn(async move { server.run().await });
+
+    join_all(vec![runner_handle, server_handle]).await;
 
     Ok(())
 }
