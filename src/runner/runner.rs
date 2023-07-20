@@ -16,15 +16,16 @@ enum Holder {
 }
 
 struct Runner {
-    start: tokio::time::Instant,
-    tick: tokio::time::Duration,
     exploits: Vec<Holder>,
 }
 
 impl Runner {
     async fn run(&self, conf: &Common) {
-        let mut interval = interval_at(self.start, self.tick);
-        interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        let mut interval = conf
+            // make sure the tick has started
+            .get_tick_interval(tokio::time::Duration::from_secs(1))
+            .await
+            .unwrap();
 
         loop {
             interval.tick().await;
@@ -81,23 +82,15 @@ async fn main() -> eyre::Result<()> {
     // time until start
     common.sleep_until_start().await;
     assert!(chrono::Utc::now() >= common.start);
-    info!("Manager started!");
+    info!("Manager woke up!");
 
     let time_since_start = chrono::Utc::now() - common.start;
-
-    let start = tokio::time::Instant::now() - time_since_start.to_std()?
-        // start 1 sec into the tick just in case
-        + tokio::time::Duration::from_secs(1);
 
     info!("CTF started {:?} ago", time_since_start);
 
     let tick = tokio::time::Duration::from_secs(common.tick);
 
-    let mut runner = Runner {
-        start,
-        tick,
-        exploits: vec![],
-    };
+    let mut runner = Runner { exploits: vec![] };
 
     let tar = tarify("data/exploits/new")?;
     let docker = DockerInstance::new()?;

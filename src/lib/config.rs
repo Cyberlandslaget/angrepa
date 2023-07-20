@@ -2,6 +2,7 @@ use argh::FromArgs;
 use chrono::DateTime;
 use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
+use tokio::time::{interval_at, MissedTickBehavior};
 use tracing::{debug, info};
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
@@ -30,6 +31,24 @@ impl Common {
             tokio::time::sleep_until(tokio::time::Instant::now() + difference.to_std().unwrap())
                 .await;
         }
+    }
+
+    /// Returns a interval with a duration of tick seconds
+    pub async fn get_tick_interval(
+        &self,
+        offset: tokio::time::Duration,
+    ) -> Result<tokio::time::Interval, Report> {
+        let time_since_start = chrono::Utc::now() - self.start;
+        let start = tokio::time::Instant::now() - time_since_start.to_std()?;
+        let tick = tokio::time::Duration::from_secs(self.tick);
+
+        // offset by e.g. 1s to be safe we don't go too early
+        let start = start + offset;
+
+        let mut interval = interval_at(start, tick);
+        interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+        Ok(interval)
     }
 
     // see the test for exactly how it works
