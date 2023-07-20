@@ -174,8 +174,8 @@ mod tests {
             format: "".to_string(),
             start: chrono::DateTime::from_utc(
                 chrono::NaiveDateTime::new(
-                    chrono::NaiveDate::from_ymd(2020, 1, 1),
-                    chrono::NaiveTime::from_hms(5, 0, 0),
+                    chrono::NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+                    chrono::NaiveTime::from_hms_opt(5, 0, 0).unwrap(),
                 ),
                 chrono::Utc,
             ),
