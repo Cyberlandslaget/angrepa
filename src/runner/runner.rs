@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-
 use angrapa::config::Common;
 use color_eyre::eyre;
 use futures::future::join_all;
@@ -111,8 +109,8 @@ async fn main() -> eyre::Result<()> {
 
     // get config
     let args = argh::from_env::<angrapa::config::Args>();
-    let toml = args.get_config()?;
-    let common = toml.common;
+    let config = args.get_config()?;
+    let common = config.common;
 
     // setup logging
     args.setup_logging()?;
@@ -162,7 +160,8 @@ async fn main() -> eyre::Result<()> {
 
     let runner_handle = spawn(async move { runner.run(&common).await });
 
-    let server = Server::new(SocketAddr::from(([0, 0, 0, 0], 8888)), exploit_tx2);
+    let host = config.runner.http_server.parse()?;
+    let server = Server::new(host, exploit_tx2);
     let server_handle = spawn(async move { server.run().await });
 
     join_all(vec![runner_handle, server_handle]).await;

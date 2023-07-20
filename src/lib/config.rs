@@ -68,6 +68,7 @@ impl Common {
 pub struct Manager {
     pub http_listener: String,
     pub tcp_listener: String,
+
     pub submitter_name: String,
     pub submitter: toml::Table,
     pub fetcher_name: String,
@@ -75,10 +76,15 @@ pub struct Manager {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Runner {
+    pub http_server: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Root {
     pub common: Common,
     pub manager: Manager,
-    pub runner: toml::Value,
+    pub runner: Runner,
 }
 
 // common args, used by both manager and runner
