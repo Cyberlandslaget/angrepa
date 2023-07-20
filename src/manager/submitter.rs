@@ -45,6 +45,7 @@ pub trait Submitter {
     async fn submit(&self, flags: Vec<String>) -> Result<Vec<(String, FlagStatus)>, SubmitError>;
 }
 
+// Deserialize
 impl Submitters {
     pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
         match manager.submitter_name.as_str() {

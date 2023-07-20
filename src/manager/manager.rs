@@ -11,6 +11,8 @@ use listener::{Tcp, Web};
 
 mod handler;
 
+mod fetcher;
+
 #[tokio::main]
 async fn main() -> Result<(), Report> {
     color_eyre::install()?;
@@ -32,7 +34,7 @@ async fn main() -> Result<(), Report> {
     let (raw_flag_tx, raw_flag_rx) = flume::unbounded::<String>();
 
     // run tcp listener on another thread
-    let tcp_handle = {
+    let tcp_listener = {
         let flag_tx = raw_flag_tx.clone();
 
         let host = config.manager.tcp_listener.parse()?;
@@ -46,7 +48,7 @@ async fn main() -> Result<(), Report> {
     };
 
     // run web listener on another thread
-    let web_handle = {
+    let http_listener = {
         let flag_tx = raw_flag_tx.clone();
 
         let host = config.manager.http_listener.parse()?;
@@ -74,7 +76,7 @@ async fn main() -> Result<(), Report> {
     });
 
     // join all
-    join_all(vec![tcp_handle, web_handle, handler_handle]).await;
+    join_all(vec![tcp_listener, http_listener, handler_handle]).await;
 
     Ok(())
 }
