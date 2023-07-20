@@ -1,6 +1,5 @@
 use angrapa::config::Common;
 use color_eyre::eyre;
-use tokio::time::{interval_at, MissedTickBehavior};
 
 mod exploit;
 use exploit::exploit2::{
@@ -85,10 +84,7 @@ async fn main() -> eyre::Result<()> {
     info!("Manager woke up!");
 
     let time_since_start = chrono::Utc::now() - common.start;
-
     info!("CTF started {:?} ago", time_since_start);
-
-    let tick = tokio::time::Duration::from_secs(common.tick);
 
     let mut runner = Runner { exploits: vec![] };
 

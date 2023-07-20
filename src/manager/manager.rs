@@ -9,8 +9,6 @@ use submitter::Submitters;
 mod listener;
 use listener::{Tcp, Web};
 
-use crate::fetcher::Fetcher;
-
 mod handler;
 
 mod fetcher;

@@ -17,7 +17,7 @@ pub enum Fetchers {
     Dummy(DummyFetcher),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Service(HashMap<String, serde_json::Value>);
 
 /// Implements fetching flagids and hosts
