@@ -51,13 +51,36 @@ pub struct Runner {
     // we want to get the result value (i.e. error if starting a non-existant
     // exploit...)
     exploits: Arc<Mutex<HashMap<String, ExploitHolder>>>,
+
+    /// Queue of output data to be sent to the manager (for flag submission)
+    output_queue: Arc<Mutex<Vec<String>>>,
 }
 
 impl Runner {
     pub fn new() -> Self {
         Self {
             exploits: Arc::new(Mutex::new(HashMap::new())),
+            output_queue: Arc::new(Mutex::new(Vec::new())),
         }
+    }
+
+    async fn log_run(&self, id: &str, tick: i64, log: RunLog) {
+        info!("Logging run for exploit {}", id);
+
+        // insert into queue
+        {
+            let mut lock = self.output_queue.lock();
+            lock.push(log.output.clone());
+        }
+
+        // insert into log database
+        {
+            let mut lock = self.exploits.lock();
+            let holder = lock.get_mut(id).unwrap();
+            holder.run_logs.insert(tick, log.clone());
+        }
+
+        debug!("inserted run log for tick {} for exploit {}", tick, id);
     }
 
     async fn register_exp(&mut self, exp: ExploitHolder) {
@@ -104,14 +127,7 @@ impl Runner {
                 };
 
                 // append log
-                let mut lock = rnr.exploits.lock();
-                let real_holder = lock.get_mut(&holder.id).unwrap();
-                real_holder.run_logs.insert(current_tick, log.clone());
-                drop(lock);
-                debug!(
-                    "inserted run log for tick {} for exploit {}",
-                    current_tick, holder.id
-                );
+                rnr.log_run(&holder.id, current_tick, log.clone()).await;
 
                 let elapsed = before.elapsed();
                 info!("Execution took {:?}, output: {:?}", elapsed, log.output)
