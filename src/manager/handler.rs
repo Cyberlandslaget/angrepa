@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 
 use regex::Regex;
 use tokio::{select, spawn};
+use tracing::info;
 
 use crate::submitter::{FlagStatus, Submitter};
 
@@ -22,7 +23,7 @@ async fn getter(
     while let Ok(raw) = raw_flag_rx.recv_async().await {
         for flag in flag_regex.captures_iter(&raw) {
             let flag = flag[0].to_string();
-            println!("Recieved flag {}", flag);
+            info!("Recieved flag {}", flag);
             parsed_flag_tx.send_async(flag).await.unwrap();
         }
     }
@@ -34,7 +35,7 @@ async fn submit(
     flags: Vec<String>,
     result_tx: flume::Sender<(String, FlagStatus)>,
 ) {
-    println!("Submitting {:?}", flags);
+    info!("Submitting {:?}", flags);
     let results = submitter.submit(flags).await.unwrap();
     for res in results {
         result_tx.send_async(res).await.unwrap();
@@ -80,7 +81,7 @@ pub async fn run(
             res = result_rx.recv_async() => {
                 let (flag, flag_status) = res.unwrap();
                 status.insert(flag.clone(), flag_status);
-                println!("Got status  {}: {:?}", flag, flag_status);
+                info!("Got status  {}: {:?}", flag, flag_status);
             }
         )
     }

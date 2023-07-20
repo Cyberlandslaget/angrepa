@@ -1,6 +1,7 @@
 use color_eyre::Report;
 use futures::future::join_all;
 use regex::Regex;
+use tracing::info;
 
 mod submitter;
 use submitter::Submitters;
@@ -14,14 +15,16 @@ mod handler;
 async fn main() -> Result<(), Report> {
     color_eyre::install()?;
 
-    // get toml
+    // get config
     let args = argh::from_env::<angrapa::config::Args>();
-    let toml = std::fs::read_to_string(args.toml)?;
-    let config = toml::from_str::<angrapa::config::Root>(&toml)?;
+    let config = args.get_config()?;
+
+    // setup logging
+    args.setup_logging()?;
 
     let flag_regex = Regex::new(&config.common.format)?;
 
-    println!("manager");
+    info!("manager started");
 
     let sub = Submitters::from_conf(&config.manager)?;
 
@@ -32,7 +35,11 @@ async fn main() -> Result<(), Report> {
     let tcp_handle = {
         let flag_tx = raw_flag_tx.clone();
 
-        let tcp = Tcp::new(config.manager.tcp_listener.parse()?);
+        let host = config.manager.tcp_listener.parse()?;
+        let tcp = Tcp::new(host);
+
+        info!("tcp listener starting on {}:{}", host.ip(), host.port());
+
         tokio::spawn(async move {
             tcp.run(flag_tx).await.unwrap();
         })
@@ -41,7 +48,11 @@ async fn main() -> Result<(), Report> {
     // run web listener on another thread
     let web_handle = {
         let flag_tx = raw_flag_tx.clone();
-        let web = Web::new(config.manager.http_listener.parse()?);
+
+        let host = config.manager.http_listener.parse()?;
+        let web = Web::new(host);
+
+        info!("http listener starting on {}:{}", host.ip(), host.port());
 
         tokio::spawn(async move {
             web.run(flag_tx).await.unwrap();
@@ -49,7 +60,9 @@ async fn main() -> Result<(), Report> {
     };
 
     // run submitter on another thread
-    let sub_handle = tokio::spawn(async move {
+    let handler_handle = tokio::spawn(async move {
+        info!("handler starting");
+
         match sub {
             Submitters::Dummy(submitter) => {
                 handler::run(raw_flag_rx, submitter, flag_regex).await;
@@ -61,7 +74,7 @@ async fn main() -> Result<(), Report> {
     });
 
     // join all
-    join_all(vec![tcp_handle, web_handle, sub_handle]).await;
+    join_all(vec![tcp_handle, web_handle, handler_handle]).await;
 
     Ok(())
 }
