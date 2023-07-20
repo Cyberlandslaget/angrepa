@@ -4,7 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 use angrapa::config::Common;
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
-use tokio::{select, spawn};
+use tokio::{select, spawn, time::interval};
 use tracing::{debug, info, warn};
 
 mod exploit;
@@ -81,6 +81,34 @@ impl Runner {
         }
 
         debug!("inserted run log for tick {} for exploit {}", tick, id);
+    }
+
+    async fn send_flags(&self) {
+        let output = {
+            let mut lock = self.output_queue.lock();
+            lock.drain(..).collect::<Vec<_>>()
+        };
+
+        if output.is_empty() {
+            return;
+        }
+
+        info!("Sending {} flags", output.len());
+
+        let client = reqwest::Client::new();
+
+        for o in output {
+            // POST to /submit
+            let client = client.clone();
+            spawn(async move {
+                let res = client
+                    .post("http://localhost:8080/submit")
+                    .body(o)
+                    .send()
+                    .await
+                    .unwrap();
+            });
+        }
     }
 
     async fn register_exp(&mut self, exp: ExploitHolder) {
@@ -161,16 +189,20 @@ impl Runner {
     }
 
     async fn run(self, conf: &Common) {
-        let mut interval = conf
+        let mut tick_interval = conf
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
             .await
             .unwrap();
 
+        let mut flag_interval = interval(tokio::time::Duration::from_secs(1));
+
         loop {
             select! {
-                _ = interval.tick() => self.tick(conf).await,
-            };
+                _ = tick_interval.tick() => self.tick(conf).await,
+                // on another thread
+                _ = flag_interval.tick() => self.send_flags().await,
+            }
         }
     }
 }
