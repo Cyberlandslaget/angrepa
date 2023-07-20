@@ -133,6 +133,100 @@ impl Server {
         ))
     }
 
+    async fn logs_ticks(
+        id: Option<String>,
+        runner: Runner,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let id = if let Some(id) = id {
+            id
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing id" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        let mut ticks = {
+            let lock = runner.exploits.lock();
+            let instance = lock.get(&id);
+            let instance = match instance {
+                Some(instance) => instance,
+                None => {
+                    return Ok(reply::with_status(
+                        reply::json(&json!({ "error": "no such exploit" })),
+                        warp::http::StatusCode::BAD_REQUEST,
+                    ));
+                }
+            };
+            instance.run_logs.keys().cloned().collect::<Vec<_>>()
+        };
+        ticks.sort();
+
+        let content = json!({ "ticks": ticks });
+
+        Ok(reply::with_status(
+            reply::json(&content),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    async fn log(
+        id: Option<String>,
+        tick: Option<i64>,
+        runner: Runner,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
+        let id = if let Some(id) = id {
+            id
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing id" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        let tick = if let Some(tick) = tick {
+            tick
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing tick" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        let log = {
+            let lock = runner.exploits.lock();
+
+            let instance = lock.get(&id);
+            let instance = match instance {
+                Some(instance) => instance,
+                None => {
+                    return Ok(reply::with_status(
+                        reply::json(&json!({ "error": "no such id" })),
+                        warp::http::StatusCode::BAD_REQUEST,
+                    ));
+                }
+            };
+
+            let log = instance.run_logs.get(&tick);
+            let log = match log {
+                Some(log) => log,
+                None => {
+                    return Ok(reply::with_status(
+                        reply::json(&json!({ "error": "no such tick" })),
+                        warp::http::StatusCode::BAD_REQUEST,
+                    ));
+                }
+            };
+
+            log.clone()
+        };
+
+        Ok(reply::with_status(
+            reply::json(&json!({ "log": log.output })),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
     pub async fn run(&self) {
         // warp server
         let hello = warp::get().map(|| "This is the runner");
@@ -167,7 +261,34 @@ impl Server {
             })
             .and_then(|(id, rnr)| Server::stop(id, rnr));
 
-        let routes = hello.or(upload).or(start).or(stop);
+        // GET /log/ticks?id=abc
+        // -> returns all ticks that have logs
+        let rnr = self.runner.clone();
+        let log_ticks = warp::get()
+            .and(warp::path("log"))
+            .and(warp::path("ticks"))
+            .and(warp::query::<HashMap<String, String>>())
+            .map(move |query: HashMap<String, String>| {
+                let rnr = rnr.clone();
+                (query.get("id").map(|s| s.to_string()), rnr)
+            })
+            .and_then(|(id, rnr)| Server::logs_ticks(id, rnr));
+
+        // GET /log?id=abc&tick=123
+        let rnr = self.runner.clone();
+        let log = warp::get()
+            .and(warp::path("log"))
+            .and(warp::path("get"))
+            .and(warp::query::<HashMap<String, String>>())
+            .map(move |query: HashMap<String, String>| {
+                let rnr = rnr.clone();
+                let id = query.get("id").map(|s| s.to_string());
+                let tick: Option<i64> = query.get("tick").and_then(|s| s.parse().ok());
+                (id, tick, rnr)
+            })
+            .and_then(|(id, tick, rnr)| Server::log(id, tick, rnr));
+
+        let routes = log.or(log_ticks).or(upload).or(start).or(stop).or(hello);
         warp::serve(routes).run(self.host).await;
     }
 }
