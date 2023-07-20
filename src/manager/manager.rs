@@ -9,6 +9,8 @@ use submitter::Submitters;
 mod listener;
 use listener::{Tcp, Web};
 
+use crate::fetcher::Fetcher;
+
 mod handler;
 
 mod fetcher;
@@ -29,6 +31,7 @@ async fn main() -> Result<(), Report> {
     info!("manager started");
 
     let sub = Submitters::from_conf(&config.manager)?;
+    let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
 
     // set up channels
     let (raw_flag_tx, raw_flag_rx) = flume::unbounded::<String>();
@@ -75,8 +78,24 @@ async fn main() -> Result<(), Report> {
         }
     });
 
+    // run fetcher on another thread
+    let fetcher_handle = tokio::spawn(async move {
+        info!("fetcher starting");
+
+        match fetch {
+            fetcher::Fetchers::Enowars(fetcher) => fetcher::run(fetcher, &config.common).await,
+            fetcher::Fetchers::Dummy(fetcher) => fetcher::run(fetcher, &config.common).await,
+        };
+    });
+
     // join all
-    join_all(vec![tcp_listener, http_listener, handler_handle]).await;
+    join_all(vec![
+        tcp_listener,
+        http_listener,
+        handler_handle,
+        fetcher_handle,
+    ])
+    .await;
 
     Ok(())
 }
