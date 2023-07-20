@@ -44,11 +44,6 @@ pub enum AttackTarget {
     Ips,
 }
 
-pub enum RunnerRequest {
-    Start(String),
-    Stop(String),
-}
-
 #[derive(Debug, Clone)]
 pub struct Runner {
     // TODO possibly wrap this in a mutex so we can access this from multiple
