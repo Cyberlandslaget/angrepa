@@ -71,13 +71,17 @@ impl Runner {
     async fn tick(&self, conf: &Common) {
         let date = chrono::Utc::now();
         let current_tick = conf.current_tick(date);
-        info!(
-            "tick {} (UTC {})",
-            current_tick,
-            date.format("%Y-%m-%d %H:%M:%S.%f")
-        );
 
         let lock = self.exploits.lock();
+
+        info!(
+            "tick {}. exploits: {}, enabled: {}, disabled: {}",
+            current_tick,
+            lock.len(),
+            lock.iter().filter(|(_, v)| v.enabled).count(),
+            lock.iter().filter(|(_, v)| !v.enabled).count(),
+        );
+
         for (_id, holder) in lock.iter() {
             let holder = holder.clone();
             tokio::spawn(async move {
