@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use parking_lot::Mutex;
+use std::{collections::HashMap, sync::Arc};
 
 use angrapa::config::Common;
 use color_eyre::eyre;
@@ -50,19 +51,20 @@ struct Runner {
     // places..? channels aren't that nice when the code is this complex, and
     // we want to get the result value (i.e. error if starting a non-existant
     // exploit...)
-    exploits: HashMap<String, ExploitHolder>,
+    exploits: Arc<Mutex<HashMap<String, ExploitHolder>>>,
 }
 
 impl Runner {
     pub fn new() -> Self {
         Self {
-            exploits: HashMap::new(),
+            exploits: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
     async fn register_exp(&mut self, exp: ExploitHolder) {
         info!("Registering new exploit. {:?}", exp);
-        self.exploits.insert(exp.id.clone(), exp);
+        let mut lock = self.exploits.lock();
+        lock.insert(exp.id.clone(), exp);
     }
 
     async fn tick(&self, conf: &Common) {
@@ -74,7 +76,8 @@ impl Runner {
             date.format("%Y-%m-%d %H:%M:%S.%f")
         );
 
-        for (_id, holder) in &self.exploits {
+        let lock = self.exploits.lock();
+        for (_id, holder) in lock.iter() {
             let holder = holder.clone();
             tokio::spawn(async move {
                 let before = tokio::time::Instant::now();
@@ -101,7 +104,8 @@ impl Runner {
     }
 
     async fn start(&mut self, id: &str) {
-        if let Some(holder) = self.exploits.get_mut(id) {
+        let mut lock = self.exploits.lock();
+        if let Some(holder) = lock.get_mut(id) {
             holder.enabled = true;
         } else {
             warn!("Tried to start non-existant exploit {}", id);
@@ -109,7 +113,8 @@ impl Runner {
     }
 
     async fn stop(&mut self, id: &str) {
-        if let Some(holder) = self.exploits.get_mut(id) {
+        let mut lock = self.exploits.lock();
+        if let Some(holder) = lock.get_mut(id) {
             holder.enabled = false;
         } else {
             warn!("Tried to stop non-existant exploit {}", id);

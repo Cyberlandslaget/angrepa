@@ -55,6 +55,7 @@ dependencies = [
  "futures",
  "hex",
  "lazy_static",
+ "parking_lot",
  "rand",
  "regex",
  "reqwest",
