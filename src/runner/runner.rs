@@ -51,11 +51,15 @@ struct Runner {
     // we want to get the result value (i.e. error if starting a non-existant
     // exploit...)
     exploits: HashMap<String, ExploitHolder>,
-    exploit_rx: flume::Receiver<ExploitHolder>,
-    request_rx: flume::Receiver<RunnerRequest>,
 }
 
 impl Runner {
+    pub fn new() -> Self {
+        Self {
+            exploits: HashMap::new(),
+        }
+    }
+
     async fn register_exp(&mut self, exp: ExploitHolder) {
         info!("Registering new exploit. {:?}", exp);
         self.exploits.insert(exp.id.clone(), exp);
@@ -112,7 +116,12 @@ impl Runner {
         }
     }
 
-    async fn run(mut self, conf: &Common) {
+    async fn run(
+        mut self,
+        conf: &Common,
+        exploit_rx: flume::Receiver<ExploitHolder>,
+        request_rx: flume::Receiver<RunnerRequest>,
+    ) {
         let mut interval = conf
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
@@ -122,13 +131,13 @@ impl Runner {
         loop {
             select! {
                 _ = interval.tick() => self.tick(conf).await,
-                exp = self.exploit_rx.recv_async() => {
+                exp = exploit_rx.recv_async() => {
                     match exp {
                         Ok(exp) => self.register_exp(exp).await,
                         Err(err) => warn!("Failed to recv exploit: {:?}", err),
                     }
                 },
-                req = self.request_rx.recv_async() => {
+                req = request_rx.recv_async() => {
                     match req {
                         Ok(RunnerRequest::Start(id)) => self.start(&id).await,
                         Ok(RunnerRequest::Stop(id)) => self.stop(&id).await,
@@ -193,13 +202,9 @@ async fn main() -> eyre::Result<()> {
             .unwrap();
     });
 
-    let runner = Runner {
-        exploits: HashMap::new(),
-        exploit_rx,
-        request_rx,
-    };
+    let runner = Runner::new();
 
-    let runner_handle = spawn(async move { runner.run(&common).await });
+    let runner_handle = spawn(async move { runner.run(&common, exploit_rx, request_rx).await });
 
     let host = config.runner.http_server.parse()?;
     let server = Server::new(host, exploit_tx2, request_tx);
