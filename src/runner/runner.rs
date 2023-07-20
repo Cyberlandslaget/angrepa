@@ -2,7 +2,7 @@ use parking_lot::Mutex;
 use std::{collections::HashMap, sync::Arc};
 
 use angrapa::config::Common;
-use color_eyre::eyre;
+use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn};
 use tracing::{info, warn};
@@ -104,23 +104,28 @@ impl Runner {
         }
     }
 
-    async fn start(&mut self, id: &str) {
+    // todo proper result type, but for now it doesnt matter
+    async fn start(&mut self, id: &str) -> Result<(), Report> {
         let mut lock = self.exploits.lock();
         if let Some(holder) = lock.get_mut(id) {
             holder.enabled = true;
-            info!("Starting exploit {}", id)
+            info!("Starting exploit {}", id);
+            Ok(())
         } else {
             warn!("Tried to start non-existant exploit {}", id);
+            Err(eyre!("Tried to start non-existant exploit {}", id))
         }
     }
 
-    async fn stop(&mut self, id: &str) {
+    async fn stop(&mut self, id: &str) -> Result<(), Report> {
         let mut lock = self.exploits.lock();
         if let Some(holder) = lock.get_mut(id) {
             holder.enabled = false;
-            info!("Stopping exploit {}", id)
+            info!("Stopping exploit {}", id);
+            Ok(())
         } else {
             warn!("Tried to stop non-existant exploit {}", id);
+            Err(eyre!("Tried to stop non-existant exploit {}", id))
         }
     }
 
@@ -146,7 +151,7 @@ impl Runner {
 }
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> Result<(), Report> {
     color_eyre::install()?;
 
     // get config
@@ -211,7 +216,7 @@ async fn main() -> eyre::Result<()> {
     Ok(())
 }
 
-fn tarify(path: &str) -> eyre::Result<Vec<u8>> {
+fn tarify(path: &str) -> Result<Vec<u8>, Report> {
     use tar::Builder;
 
     let mut tar = Builder::new(Vec::new());

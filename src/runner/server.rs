@@ -105,10 +105,13 @@ impl Server {
             ));
         };
 
-        runner.start(&id).await;
+        let content = match runner.start(&id).await {
+            Ok(_) => json!({ "msg": "ok" }),
+            Err(err) => json!({ "error": format!("{:?}", err) }),
+        };
 
         Ok(reply::with_status(
-            reply::json(&json!({ "msg": "ok" })),
+            reply::json(&content),
             warp::http::StatusCode::OK,
         ))
     }
@@ -126,10 +129,13 @@ impl Server {
             ));
         };
 
-        runner.stop(&id).await;
+        let content = match runner.stop(&id).await {
+            Ok(_) => json!({ "msg": "ok" }),
+            Err(err) => json!({ "error": format!("{:?}", err) }),
+        };
 
         Ok(reply::with_status(
-            reply::json(&json!({ "msg": "ok" })),
+            reply::json(&content),
             warp::http::StatusCode::OK,
         ))
     }
