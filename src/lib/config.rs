@@ -37,6 +37,8 @@ pub struct Manager {
     pub tcp_listener: String,
     pub submitter_name: String,
     pub submitter: toml::Table,
+    pub fetcher_name: String,
+    pub fetcher: toml::Table,
 }
 
 #[derive(Debug, Deserialize)]

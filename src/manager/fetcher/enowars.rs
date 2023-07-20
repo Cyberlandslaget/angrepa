@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use serde::{self, Deserialize};
 use std::collections::HashMap;
+use tracing::info;
 
 use super::{Fetcher, Service};
 
@@ -12,6 +13,7 @@ pub struct AttackInfo {
     services: HashMap<String, Service>,
 }
 
+#[derive(Debug)]
 pub struct EnowarsFetcher {
     client: reqwest::Client,
     endpoint: String,

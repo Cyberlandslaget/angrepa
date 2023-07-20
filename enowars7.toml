@@ -9,8 +9,11 @@ tick = 60
 http_listener = "0.0.0.0:8000"
 tcp_listener = "0.0.0.0:8001"
 submitter_name = 'faust'
+fetcher_name = 'enowars'
 [manager.submitter]
 host = '10.0.13.37:1337'
 header_suffix = "\n\n"
+[manager.fetcher]
+endpoint = 'https://7.enowars.com/scoreboard/attack.json'
 
 [runner]

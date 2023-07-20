@@ -71,7 +71,7 @@ impl Submitters {
 
                 Ok(Self::Faust(faust))
             }
-            _ => Err(eyre!("Unknown submitter name {}", manager.submitter_name)),
+            _ => Err(eyre!("Unknown submitter {}", manager.submitter_name)),
         }
     }
 }

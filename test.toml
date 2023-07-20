@@ -7,8 +7,11 @@ tick = 15
 http_listener = "0.0.0.0:8000"
 tcp_listener = "0.0.0.0:8001"
 submitter_name = 'dummy'
+fetcher_name = 'enowars'
 [manager.submitter]
 host = 'localhost:1337'
 header_suffix = "\n\n"
+[manager.fetcher]
+endpoint = 'https://7.enowars.com/scoreboard/attack.json'
 
 [runner]
