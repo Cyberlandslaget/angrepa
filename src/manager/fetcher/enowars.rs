@@ -65,9 +65,7 @@ mod tests {
     fn eno_deser() -> HashMap<String, Service> {
         let attack_info: AttackInfo = serde_json::from_str(JSON).unwrap();
 
-        let services = attack_info.services;
-
-        services
+        attack_info.services
     }
 
     #[tokio::test]

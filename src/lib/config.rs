@@ -57,10 +57,9 @@ impl Common {
 
         // ew float
         let ticks_after_start = (seconds_after_start.num_seconds() as f64) / (self.tick as f64);
-        // round down, so ex. 1ms before start, we're at -1, not 0
-        let ticks_after_start = ticks_after_start.floor() as i64;
 
-        ticks_after_start
+        // round down, so ex. 1ms before start, we're at -1, not 0
+        ticks_after_start.floor() as i64
     }
 }
 

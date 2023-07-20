@@ -91,7 +91,7 @@ impl Runner {
 
         loop {
             select! {
-                _ = interval.tick() => self.tick(&conf).await,
+                _ = interval.tick() => self.tick(conf).await,
                 exp = self.exploit_rx.recv_async() => {
                     match exp {
                         Ok(exp) => self.register_exp(exp).await,

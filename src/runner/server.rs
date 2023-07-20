@@ -28,7 +28,7 @@ impl Server {
                 while let Some(content) = field.data().await {
                     let content = content.unwrap();
                     let chunk = content.chunk();
-                    bytes.extend_from_slice(&chunk);
+                    bytes.extend_from_slice(chunk);
                 }
 
                 let key = field.name().to_string();
