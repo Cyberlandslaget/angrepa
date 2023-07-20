@@ -32,10 +32,14 @@ impl Common {
         }
     }
 
+    // see the test for exactly how it works
     pub fn current_tick(&self, current_time: DateTime<chrono::Utc>) -> i64 {
         let seconds_after_start = current_time - self.start;
 
-        let ticks_after_start = seconds_after_start.num_seconds() / (self.tick as i64);
+        // ew float
+        let ticks_after_start = (seconds_after_start.num_seconds() as f64) / (self.tick as f64);
+        // round down, so ex. 1ms before start, we're at -1, not 0
+        let ticks_after_start = ticks_after_start.floor() as i64;
 
         ticks_after_start
     }
@@ -130,5 +134,52 @@ impl Args {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Common;
+
+    #[test]
+    fn tick_rounding() {
+        // CTF starts at 2020-01-01 05:00
+        let common = Common {
+            tick: 60,
+            format: "".to_string(),
+            start: chrono::DateTime::from_utc(
+                chrono::NaiveDateTime::new(
+                    chrono::NaiveDate::from_ymd(2020, 1, 1),
+                    chrono::NaiveTime::from_hms(5, 0, 0),
+                ),
+                chrono::Utc,
+            ),
+        };
+
+        // exactly at start
+        let zero = common.current_tick(common.start);
+        assert_eq!(zero, 0);
+
+        // right before start
+        let right_before_start = common.current_tick(common.start - chrono::Duration::seconds(1));
+        assert_eq!(right_before_start, -1);
+
+        // right after start
+        let right_after_start = common.current_tick(common.start + chrono::Duration::seconds(1));
+        assert_eq!(right_after_start, 0);
+
+        // exactly one hour after start
+        let one_hour_after_start = common.current_tick(common.start + chrono::Duration::hours(1));
+        assert_eq!(one_hour_after_start, 60);
+
+        // 59 minutes, 59 seconds after start
+        let almost_one_hour_after_start = common.current_tick(
+            common.start + chrono::Duration::minutes(59) + chrono::Duration::seconds(59),
+        );
+        assert_eq!(almost_one_hour_after_start, 59);
+
+        // one hour before start
+        let one_hour_before_start = common.current_tick(common.start - chrono::Duration::hours(1));
+        assert_eq!(one_hour_before_start, -60);
     }
 }
