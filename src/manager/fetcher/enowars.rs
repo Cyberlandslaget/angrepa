@@ -9,8 +9,8 @@ use super::{Fetcher, Service};
 #[serde(rename_all = "camelCase")]
 pub struct AttackInfo {
     #[allow(dead_code)]
-    available_teams: Vec<String>,
-    services: HashMap<String, Service>,
+    pub available_teams: Vec<String>,
+    pub services: HashMap<String, Service>,
 }
 
 #[derive(Debug)]

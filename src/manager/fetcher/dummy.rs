@@ -38,6 +38,8 @@ impl Fetcher for DummyFetcher {
 
 #[cfg(test)]
 mod tests {
+    use crate::fetcher::{enowars::AttackInfo, EnowarsFetcher};
+
     use super::*;
     use warp::Filter;
 
