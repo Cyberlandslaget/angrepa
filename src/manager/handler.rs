@@ -6,26 +6,31 @@
 //! - A getter *routine*, which takes raw data (from listeners), and gives flags
 //! - A submitter function, which sends the passwed flags to the submitter
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use angrapa::{db_connect, models::FlagModel};
-use diesel::RunQueryDsl;
 use regex::Regex;
 use tokio::{select, spawn};
 use tracing::info;
 
-use crate::submitter::{FlagStatus, Submitter};
+use crate::{
+    submitter::{FlagStatus, Submitter},
+    Flag, Manager,
+};
 
 /// Extracts flags from raw input
 async fn getter(
     raw_flag_rx: flume::Receiver<String>,
-    parsed_flag_tx: flume::Sender<String>,
+    parsed_flag_tx: flume::Sender<Flag>,
     flag_regex: Regex,
 ) {
     while let Ok(raw) = raw_flag_rx.recv_async().await {
         for flag in flag_regex.captures_iter(&raw) {
             let flag = flag[0].to_string();
             info!("Recieved flag {}", flag);
+            let flag = Flag {
+                flag,
+                ..Default::default()
+            };
             parsed_flag_tx.send_async(flag).await.unwrap();
         }
     }
@@ -45,27 +50,24 @@ async fn submit(
 }
 
 pub async fn run(
+    manager: Manager,
     raw_flag_rx: flume::Receiver<String>,
     submitter: impl Submitter + Send + Sync + Clone + 'static,
     flag_regex: Regex,
 ) {
-    // set up channels
-    let (parsed_tx, parsed_rx) = flume::unbounded::<String>();
+    // set up channelsStrinStrin
+    let (parsed_tx, parsed_rx) = flume::unbounded::<Flag>();
     let (result_tx, result_rx) = flume::unbounded::<(String, FlagStatus)>();
 
     // spawn the getter
     spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
-    // TODO TODO TODO get this from the db !!!
-    let mut seen: HashSet<String> = HashSet::new();
     let mut status: HashMap<String, FlagStatus> = HashMap::new();
     let mut flag_queue = Vec::new();
 
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
-    let db = &mut db_connect().unwrap();
 
     loop {
         select!(
@@ -79,24 +81,7 @@ pub async fn run(
             },
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
-                if seen.insert(f.clone()) {
-                    flag_queue.push(f.clone());
-
-                    // insert into db
-
-                    let model = FlagModel {
-                        flag: f.clone(),
-                        ..Default::default()
-                    };
-
-                    let fm: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
-                        .values(model)
-                        .returning(angrapa::schema::flags::all_columns)
-                        .get_result(db)
-                        .unwrap();
-
-                    info!("Inserted flag {:?} into db", fm);
-                }
+                manager.register_flag(f);
             },
             res = result_rx.recv_async() => {
                 let (flag, flag_status) = res.unwrap();

@@ -21,7 +21,7 @@ mod handler;
 
 mod fetcher;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Flag {
     pub flag: String,
     pub tick: Option<i32>,
@@ -142,6 +142,8 @@ impl Manager {
             .get_result(db)
             .unwrap();
         debug!("Inserted flag {:?} into db", _f);
+
+        // finally, send it to the submitter
     }
 
     /// Update the status of a flag
@@ -161,6 +163,7 @@ impl Manager {
         let mut flag = flag.clone();
         flag.status = Some(new_status);
         lock.insert(flag_flag.to_string(), flag.clone());
+        drop(lock);
 
         // update in db
         let db = &mut db_connect().unwrap();
@@ -187,9 +190,7 @@ async fn main() -> Result<(), Report> {
     info!("manager started");
 
     // check flags in db
-    let db = &mut db_connect()?;
-    let existing_flags: Vec<FlagModel> = flags.load(db)?;
-    info!("found {} flags in db", existing_flags.len());
+    let manager = Manager::from_db()?;
 
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
@@ -231,10 +232,10 @@ async fn main() -> Result<(), Report> {
 
         match sub {
             Submitters::Dummy(submitter) => {
-                handler::run(raw_flag_rx, submitter, flag_regex).await;
+                handler::run(manager, raw_flag_rx, submitter, flag_regex).await;
             }
             Submitters::Faust(submitter) => {
-                handler::run(raw_flag_rx, submitter, flag_regex).await;
+                handler::run(manager, raw_flag_rx, submitter, flag_regex).await;
             }
         }
     });
