@@ -1,12 +1,15 @@
+use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use angrapa::schema::flags::dsl::flags;
 use angrapa::{db_connect, models::FlagModel};
 use color_eyre::Report;
-use diesel::RunQueryDsl;
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use futures::future::join_all;
+use parking_lot::Mutex;
 use regex::Regex;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 mod submitter;
 use submitter::{FlagStatus, Submitters};
@@ -18,6 +21,7 @@ mod handler;
 
 mod fetcher;
 
+#[derive(Clone, Debug)]
 pub struct Flag {
     pub flag: String,
     pub tick: Option<i32>,
@@ -94,10 +98,78 @@ impl Flag {
     }
 }
 
-//pub struct Manager {
-//    // mutex
-//    flags: HashMap<String, Flag>,
-//}
+#[derive(Clone, Debug)]
+pub struct Manager {
+    flags: Arc<Mutex<HashMap<String, Flag>>>,
+}
+
+impl Manager {
+    pub fn from_db() -> Result<Self, Report> {
+        let db = &mut db_connect()?;
+
+        let all_flags: Vec<FlagModel> = flags.load(db)?;
+
+        let mut flag_map = HashMap::new();
+        for flag in all_flags {
+            let flag = Flag::from_model(flag);
+            flag_map.insert(flag.flag.clone(), flag);
+        }
+
+        info!("Loaded {} flags from db", flag_map.len());
+
+        Ok(Self {
+            flags: Arc::new(Mutex::new(flag_map)),
+        })
+    }
+
+    /// Register a new flag, will discard duplicated flag
+    pub fn register_flag(&self, flag: Flag) {
+        let mut lock = self.flags.lock();
+
+        if lock.contains_key(&flag.flag) {
+            info!("Flag {} already registered", flag.flag);
+            return;
+        }
+
+        // insert locally
+        lock.insert(flag.flag.clone(), flag.clone());
+        drop(lock);
+
+        // insert into db (should rly be done first but im lazy)
+        let db = &mut db_connect().unwrap();
+        let _f: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
+            .values(&flag.to_model())
+            .get_result(db)
+            .unwrap();
+        debug!("Inserted flag {:?} into db", _f);
+    }
+
+    /// Update the status of a flag
+    pub fn update_flag_status(&self, flag_flag: &str, new_status: FlagStatus) {
+        let mut lock = self.flags.lock();
+
+        let flag = lock.get(flag_flag);
+        let flag = match flag {
+            Some(flag) => flag,
+            None => {
+                error!("Flag {} not found", flag_flag);
+                return;
+            }
+        };
+
+        // update locally
+        let mut flag = flag.clone();
+        flag.status = Some(new_status);
+        lock.insert(flag_flag.to_string(), flag.clone());
+
+        // update in db
+        let db = &mut db_connect().unwrap();
+        let _f: FlagModel = diesel::update(flags.find(flag_flag))
+            .set(angrapa::schema::flags::status.eq(new_status.to_string()))
+            .get_result(db)
+            .unwrap();
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
