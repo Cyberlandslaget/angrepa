@@ -1,6 +1,15 @@
 # angrapa
 ## Attack script runner for attack-defense CTFs
 
+# Setup
+1. Setup DB
+```
+diesel setup
+diesel migration run
+```
+
+# ...
+
 Currently in testing phase, code is not structured correctly.
 
 ## Near-future TODOS:
