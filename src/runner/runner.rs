@@ -257,40 +257,10 @@ async fn main() -> Result<(), Report> {
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    // keep original around, otherwise closed errors
-    //spawn(async move {
-    //    let tar = tarify("data/exploits/new")?;
-    //    let docker = DockerInstance::new()?;
-
-    //    let exploit = docker.new_exploit(&tar).await.unwrap();
-    //    let pool = exploit.spawn_pool().await.unwrap();
-
-    //    exploit_tx
-    //        .send_async(ExploitHolder {
-    //            id: "test1".to_string(),
-    //            enabled: false,
-    //            target: AttackTarget::Ips,
-    //            exploit: Exploits::Docker(exploit),
-    //        })
-    //        .await
-    //        .unwrap();
-
-    //    exploit_tx
-    //        .send_async(ExploitHolder {
-    //            id: "test2".to_string(),
-    //            enabled: false,
-    //            target: AttackTarget::Ips,
-    //            exploit: Exploits::DockerPool(pool),
-    //        })
-    //        .await
-    //        .unwrap();
-    //});
-
     let runner = Runner::new();
-    let runner2 = runner.clone();
 
     let host = config.runner.http_server.parse()?;
-    let server = Server::new(host, runner2);
+    let server = Server::new(host, runner.clone());
     let server_handle = spawn(async move { server.run().await });
 
     let runner_handle = spawn(async move { runner.run(&config).await });
