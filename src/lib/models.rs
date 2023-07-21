@@ -21,4 +21,21 @@ pub struct FlagModel {
     pub exploit_id: Option<String>,
     pub target_ip: Option<String>,
     pub flagstore: Option<String>,
+    pub sent: bool,
+    pub status: Option<String>,
+}
+
+impl Default for FlagModel {
+    fn default() -> Self {
+        Self {
+            flag: "".to_string(),
+            tick: None,
+            stamp: None,
+            exploit_id: None,
+            target_ip: None,
+            flagstore: None,
+            sent: false,
+            status: None,
+        }
+    }
 }
