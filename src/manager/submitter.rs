@@ -26,7 +26,7 @@ pub enum SubmitError {
 }
 
 /// Adapted from https://web.archive.org/web/20230325144340/https://docs.ecsc2022.eu/ad_platform/
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString, strum::EnumIter)]
 pub enum FlagStatus {
     Accepted,
     Duplicate,
@@ -72,6 +72,24 @@ impl Submitters {
                 Ok(Self::Faust(faust))
             }
             _ => Err(eyre!("Unknown submitter {}", manager.submitter_name)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+    use strum::IntoEnumIterator;
+
+    use super::*;
+
+    #[test]
+    fn flag_ser_deser() {
+        for status in FlagStatus::iter() {
+            let status_str = status.to_string();
+            let status2 = FlagStatus::from_str(&status_str).unwrap();
+            assert_eq!(status, status2);
+            dbg!(status, status_str);
         }
     }
 }
