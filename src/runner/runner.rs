@@ -1,12 +1,19 @@
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use parking_lot::Mutex;
 use reqwest::Url;
 use std::{collections::HashMap, sync::Arc};
 
-use angrapa::config::{self, Common};
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
 use tracing::{debug, info, trace, warn};
+
+use angrapa::schema::exploits::dsl::exploits;
+use angrapa::{
+    config::{self, Common},
+    db_connect,
+    models::ExploitModel,
+};
 
 mod exploit;
 use exploit::exploit2::{
@@ -24,6 +31,15 @@ pub enum Exploits {
     Docker(DockerExploit),
 }
 
+impl Exploits {
+    pub fn as_str(&self) -> String {
+        match self {
+            Exploits::DockerPool(_) => "docker_pool".to_string(),
+            Exploits::Docker(_) => "docker".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ExploitHolder {
     /// a UNIQUE id
@@ -34,6 +50,38 @@ pub struct ExploitHolder {
 
     // stats
     pub run_logs: HashMap<i64, StampedRunLog>,
+}
+
+impl ExploitHolder {
+    pub fn to_model(&self) -> ExploitModel {
+        let ExploitHolder {
+            id,
+            enabled: running,
+            target: attack_target,
+            exploit,
+            run_logs: _,
+        } = self.clone();
+
+        let exploit_kind = exploit.as_str();
+
+        let attack_target = match attack_target {
+            AttackTarget::Service(s) => Some(s),
+            AttackTarget::Ips => None,
+        };
+
+        let docker_image = match &exploit {
+            Exploits::DockerPool(pool) => pool.image.to_owned(),
+            Exploits::Docker(single) => single.image.to_owned(),
+        };
+
+        ExploitModel {
+            id,
+            running,
+            attack_target,
+            docker_image,
+            exploit_kind,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -137,8 +185,21 @@ impl Runner {
 
     async fn register_exp(&mut self, exp: ExploitHolder) {
         info!("Registering new exploit. {:?}", exp);
+
+        // first instert into db
+        let db = &mut db_connect().unwrap();
+        let x: ExploitModel = diesel::insert_into(angrapa::schema::exploits::table)
+            .values(exp.to_model())
+            .returning(angrapa::schema::exploits::all_columns)
+            .get_result(db)
+            .unwrap();
+        info!("Inserted exploit into database: {:?}", x);
+
+        // then into the local exploit map
         let mut lock = self.exploits.lock();
-        lock.insert(exp.id.clone(), exp);
+        lock.insert(exp.id.clone(), exp.clone());
+
+        info!("Registered exploit {}", exp.id);
     }
 
     async fn tick(&self, conf: &Common) {
@@ -195,26 +256,54 @@ impl Runner {
     // todo proper result type, but for now it doesnt matter
     async fn start(&mut self, id: &str) -> Result<(), Report> {
         let mut lock = self.exploits.lock();
-        if let Some(holder) = lock.get_mut(id) {
-            holder.enabled = true;
-            info!("Starting exploit {}", id);
-            Ok(())
-        } else {
-            warn!("Tried to start non-existant exploit {}", id);
-            Err(eyre!("Tried to start non-existant exploit {}", id))
-        }
+
+        let holder = match lock.get_mut(id) {
+            Some(holder) => holder,
+            None => {
+                warn!("Tried to start non-existant exploit {}", id);
+                return Err(eyre!("Tried to start non-existant exploit {}", id));
+            }
+        };
+
+        info!("Starting exploit {}", id);
+        holder.enabled = true;
+        drop(lock);
+
+        // update db
+        let db = &mut db_connect().unwrap();
+        let x: ExploitModel = diesel::update(exploits.find(id))
+            .set(angrapa::schema::exploits::running.eq(true))
+            .get_result(db)
+            .unwrap();
+        debug!("Updated exploit in database: {:?}", x);
+
+        Ok(())
     }
 
     async fn stop(&mut self, id: &str) -> Result<(), Report> {
         let mut lock = self.exploits.lock();
-        if let Some(holder) = lock.get_mut(id) {
-            holder.enabled = false;
-            info!("Stopping exploit {}", id);
-            Ok(())
-        } else {
-            warn!("Tried to stop non-existant exploit {}", id);
-            Err(eyre!("Tried to stop non-existant exploit {}", id))
-        }
+
+        let holder = match lock.get_mut(id) {
+            Some(holder) => holder,
+            None => {
+                warn!("Tried to stop non-existant exploit {}", id);
+                return Err(eyre!("Tried to stop non-existant exploit {}", id));
+            }
+        };
+
+        info!("Stopping exploit {}", id);
+        holder.enabled = false;
+        drop(lock);
+
+        // update db
+        let db = &mut db_connect().unwrap();
+        let x: ExploitModel = diesel::update(exploits.find(id))
+            .set(angrapa::schema::exploits::running.eq(false))
+            .get_result(db)
+            .unwrap();
+        debug!("Updated exploit in database: {:?}", x);
+
+        Ok(())
     }
 
     async fn run(self, conf: &config::Root) {
@@ -248,6 +337,16 @@ async fn main() -> Result<(), Report> {
 
     // setup logging
     args.setup_logging()?;
+
+    use angrapa::models::ExploitModel;
+    use angrapa::schema::exploits::dsl::*;
+    let db = &mut db_connect()?;
+    info!("Connected to database");
+    let exps: Vec<ExploitModel> = exploits.load(db)?;
+    info!("Found {} existing exploits", exps.len());
+    dbg!(&exps);
+    //let exploits = angrapa::schema::exploits::dsl::exploits.sel
+    // get them all
 
     // time until start
     common.sleep_until_start().await;
