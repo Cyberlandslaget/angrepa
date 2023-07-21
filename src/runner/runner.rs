@@ -1,4 +1,5 @@
 use parking_lot::Mutex;
+use reqwest::Url;
 use std::{collections::HashMap, sync::Arc};
 
 use angrapa::config::{self, Common};
@@ -103,19 +104,22 @@ impl Runner {
         }
 
         // yank this from the *manager* config
-        let url = format!("http://{host}/submit", host = conf.manager.http_listener);
-        info!("Sending {} flags to {}", output.len(), url);
+        let base = format!("http://{host}/submit", host = conf.manager.http_listener);
+        info!("Sending {} flags to {}", output.len(), base);
 
         let client = reqwest::Client::new();
 
         for o in output {
             let client = client.clone();
-            let mut url = url.clone();
+            let base = base.clone();
             spawn(async move {
-                url += &format!("?tick={}", o.tick);
+                let mut params = vec![("tick", o.tick.to_string())];
                 if let Some(flagstore) = o.flagstore {
-                    url += &format!("&flagstore={}", flagstore);
+                    params.push(("flagstore", flagstore));
                 }
+
+                let url = Url::parse_with_params(&base, params).unwrap();
+
                 debug!("sending to {}", url);
                 // todo warn! here if it fails
                 let r = client.post(url).body(o.log.output).send().await.unwrap();
