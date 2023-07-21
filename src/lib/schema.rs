@@ -23,4 +23,15 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(exploits, flags,);
+diesel::table! {
+    runlogs (id) {
+        id -> Int4,
+        from_exploit_id -> Text,
+        from_ip -> Text,
+        tick -> Int4,
+        stamp -> Timestamp,
+        content -> Text,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(exploits, flags, runlogs,);

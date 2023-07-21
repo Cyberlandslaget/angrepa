@@ -39,3 +39,15 @@ impl Default for FlagModel {
         }
     }
 }
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = super::schema::runlogs)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct RunlogModel {
+    pub id: i32,
+    pub from_exploit_id: String,
+    pub from_ip: String,
+    pub tick: i32,
+    pub stamp: chrono::NaiveDateTime,
+    pub content: String,
+}
