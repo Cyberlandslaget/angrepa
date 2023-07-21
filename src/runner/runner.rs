@@ -227,7 +227,11 @@ impl Runner {
             lock.iter().filter(|(_, v)| !v.enabled).count(),
         );
 
-        for (_id, holder) in lock.iter() {
+        for (_id, holder) in lock
+            .iter()
+            // only enabled exploits
+            .filter(|(_, v)| v.enabled)
+        {
             let rnr = rnr.clone();
             let holder = holder.clone();
             tokio::spawn(async move {
