@@ -18,7 +18,12 @@ diesel::table! {
         exploit_id -> Nullable<Text>,
         target_ip -> Nullable<Text>,
         flagstore -> Nullable<Text>,
+        sent -> Bool,
+        status -> Nullable<Text>,
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(exploits, flags,);
+diesel::allow_tables_to_appear_in_same_query!(
+    exploits,
+    flags,
+);
