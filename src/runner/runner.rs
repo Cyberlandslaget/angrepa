@@ -183,6 +183,16 @@ impl Runner {
         }
     }
 
+    /// Register without adding to DB
+    async fn register_existing_exp(&mut self, exp: ExploitHolder) {
+        info!("Registering exploit locally. {:?}", exp);
+
+        let mut lock = self.exploits.lock();
+        lock.insert(exp.id.clone(), exp.clone());
+
+        info!("Registered exploit locally {}", exp.id);
+    }
+
     async fn register_exp(&mut self, exp: ExploitHolder) {
         info!("Registering new exploit. {:?}", exp);
 
@@ -196,8 +206,7 @@ impl Runner {
         info!("Inserted exploit into database: {:?}", x);
 
         // then into the local exploit map
-        let mut lock = self.exploits.lock();
-        lock.insert(exp.id.clone(), exp.clone());
+        self.register_existing_exp(exp.clone()).await;
 
         info!("Registered exploit {}", exp.id);
     }
@@ -338,15 +347,40 @@ async fn main() -> Result<(), Report> {
     // setup logging
     args.setup_logging()?;
 
+    let mut runner = Runner::new();
+
     use angrapa::models::ExploitModel;
-    use angrapa::schema::exploits::dsl::*;
     let db = &mut db_connect()?;
     info!("Connected to database");
+
     let exps: Vec<ExploitModel> = exploits.load(db)?;
     info!("Found {} existing exploits", exps.len());
     dbg!(&exps);
-    //let exploits = angrapa::schema::exploits::dsl::exploits.sel
-    // get them all
+    let docker = bollard::Docker::connect_with_local_defaults()?;
+    for model in exps {
+        let docker_exp = DockerExploit::from_model(docker.clone(), model.clone())
+            .await
+            .unwrap();
+
+        let exploit = match model.exploit_kind.as_str() {
+            "docker" => Exploits::Docker(docker_exp),
+            "docker_pool" => Exploits::DockerPool(docker_exp.spawn_pool().await.unwrap()),
+            _ => panic!("Unknown exploit kind {}", model.exploit_kind),
+        };
+
+        let exp = ExploitHolder {
+            id: model.id,
+            enabled: model.running,
+            target: match model.attack_target {
+                Some(s) => AttackTarget::Service(s),
+                None => AttackTarget::Ips,
+            },
+            exploit,
+            run_logs: HashMap::new(),
+        };
+
+        runner.register_existing_exp(exp).await;
+    }
 
     // time until start
     common.sleep_until_start().await;
@@ -355,8 +389,6 @@ async fn main() -> Result<(), Report> {
 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
-
-    let runner = Runner::new();
 
     let host = config.runner.http_server.parse()?;
     let server = Server::new(host, runner.clone());

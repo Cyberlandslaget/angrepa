@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 
-#[derive(Queryable, Selectable, Insertable, Debug)]
+#[derive(Queryable, Selectable, Insertable, Debug, Clone)]
 #[diesel(table_name = super::schema::exploits)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ExploitModel {
