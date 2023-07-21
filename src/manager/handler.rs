@@ -8,6 +8,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use angrapa::{db_connect, models::FlagModel};
+use diesel::RunQueryDsl;
 use regex::Regex;
 use tokio::{select, spawn};
 use tracing::info;
@@ -54,6 +56,7 @@ pub async fn run(
     // spawn the getter
     spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
+    // TODO TODO TODO get this from the db !!!
     let mut seen: HashSet<String> = HashSet::new();
     let mut status: HashMap<String, FlagStatus> = HashMap::new();
     let mut flag_queue = Vec::new();
@@ -61,6 +64,8 @@ pub async fn run(
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    let db = &mut db_connect().unwrap();
 
     loop {
         select!(
@@ -75,7 +80,17 @@ pub async fn run(
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
                 if seen.insert(f.clone()) {
-                    flag_queue.push(f);
+                    flag_queue.push(f.clone());
+
+                    // insert into db
+
+                    let model = FlagModel { flag: f.clone(), tick: None, stamp: None, exploit_id: None, target_ip: None, flagstore: None};
+
+                    let fm: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
+                        .values(model)
+                        .returning(angrapa::schema::flags::all_columns)
+                        .get_result(db)
+                        .unwrap();
                 }
             },
             res = result_rx.recv_async() => {
