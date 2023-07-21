@@ -1,13 +1,15 @@
+use std::str::FromStr;
+
 use angrapa::schema::flags::dsl::flags;
 use angrapa::{db_connect, models::FlagModel};
 use color_eyre::Report;
 use diesel::RunQueryDsl;
 use futures::future::join_all;
 use regex::Regex;
-use tracing::info;
+use tracing::{error, info};
 
 mod submitter;
-use submitter::Submitters;
+use submitter::{FlagStatus, Submitters};
 
 mod listener;
 use listener::{Tcp, Web};
@@ -15,6 +17,87 @@ use listener::{Tcp, Web};
 mod handler;
 
 mod fetcher;
+
+pub struct Flag {
+    pub flag: String,
+    pub tick: Option<i32>,
+    pub stamp: Option<chrono::NaiveDateTime>,
+    pub exploit_id: Option<String>,
+    pub target_ip: Option<String>,
+    pub flagstore: Option<String>,
+    pub sent: bool,
+    pub status: Option<FlagStatus>,
+}
+
+impl Flag {
+    pub fn from_model(model: FlagModel) -> Self {
+        let FlagModel {
+            flag,
+            tick,
+            stamp,
+            exploit_id,
+            target_ip,
+            flagstore,
+            sent,
+            status,
+        } = model;
+
+        let status = if let Some(status_str) = status {
+            let status = FlagStatus::from_str(&status_str);
+            match status {
+                Ok(status) => Some(status),
+                Err(e) => {
+                    error!("Error parsing status: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        Self {
+            flag,
+            tick,
+            stamp,
+            exploit_id,
+            target_ip,
+            flagstore,
+            sent,
+            status,
+        }
+    }
+
+    pub fn to_model(self) -> FlagModel {
+        let Flag {
+            flag,
+            tick,
+            stamp,
+            exploit_id,
+            target_ip,
+            flagstore,
+            sent,
+            status,
+        } = self;
+
+        let status = status.map(|s| s.to_string());
+
+        FlagModel {
+            flag,
+            tick,
+            stamp,
+            exploit_id,
+            target_ip,
+            flagstore,
+            sent,
+            status,
+        }
+    }
+}
+
+//pub struct Manager {
+//    // mutex
+//    flags: HashMap<String, Flag>,
+//}
 
 #[tokio::main]
 async fn main() -> Result<(), Report> {
