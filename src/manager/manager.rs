@@ -1,4 +1,7 @@
+use angrapa::schema::flags::dsl::flags;
+use angrapa::{db_connect, models::FlagModel};
 use color_eyre::Report;
+use diesel::RunQueryDsl;
 use futures::future::join_all;
 use regex::Regex;
 use tracing::info;
@@ -27,6 +30,11 @@ async fn main() -> Result<(), Report> {
     let flag_regex = Regex::new(&config.common.format)?;
 
     info!("manager started");
+
+    // check flags in db
+    let db = &mut db_connect()?;
+    let existing_flags: Vec<FlagModel> = flags.load(db)?;
+    info!("found {} flags in db", existing_flags.len());
 
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
