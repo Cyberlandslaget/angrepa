@@ -150,6 +150,8 @@ impl Manager {
     pub fn update_flag_status(&self, flag_flag: &str, new_status: FlagStatus) {
         let mut lock = self.flags.lock();
 
+        debug!("Updating flag {} to {}", flag_flag, new_status);
+
         let flag = lock.get(flag_flag);
         let flag = match flag {
             Some(flag) => flag,

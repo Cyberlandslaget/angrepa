@@ -6,16 +6,11 @@
 //! - A getter *routine*, which takes raw data (from listeners), and gives flags
 //! - A submitter function, which sends the passwed flags to the submitter
 
-use std::collections::HashMap;
-
 use regex::Regex;
 use tokio::{select, spawn};
 use tracing::info;
 
-use crate::{
-    submitter::{FlagStatus, Submitter},
-    Flag, Manager,
-};
+use crate::{submitter::Submitter, Flag, Manager};
 
 /// Extracts flags from raw input
 async fn getter(
@@ -38,14 +33,14 @@ async fn getter(
 
 /// Submits flags
 async fn submit(
+    manager: Manager,
     submitter: impl Submitter + Send + Sync + Clone + 'static,
     flags: Vec<String>,
-    result_tx: flume::Sender<(String, FlagStatus)>,
 ) {
     info!("Submitting {:?}", flags);
     let results = submitter.submit(flags).await.unwrap();
-    for res in results {
-        result_tx.send_async(res).await.unwrap();
+    for (flag_str, status) in results {
+        manager.update_flag_status(&flag_str, status);
     }
 }
 
@@ -57,12 +52,10 @@ pub async fn run(
 ) {
     // set up channelsStrinStrin
     let (parsed_tx, parsed_rx) = flume::unbounded::<Flag>();
-    let (result_tx, result_rx) = flume::unbounded::<(String, FlagStatus)>();
 
     // spawn the getter
     spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
-    let mut status: HashMap<String, FlagStatus> = HashMap::new();
     let mut flag_queue = Vec::new();
 
     // submit every 5s
@@ -70,14 +63,14 @@ pub async fn run(
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
+        let manager = manager.clone();
+
         select!(
             _ = send_signal.tick() => {
                 let to_submit = flag_queue.clone();
                 flag_queue.clear();
 
-                let result_tx = result_tx.clone();
-
-                spawn(submit(submitter.clone(), to_submit, result_tx));
+                spawn(submit(manager, submitter.clone(), to_submit));
             },
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
@@ -88,11 +81,6 @@ pub async fn run(
                     flag_queue.push(f.flag);
                 }
             },
-            res = result_rx.recv_async() => {
-                let (flag, flag_status) = res.unwrap();
-                status.insert(flag.clone(), flag_status);
-                info!("Got status  {}: {:?}", flag, flag_status);
-            }
         )
     }
 }
