@@ -64,7 +64,7 @@ where
         let message = fields
             .get("message")
             .cloned()
-            .unwrap_or("no message".to_string());
+            .unwrap_or_else(|| "no message".to_string());
 
         let note = if fields.len() > 1 {
             format!(" *({} other fields not shown)*", fields.len() - 1)

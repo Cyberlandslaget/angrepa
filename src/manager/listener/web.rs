@@ -1,5 +1,6 @@
 use color_eyre::Report;
 use std::net::SocketAddr;
+use tracing::debug;
 use warp::{hyper::body::Bytes, Filter};
 
 pub struct Web {
@@ -23,6 +24,7 @@ impl Web {
             })
             .and_then(|(tx, body): (flume::Sender<String>, Bytes)| async move {
                 let body = String::from_utf8_lossy(&body).to_string();
+                debug!("Received body: {}", body);
                 tx.send_async(body).await.unwrap();
                 Ok::<_, warp::Rejection>("ok")
             });

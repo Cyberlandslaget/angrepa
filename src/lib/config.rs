@@ -1,6 +1,8 @@
 use argh::FromArgs;
+use chrono::DateTime;
 use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
+use tokio::time::{interval_at, MissedTickBehavior};
 use tracing::{debug, info};
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
@@ -8,9 +10,10 @@ use super::wh::WebhookLayer;
 
 #[derive(Debug, Deserialize)]
 pub struct Common {
+    /// round length
     pub tick: u64,
     pub format: String,
-    pub start: chrono::DateTime<chrono::Utc>,
+    pub start: DateTime<chrono::Utc>,
 }
 
 impl Common {
@@ -29,21 +32,58 @@ impl Common {
                 .await;
         }
     }
+
+    /// Returns a interval with a duration of tick seconds
+    pub async fn get_tick_interval(
+        &self,
+        offset: tokio::time::Duration,
+    ) -> Result<tokio::time::Interval, Report> {
+        let time_since_start = chrono::Utc::now() - self.start;
+        let start = tokio::time::Instant::now() - time_since_start.to_std()?;
+        let tick = tokio::time::Duration::from_secs(self.tick);
+
+        // offset by e.g. 1s to be safe we don't go too early
+        let start = start + offset;
+
+        let mut interval = interval_at(start, tick);
+        interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+        Ok(interval)
+    }
+
+    // see the test for exactly how it works
+    pub fn current_tick(&self, current_time: DateTime<chrono::Utc>) -> i64 {
+        let seconds_after_start = current_time - self.start;
+
+        // ew float
+        let ticks_after_start = (seconds_after_start.num_seconds() as f64) / (self.tick as f64);
+
+        // round down, so ex. 1ms before start, we're at -1, not 0
+        ticks_after_start.floor() as i64
+    }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Manager {
     pub http_listener: String,
     pub tcp_listener: String,
+
     pub submitter_name: String,
     pub submitter: toml::Table,
+    pub fetcher_name: String,
+    pub fetcher: toml::Table,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Runner {
+    pub http_server: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Root {
     pub common: Common,
     pub manager: Manager,
-    pub runner: toml::Value,
+    pub runner: Runner,
 }
 
 // common args, used by both manager and runner
@@ -118,5 +158,52 @@ impl Args {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Common;
+
+    #[test]
+    fn tick_rounding() {
+        // CTF starts at 2020-01-01 05:00
+        let common = Common {
+            tick: 60,
+            format: "".to_string(),
+            start: chrono::DateTime::from_utc(
+                chrono::NaiveDateTime::new(
+                    chrono::NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+                    chrono::NaiveTime::from_hms_opt(5, 0, 0).unwrap(),
+                ),
+                chrono::Utc,
+            ),
+        };
+
+        // exactly at start
+        let zero = common.current_tick(common.start);
+        assert_eq!(zero, 0);
+
+        // right before start
+        let right_before_start = common.current_tick(common.start - chrono::Duration::seconds(1));
+        assert_eq!(right_before_start, -1);
+
+        // right after start
+        let right_after_start = common.current_tick(common.start + chrono::Duration::seconds(1));
+        assert_eq!(right_after_start, 0);
+
+        // exactly one hour after start
+        let one_hour_after_start = common.current_tick(common.start + chrono::Duration::hours(1));
+        assert_eq!(one_hour_after_start, 60);
+
+        // 59 minutes, 59 seconds after start
+        let almost_one_hour_after_start = common.current_tick(
+            common.start + chrono::Duration::minutes(59) + chrono::Duration::seconds(59),
+        );
+        assert_eq!(almost_one_hour_after_start, 59);
+
+        // one hour before start
+        let one_hour_before_start = common.current_tick(common.start - chrono::Duration::hours(1));
+        assert_eq!(one_hour_before_start, -60);
     }
 }
