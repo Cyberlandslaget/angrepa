@@ -91,6 +91,8 @@ pub async fn run(
                         .returning(angrapa::schema::flags::all_columns)
                         .get_result(db)
                         .unwrap();
+
+                    info!("Inserted flag {:?} into db", fm);
                 }
             },
             res = result_rx.recv_async() => {
