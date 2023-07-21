@@ -6,7 +6,7 @@ use angrapa::config::{self, Common};
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 mod exploit;
 use exploit::exploit2::{
@@ -109,21 +109,28 @@ impl Runner {
 
         let client = reqwest::Client::new();
 
-        for o in output {
+        for stamped in output {
             let client = client.clone();
-            let base = base.clone();
+
+            let mut params = vec![("tick", stamped.tick.to_string())];
+            if let Some(flagstore) = stamped.flagstore {
+                params.push(("flagstore", flagstore));
+            }
+
+            let url = Url::parse_with_params(&base, params).unwrap();
+
             spawn(async move {
-                let mut params = vec![("tick", o.tick.to_string())];
-                if let Some(flagstore) = o.flagstore {
-                    params.push(("flagstore", flagstore));
-                }
-
-                let url = Url::parse_with_params(&base, params).unwrap();
-
                 debug!("sending to {}", url);
-                // todo warn! here if it fails
-                let r = client.post(url).body(o.log.output).send().await.unwrap();
-                debug!("got response: {}", r.text().await.unwrap());
+                let response = client.post(url).body(stamped.log.output).send().await;
+                match &response {
+                    Err(e) => warn!("error sending flag: {:?}", e),
+                    Ok(r) => {
+                        if !r.status().is_success() {
+                            warn!("error sending flag: {:?}", r);
+                        }
+                    }
+                }
+                trace!("got response: {:?}", response);
             });
         }
     }
