@@ -84,7 +84,10 @@ pub async fn run(
 
                     // insert into db
 
-                    let model = FlagModel { flag: f.clone(), tick: None, stamp: None, exploit_id: None, target_ip: None, flagstore: None};
+                    let model = FlagModel {
+                        flag: f.clone(),
+                        ..Default::default()
+                    };
 
                     let fm: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
                         .values(model)
