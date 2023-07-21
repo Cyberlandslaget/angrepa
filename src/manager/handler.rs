@@ -52,7 +52,7 @@ pub async fn run(
     let (result_tx, result_rx) = flume::unbounded::<(String, FlagStatus)>();
 
     // spawn the getter
-    spawn(getter(raw_flag_rx, parsed_tx, flag_regex.clone()));
+    spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
     let mut seen: HashSet<String> = HashSet::new();
     let mut status: HashMap<String, FlagStatus> = HashMap::new();
