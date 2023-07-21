@@ -9,3 +9,16 @@ diesel::table! {
         exploit_kind -> Text,
     }
 }
+
+diesel::table! {
+    flags (flag) {
+        flag -> Text,
+        tick -> Nullable<Int4>,
+        stamp -> Nullable<Timestamp>,
+        exploit_id -> Nullable<Text>,
+        target_ip -> Nullable<Text>,
+        flagstore -> Nullable<Text>,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(exploits, flags,);
