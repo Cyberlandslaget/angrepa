@@ -122,13 +122,13 @@ impl Manager {
         })
     }
 
-    /// Register a new flag, will discard duplicated flag
-    pub fn register_flag(&self, flag: Flag) {
+    /// Register a new flag, will discard duplicated flag. Returns true if flag was new
+    pub fn register_flag(&self, flag: Flag) -> bool {
         let mut lock = self.flags.lock();
 
         if lock.contains_key(&flag.flag) {
             info!("Flag {} already registered", flag.flag);
-            return;
+            return false;
         }
 
         // insert locally
@@ -143,7 +143,7 @@ impl Manager {
             .unwrap();
         debug!("Inserted flag {:?} into db", _f);
 
-        // finally, send it to the submitter
+        true
     }
 
     /// Update the status of a flag

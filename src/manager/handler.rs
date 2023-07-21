@@ -81,7 +81,12 @@ pub async fn run(
             },
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
-                manager.register_flag(f);
+                // add to db
+                let new = manager.register_flag(f.clone());
+
+                if new {
+                    flag_queue.push(f.flag);
+                }
             },
             res = result_rx.recv_async() => {
                 let (flag, flag_status) = res.unwrap();
