@@ -1,3 +1,4 @@
+use bollard::Docker;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use parking_lot::Mutex;
 use reqwest::Url;
@@ -6,7 +7,7 @@ use std::{collections::HashMap, sync::Arc};
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use angrapa::schema::exploits::dsl::exploits;
 use angrapa::{
@@ -335,6 +336,30 @@ impl Runner {
     }
 }
 
+async fn reconstruct_exploit(
+    docker: &Docker,
+    model: ExploitModel,
+) -> Result<ExploitHolder, Report> {
+    let docker_exp = DockerExploit::from_model(docker.clone(), model.clone()).await?;
+
+    let exploit = match model.exploit_kind.as_str() {
+        "docker" => Exploits::Docker(docker_exp),
+        "docker_pool" => Exploits::DockerPool(docker_exp.spawn_pool().await?),
+        _ => panic!("Unknown exploit kind {}", model.exploit_kind),
+    };
+
+    Ok(ExploitHolder {
+        id: model.id,
+        enabled: model.running,
+        target: match model.attack_target {
+            Some(s) => AttackTarget::Service(s),
+            None => AttackTarget::Ips,
+        },
+        exploit,
+        run_logs: HashMap::new(),
+    })
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Report> {
     color_eyre::install()?;
@@ -348,38 +373,24 @@ async fn main() -> Result<(), Report> {
     args.setup_logging()?;
 
     let mut runner = Runner::new();
+    let docker = Docker::connect_with_local_defaults()?;
 
-    use angrapa::models::ExploitModel;
     let db = &mut db_connect()?;
     info!("Connected to database");
 
     let exps: Vec<ExploitModel> = exploits.load(db)?;
     info!("Found {} existing exploits", exps.len());
-    dbg!(&exps);
-    let docker = bollard::Docker::connect_with_local_defaults()?;
     for model in exps {
-        let docker_exp = DockerExploit::from_model(docker.clone(), model.clone())
-            .await
-            .unwrap();
-
-        let exploit = match model.exploit_kind.as_str() {
-            "docker" => Exploits::Docker(docker_exp),
-            "docker_pool" => Exploits::DockerPool(docker_exp.spawn_pool().await.unwrap()),
-            _ => panic!("Unknown exploit kind {}", model.exploit_kind),
+        let exploit = reconstruct_exploit(&docker, model).await;
+        let exploit = match exploit {
+            Ok(exploit) => exploit,
+            Err(e) => {
+                error!("Error reconstructing exploit: {:?}", e);
+                continue;
+            }
         };
 
-        let exp = ExploitHolder {
-            id: model.id,
-            enabled: model.running,
-            target: match model.attack_target {
-                Some(s) => AttackTarget::Service(s),
-                None => AttackTarget::Ips,
-            },
-            exploit,
-            run_logs: HashMap::new(),
-        };
-
-        runner.register_existing_exp(exp).await;
+        runner.register_existing_exp(exploit).await;
     }
 
     // time until start
