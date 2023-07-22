@@ -288,7 +288,28 @@ impl Server {
             })
             .and_then(|(id, tick, rnr)| Server::log(id, tick, rnr));
 
-        let routes = log.or(log_ticks).or(upload).or(start).or(stop).or(hello);
+        // GET /exploits
+        let rnr = self.runner.clone();
+        let exploits = warp::get()
+            .and(warp::path("exploits"))
+            .map(move || {
+                let rnr = rnr.clone();
+                rnr
+            })
+            .and_then(|rnr: Runner| async move {
+                let lock = rnr.exploits.lock();
+                let ids = lock.keys().cloned().collect::<Vec<_>>();
+                Ok::<_, warp::Rejection>(reply::json(&ids))
+            });
+
+        let routes = log
+            .or(log_ticks)
+            .or(upload)
+            .or(exploits)
+            .or(start)
+            .or(stop)
+            .or(hello);
+
         warp::serve(routes).run(self.host).await;
     }
 }
