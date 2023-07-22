@@ -10,7 +10,7 @@ use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use futures::future::join_all;
 use parking_lot::Mutex;
 use regex::Regex;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 
 mod submitter;
 use submitter::{FlagStatus, Submitters};
