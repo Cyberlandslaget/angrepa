@@ -8,9 +8,12 @@
 
 use regex::Regex;
 use tokio::{select, spawn};
-use tracing::info;
+use tracing::{debug, info};
 
-use crate::{submitter::Submitter, Flag, Manager};
+use super::{
+    submitter::{FlagStatus, Submitter},
+    Flag, Manager,
+};
 
 /// Extracts flags from raw input
 async fn getter(
@@ -20,13 +23,23 @@ async fn getter(
 ) {
     while let Ok(raw) = raw_flag_rx.recv_async().await {
         for flag in flag_regex.captures_iter(&raw) {
-            let flag = flag[0].to_string();
-            info!("Recieved flag {}", flag);
-            let flag = Flag {
-                flag,
-                ..Default::default()
-            };
-            parsed_flag_tx.send_async(flag).await.unwrap();
+            //let flag = flag[0].to_string();
+            //info!("Recieved flag {}", flag);
+
+            //let stamp = Some(chrono::Utc::now().naive_utc());
+
+            //let flag = Flag {
+            //    flag,
+            //    tick: None,
+            //    stamp,
+            //    exploit_id: todo!(),
+            //    target_ip: todo!(),
+            //    flagstore: todo!(),
+            //    sent: todo!(),
+            //    status: todo!(),
+            //};
+
+            //parsed_flag_tx.send_async(flag).await.unwrap();
         }
     }
 }
@@ -39,7 +52,19 @@ async fn submit(
 ) {
     info!("Submitting {:?}", flags);
     let results = submitter.submit(flags).await.unwrap();
+
+    let accepted = results
+        .iter()
+        .filter(|(_, status)| matches!(status, FlagStatus::Accepted));
+
+    info!(
+        "Got {} results, {} accepted.",
+        results.len(),
+        accepted.count()
+    );
+
     for (flag_str, status) in results {
+        debug!("Flag {} is {:?}", flag_str, status);
         manager.update_flag_status(&flag_str, status);
     }
 }
@@ -56,8 +81,6 @@ pub async fn run(
     // spawn the getter
     spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
-    let mut flag_queue = Vec::new();
-
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -67,19 +90,20 @@ pub async fn run(
 
         select!(
             _ = send_signal.tick() => {
-                let to_submit = flag_queue.clone();
-                flag_queue.clear();
+                // extract out flags from the queue, then delete them
+                let mut lock = manager.flag_queue.lock();
+                let to_submit = lock.drain(..).collect::<Vec<_>>();
+                drop(lock);
+
+                // get the raw text
+                let to_submit = to_submit.iter().map(|f| f.flag.clone()).collect::<Vec<_>>();
 
                 spawn(submit(manager, submitter.clone(), to_submit));
             },
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
-                // add to db
-                let new = manager.register_flag(f.clone());
-
-                if new {
-                    flag_queue.push(f.flag);
-                }
+                // add to db and queue
+                 manager.register_flag(f.clone());
             },
         )
     }

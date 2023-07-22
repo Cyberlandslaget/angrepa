@@ -1,13 +1,13 @@
 use bollard::Docker;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use parking_lot::Mutex;
-use reqwest::Url;
+use regex::Regex;
 use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, warn};
 
 use angrapa::schema::exploits::dsl::exploits;
 use angrapa::{
@@ -22,9 +22,10 @@ use exploit::exploit2::{
     Exploit, ExploitInstance, RunLog,
 };
 
-use crate::server::Server;
-
 mod server;
+use server::Server;
+
+use crate::manager::{Flag, Manager};
 
 #[derive(Debug, Clone)]
 pub enum Exploits {
@@ -81,6 +82,7 @@ impl ExploitHolder {
             attack_target,
             docker_image,
             exploit_kind,
+            blacklist: vec![],
         }
     }
 }
@@ -97,10 +99,13 @@ pub enum AttackTarget {
 /// RunLog with metadata
 #[derive(Debug, Clone)]
 pub struct StampedRunLog {
-    pub tick: i64,
-    // the task
-    pub flagstore: Option<String>,
+    // data
     pub log: RunLog,
+    // metadata
+    pub tick: i64,
+    pub flagstore: String,
+    pub target_ip: String,
+    pub exploit_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -130,6 +135,10 @@ impl Runner {
         {
             let mut lock = self.output_queue.lock();
             lock.push(log.clone());
+            info!(
+                "Inserted into output_queue, now has {} elements",
+                lock.len()
+            );
         }
 
         // insert into log database
@@ -142,7 +151,7 @@ impl Runner {
         debug!("inserted run log for tick {} for exploit {}", log.tick, id);
     }
 
-    async fn send_flags(&self, conf: &config::Root) {
+    async fn send_flags(&self, manager: Manager, regex: &Regex) {
         let output = {
             let mut lock = self.output_queue.lock();
             lock.drain(..).collect::<Vec<_>>()
@@ -152,35 +161,36 @@ impl Runner {
             return;
         }
 
-        // yank this from the *manager* config
-        let base = format!("http://{host}/submit", host = conf.manager.http_listener);
-        info!("Sending {} flags to {}", output.len(), base);
+        for StampedRunLog {
+            tick,
+            flagstore,
+            log,
+            target_ip,
+            exploit_id,
+        } in output
+        {
+            for flag in regex.captures_iter(&log.output) {
+                let flag = flag[0].to_string();
 
-        let client = reqwest::Client::new();
+                let tick = Some(tick as i32);
+                let stamp = Some(chrono::Utc::now().naive_utc());
+                let flagstore = Some(flagstore.clone());
+                let target_ip = Some(target_ip.clone());
+                let exploit_id = Some(exploit_id.clone());
 
-        for stamped in output {
-            let client = client.clone();
+                debug!("Runner is registering flag directly on manager: {}", flag);
 
-            let mut params = vec![("tick", stamped.tick.to_string())];
-            if let Some(flagstore) = stamped.flagstore {
-                params.push(("flagstore", flagstore));
+                manager.register_flag(Flag {
+                    flag,
+                    tick,
+                    stamp,
+                    exploit_id,
+                    target_ip,
+                    flagstore,
+                    sent: false,
+                    status: None,
+                });
             }
-
-            let url = Url::parse_with_params(&base, params).unwrap();
-
-            spawn(async move {
-                debug!("sending to {}", url);
-                let response = client.post(url).body(stamped.log.output).send().await;
-                match &response {
-                    Err(e) => warn!("error sending flag: {:?}", e),
-                    Ok(r) => {
-                        if !r.status().is_success() {
-                            warn!("error sending flag: {:?}", r);
-                        }
-                    }
-                }
-                trace!("got response: {:?}", response);
-            });
         }
     }
 
@@ -212,58 +222,104 @@ impl Runner {
         info!("Registered exploit {}", exp.id);
     }
 
-    async fn tick(&self, conf: &Common) {
+    async fn tick(&self, manager: Manager, conf: &Common) {
         let date = chrono::Utc::now();
         let current_tick = conf.current_tick(date);
 
         let rnr = self.clone();
-        let lock = self.exploits.lock();
+        let exploit_list = self.exploits.lock().clone();
 
         info!(
             "tick {}. exploits: {}, enabled: {}, disabled: {}",
             current_tick,
-            lock.len(),
-            lock.iter().filter(|(_, v)| v.enabled).count(),
-            lock.iter().filter(|(_, v)| !v.enabled).count(),
+            exploit_list.len(),
+            exploit_list.iter().filter(|(_, v)| v.enabled).count(),
+            exploit_list.iter().filter(|(_, v)| !v.enabled).count(),
         );
 
-        for (_id, holder) in lock
-            .iter()
+        for (_id, holder) in exploit_list
+            .into_iter()
             // only enabled exploits
             .filter(|(_, v)| v.enabled)
         {
-            let rnr = rnr.clone();
-            let holder = holder.clone();
-            tokio::spawn(async move {
-                let before = tokio::time::Instant::now();
-                let log = match holder.exploit {
-                    Exploits::DockerPool(pool) => {
-                        let inst = pool
-                            .start("1.2.3.4".to_string(), "fakeid".to_string())
-                            .await
-                            .unwrap();
-                        inst.wait_for_exit().await.unwrap()
-                    }
-                    Exploits::Docker(single) => {
-                        let inst = single
-                            .start("1.2.3.4".to_string(), "fakeid".to_string())
-                            .await
-                            .unwrap();
-                        inst.wait_for_exit().await.unwrap()
-                    }
-                };
+            info!("Attacking target '{:?}'", holder.target);
+            let flagstore = match &holder.target {
+                AttackTarget::Service(s) => s,
+                AttackTarget::Ips => "", // this service shouldnt exist
+            }
+            .to_owned();
 
-                // append log
-                let log = StampedRunLog {
-                    tick: current_tick,
-                    flagstore: None,
-                    log: log,
-                };
-                rnr.log_run(&holder.id, log.clone()).await;
+            let targets = manager.get_service_targets(&flagstore);
 
-                let elapsed = before.elapsed();
-                info!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
-            });
+            // find all IPs and if possible flagstores to attack
+            let mut going_to_exploit = Vec::new();
+
+            if let Some(targets) = targets {
+                // the service was found and we got all the targets
+                for (host, ticks) in targets.0.iter() {
+                    // get the latest tick
+                    let (_tick_value, flag_id) = match ticks.get_latest() {
+                        Some((tick_value, flag_id)) => (tick_value, flag_id),
+                        None => {
+                            warn!("No tick found for host {}", host);
+                            continue;
+                        }
+                    };
+
+                    // dump as string
+                    let flag_id = flag_id.to_string();
+
+                    // add this host and the flag_id to the list of targets that will be attacked
+                    going_to_exploit.push((host.to_owned(), flag_id));
+                }
+            } else {
+                // service not known
+                // instead, run against all ips, without any flagids
+
+                let ips = manager.all_ips();
+                for ip in ips {
+                    going_to_exploit.push((ip, "".to_string()));
+                }
+            }
+
+            for (target_host, target_flagid) in going_to_exploit {
+                let rnr = rnr.clone();
+                let holder = holder.clone();
+                let flagstore = flagstore.clone();
+
+                tokio::spawn(async move {
+                    let before = tokio::time::Instant::now();
+                    let log = match holder.exploit {
+                        Exploits::DockerPool(pool) => {
+                            let inst = pool
+                                .start(target_host.to_string(), target_flagid.to_string())
+                                .await
+                                .unwrap();
+                            inst.wait_for_exit().await.unwrap()
+                        }
+                        Exploits::Docker(single) => {
+                            let inst = single
+                                .start(target_host.to_string(), target_flagid.to_string())
+                                .await
+                                .unwrap();
+                            inst.wait_for_exit().await.unwrap()
+                        }
+                    };
+
+                    // append log
+                    let log = StampedRunLog {
+                        tick: current_tick,
+                        flagstore: flagstore.to_owned(),
+                        log: log,
+                        target_ip: target_host,
+                        exploit_id: holder.id.clone(),
+                    };
+                    rnr.log_run(&holder.id, log.clone()).await;
+
+                    let elapsed = before.elapsed();
+                    //debug!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
+                });
+            }
         }
     }
 
@@ -320,7 +376,7 @@ impl Runner {
         Ok(())
     }
 
-    async fn run(self, conf: &config::Root) {
+    async fn run(self, manager: Manager, conf: &config::Root) {
         let mut tick_interval = conf
             .common
             // make sure the tick has started
@@ -328,13 +384,28 @@ impl Runner {
             .await
             .unwrap();
 
+        let flag_regex = Regex::new(&conf.common.format).unwrap();
+
         let mut flag_interval = interval(tokio::time::Duration::from_secs(1));
 
         loop {
+            let manager = manager.clone();
+            let r = self.clone();
             select! {
-                _ = tick_interval.tick() => self.tick(&conf.common).await,
-                // on another thread
-                _ = flag_interval.tick() => self.send_flags(conf).await,
+                _ = tick_interval.tick() => {
+                    let manager = manager.clone();
+                    let common = conf.common.clone();
+                    spawn(async move {
+                        r.tick(manager, &common).await
+                    });
+                },
+                _ = flag_interval.tick() => {
+                    let manager = manager.clone();
+                    let flag_regex = flag_regex.clone();
+                    spawn(async move {
+                        r.send_flags(manager, &flag_regex).await
+                    });
+                },
             }
         }
     }
@@ -364,19 +435,13 @@ async fn reconstruct_exploit(
     })
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Report> {
-    color_eyre::install()?;
-
-    // get config
-    let args = argh::from_env::<angrapa::config::Args>();
-    let config = args.get_config()?;
+pub async fn main(
+    config: config::Root,
+    manager: Manager,
+    mut runner: Runner,
+) -> Result<(), Report> {
     let common = &config.common;
 
-    // setup logging
-    args.setup_logging()?;
-
-    let mut runner = Runner::new();
     let docker = Docker::connect_with_local_defaults()?;
 
     let db = &mut db_connect()?;
@@ -409,7 +474,7 @@ async fn main() -> Result<(), Report> {
     let server = Server::new(host, runner.clone());
     let server_handle = spawn(async move { server.run().await });
 
-    let runner_handle = spawn(async move { runner.run(&config).await });
+    let runner_handle = spawn(async move { runner.run(manager, &config).await });
 
     join_all(vec![runner_handle, server_handle]).await;
 

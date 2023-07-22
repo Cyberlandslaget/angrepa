@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use angrapa::config;
 use angrapa::schema::flags::dsl::flags;
 use angrapa::{db_connect, models::FlagModel};
 use color_eyre::Report;
@@ -9,13 +10,17 @@ use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use futures::future::join_all;
 use parking_lot::Mutex;
 use regex::Regex;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 
 mod submitter;
 use submitter::{FlagStatus, Submitters};
 
 mod listener;
 use listener::{Tcp, Web};
+
+use crate::runner::Runner;
+
+use self::fetcher::{Service, Ticks};
 
 mod handler;
 
@@ -101,6 +106,14 @@ impl Flag {
 #[derive(Clone, Debug)]
 pub struct Manager {
     flags: Arc<Mutex<HashMap<String, Flag>>>,
+    /// raw ips
+    ips: Arc<Mutex<Vec<String>>>,
+    /// raw services
+    services: Arc<Mutex<HashMap<String, Service>>>,
+    /// last updated
+    services_ips_last_tick: Arc<Mutex<Option<i32>>>,
+
+    flag_queue: Arc<Mutex<Vec<Flag>>>,
 }
 
 impl Manager {
@@ -119,7 +132,15 @@ impl Manager {
 
         Ok(Self {
             flags: Arc::new(Mutex::new(flag_map)),
+            ips: Arc::new(Mutex::new(Vec::new())),
+            services: Arc::new(Mutex::new(HashMap::new())),
+            services_ips_last_tick: Arc::new(Mutex::new(None)),
+            flag_queue: Arc::new(Mutex::new(Vec::new())),
         })
+    }
+
+    pub fn all_ips(&self) -> Vec<String> {
+        self.ips.lock().clone()
     }
 
     /// Register a new flag, will discard duplicated flag. Returns true if flag was new
@@ -127,7 +148,7 @@ impl Manager {
         let mut lock = self.flags.lock();
 
         if lock.contains_key(&flag.flag) {
-            info!("Flag {} already registered", flag.flag);
+            trace!("Flag {} already registered", flag.flag);
             return false;
         }
 
@@ -135,13 +156,19 @@ impl Manager {
         lock.insert(flag.flag.clone(), flag.clone());
         drop(lock);
 
+        // insert into queue
+        let mut lock = self.flag_queue.lock();
+        lock.push(flag.clone());
+        drop(lock);
+
         // insert into db (should rly be done first but im lazy)
         let db = &mut db_connect().unwrap();
-        let _f: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
+        let res = diesel::insert_into(angrapa::schema::flags::table)
             .values(&flag.to_model())
-            .get_result(db)
-            .unwrap();
-        debug!("Inserted flag {:?} into db", _f);
+            .get_result::<FlagModel>(db);
+        let res = res.unwrap();
+
+        debug!("Inserted flag {:?} into db", res);
 
         true
     }
@@ -174,25 +201,42 @@ impl Manager {
             .get_result(db)
             .unwrap();
     }
+
+    /// Update ips and services
+    pub fn update_ips_services(
+        &self,
+        tick: i32,
+        ips: Vec<String>,
+        services: HashMap<String, Service>,
+    ) {
+        let mut lock = self.ips.lock();
+        *lock = ips;
+        drop(lock);
+
+        let mut lock = self.services.lock();
+        *lock = services;
+        drop(lock);
+
+        let mut lock = self.services_ips_last_tick.lock();
+        *lock = Some(tick);
+        drop(lock);
+    }
+
+    /// Gets the ticks for this target, if it exists
+    pub fn get_service_targets(&self, service_str: &str) -> Option<Service> {
+        let service = {
+            let lock = self.services.lock();
+            lock.get(service_str).cloned()
+        };
+
+        Some(service?)
+    }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Report> {
-    color_eyre::install()?;
-
-    // get config
-    let args = argh::from_env::<angrapa::config::Args>();
-    let config = args.get_config()?;
-
-    // setup logging
-    args.setup_logging()?;
-
+pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Result<(), Report> {
     let flag_regex = Regex::new(&config.common.format)?;
 
     info!("manager started");
-
-    // check flags in db
-    let manager = Manager::from_db()?;
 
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
@@ -229,6 +273,7 @@ async fn main() -> Result<(), Report> {
     };
 
     // run submitter on another thread
+    let manager2 = manager.clone();
     let handler_handle = tokio::spawn(async move {
         info!("handler starting");
 
@@ -247,8 +292,12 @@ async fn main() -> Result<(), Report> {
         info!("fetcher starting");
 
         match fetch {
-            fetcher::Fetchers::Enowars(fetcher) => fetcher::run(fetcher, &config.common).await,
-            fetcher::Fetchers::Dummy(fetcher) => fetcher::run(fetcher, &config.common).await,
+            fetcher::Fetchers::Enowars(fetcher) => {
+                fetcher::run(fetcher, manager2, &config.common).await
+            }
+            fetcher::Fetchers::Dummy(fetcher) => {
+                fetcher::run(fetcher, manager2, &config.common).await
+            }
         };
     });
 

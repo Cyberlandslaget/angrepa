@@ -5,6 +5,7 @@ diesel::table! {
         id -> Text,
         running -> Bool,
         attack_target -> Nullable<Text>,
+        blacklist -> Array<Nullable<Text>>,
         docker_image -> Text,
         exploit_kind -> Text,
     }

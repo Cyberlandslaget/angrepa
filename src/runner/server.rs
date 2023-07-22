@@ -4,7 +4,7 @@ use std::{collections::HashMap, net::SocketAddr};
 use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
 
-use crate::{AttackTarget, DockerInstance, ExploitHolder, Exploits, Runner};
+use super::{AttackTarget, DockerInstance, ExploitHolder, Exploits, Runner};
 
 /// - Accepts new exploits over HTTP.
 /// - Returns stats for exploits
@@ -49,6 +49,39 @@ impl Server {
 
         debug!("got tar of length {}", tar.len());
 
+        let json_config = if let Some(json_config) = fields.get("config") {
+            json_config
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing config" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        #[derive(serde::Deserialize)]
+        struct JsonConfig {
+            service: String,
+            blacklist: Vec<String>,
+        }
+
+        println!("{}", String::from_utf8_lossy(json_config));
+
+        let json_config = match serde_json::from_slice::<JsonConfig>(json_config) {
+            Ok(json_config) => json_config,
+            Err(_e) => {
+                info!("failed to parse json config {:?}", _e);
+                return Ok(reply::with_status(
+                    reply::json(&json!({ "error": format!("{:?}", _e) })),
+                    warp::http::StatusCode::BAD_REQUEST,
+                ));
+            }
+        };
+
+        let JsonConfig { service, blacklist } = json_config;
+
+        let target = AttackTarget::Service(service);
+        info!("Setting target to {:?}", target);
+
         // spawn a task to build the exploit
         let docker = DockerInstance::new().unwrap();
         let exploit = docker.new_exploit(tar).await;
@@ -70,8 +103,7 @@ impl Server {
         let exp = ExploitHolder {
             id: id.clone(),
             enabled: false,
-            // TODO, actually select target
-            target: AttackTarget::Ips,
+            target,
             exploit: Exploits::DockerPool(pool),
             run_logs: HashMap::new(),
         };
@@ -302,13 +334,17 @@ impl Server {
                 Ok::<_, warp::Rejection>(reply::json(&ids))
             });
 
+        let cors = warp::cors()
+            .allow_any_origin()
+            .allow_methods(vec!["GET", "POST"]);
+
         let routes = log
             .or(log_ticks)
             .or(upload)
             .or(exploits)
             .or(start)
             .or(stop)
-            .or(hello);
+            .or(hello.with(cors));
 
         warp::serve(routes).run(self.host).await;
     }
