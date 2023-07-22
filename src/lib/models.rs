@@ -53,3 +53,14 @@ pub struct FlagModel {
     pub execution_id: i32,
     pub exploit_id: i32,
 }
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = super::schema::flag)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct FlagInserter {
+    pub text: String,
+    pub status: String,
+    pub timestamp: chrono::NaiveDateTime,
+    pub execution_id: i32,
+    pub exploit_id: i32,
+}

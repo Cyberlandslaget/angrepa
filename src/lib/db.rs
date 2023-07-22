@@ -1,7 +1,7 @@
 use color_eyre::Report;
 use diesel::{PgConnection, RunQueryDsl};
 
-use crate::models::{ExecutionInserter, ExploitInserter, ExploitModel};
+use crate::models::{ExecutionInserter, ExploitInserter, ExploitModel, FlagInserter};
 
 pub struct Db {
     conn: PgConnection,
@@ -43,6 +43,18 @@ impl Db {
 
         diesel::insert_into(execution)
             .values(exec)
+            .execute(&mut self.conn)?;
+
+        Ok(())
+    }
+
+    // flag
+
+    pub fn add_flag(&mut self, fl: &FlagInserter) -> Result<(), Report> {
+        use crate::schema::flag::dsl::*;
+
+        diesel::insert_into(flag)
+            .values(fl)
             .execute(&mut self.conn)?;
 
         Ok(())
