@@ -97,9 +97,20 @@ mod tests {
             warp::serve(endpoint).run(([127, 0, 0, 1], 9999)).await
         });
 
-        let fetcher = EnowarsFetcher::new("http://localhost:9999/endpoint".to_string());
+        let fetcher =
+            EnowarsFetcher::new("http://localhost:9999/endpoint".to_string(), "".to_string());
 
         let services = fetcher.services().await.unwrap();
+
+        dbg!(&services);
+
+        for (service, service_info) in services.iter() {
+            for (ip, ticks) in service_info.0.iter() {
+                for (tick, flagids) in ticks.0.iter() {
+                    println!("{} {} {} {}", service, ip, tick, flagids);
+                }
+            }
+        }
 
         // make sure we got the same content as directly deserializing locally
         assert_eq!(

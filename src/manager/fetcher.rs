@@ -20,7 +20,10 @@ pub enum Fetchers {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Service(pub HashMap<String, serde_json::Value>);
+pub struct Service(pub HashMap<String, Ticks>);
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct Ticks(pub HashMap<String, serde_json::Value>);
 
 /// Implements fetching flagids and hosts
 #[async_trait]
