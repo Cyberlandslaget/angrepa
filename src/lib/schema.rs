@@ -25,6 +25,7 @@ diesel::table! {
         id -> Int4,
         text -> Text,
         status -> Text,
+        submitted -> Bool,
         timestamp -> Timestamp,
         execution_id -> Int4,
         exploit_id -> Int4,
@@ -35,4 +36,8 @@ diesel::joinable!(execution -> exploit (exploit_id));
 diesel::joinable!(flag -> execution (execution_id));
 diesel::joinable!(flag -> exploit (exploit_id));
 
-diesel::allow_tables_to_appear_in_same_query!(execution, exploit, flag,);
+diesel::allow_tables_to_appear_in_same_query!(
+    execution,
+    exploit,
+    flag,
+);

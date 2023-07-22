@@ -49,6 +49,7 @@ pub struct FlagModel {
     pub id: i32,
     pub text: String,
     pub status: String,
+    pub submitted: bool,
     pub timestamp: chrono::NaiveDateTime,
     pub execution_id: i32,
     pub exploit_id: i32,
@@ -60,6 +61,7 @@ pub struct FlagModel {
 pub struct FlagInserter {
     pub text: String,
     pub status: String,
+    pub submitted: bool,
     pub timestamp: chrono::NaiveDateTime,
     pub execution_id: i32,
     pub exploit_id: i32,
