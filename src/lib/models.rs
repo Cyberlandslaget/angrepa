@@ -7,6 +7,7 @@ pub struct ExploitModel {
     pub id: String,
     pub running: bool,
     pub attack_target: Option<String>,
+    pub blacklist: Vec<Option<String>>,
     pub docker_image: String,
     pub exploit_kind: String,
 }

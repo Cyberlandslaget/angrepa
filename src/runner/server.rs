@@ -49,6 +49,35 @@ impl Server {
 
         debug!("got tar of length {}", tar.len());
 
+        let json_config = if let Some(json_config) = fields.get("config") {
+            json_config
+        } else {
+            return Ok(reply::with_status(
+                reply::json(&json!({ "error": "missing config" })),
+                warp::http::StatusCode::BAD_REQUEST,
+            ));
+        };
+
+        #[derive(serde::Deserialize)]
+        struct JsonConfig {
+            service: String,
+            blacklist: Vec<String>,
+        }
+
+        let json_config = match serde_json::from_slice::<JsonConfig>(json_config) {
+            Ok(json_config) => json_config,
+            Err(_e) => {
+                return Ok(reply::with_status(
+                    reply::json(&json!({ "error": format!("{:?}", _e) })),
+                    warp::http::StatusCode::BAD_REQUEST,
+                ));
+            }
+        };
+
+        let JsonConfig { service, blacklist } = json_config;
+
+        let target = AttackTarget::Service(service);
+
         // spawn a task to build the exploit
         let docker = DockerInstance::new().unwrap();
         let exploit = docker.new_exploit(tar).await;
@@ -71,7 +100,7 @@ impl Server {
             id: id.clone(),
             enabled: false,
             // TODO, actually select target
-            target: AttackTarget::Ips,
+            target,
             exploit: Exploits::DockerPool(pool),
             run_logs: HashMap::new(),
         };

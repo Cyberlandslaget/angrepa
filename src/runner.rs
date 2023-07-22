@@ -82,6 +82,7 @@ impl ExploitHolder {
             attack_target,
             docker_image,
             exploit_kind,
+            blacklist: vec![],
         }
     }
 }
