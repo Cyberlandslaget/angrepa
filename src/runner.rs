@@ -157,8 +157,6 @@ impl Runner {
             lock.drain(..).collect::<Vec<_>>()
         };
 
-        info!("OUTPUT queue has {} elements", output.len());
-
         if output.is_empty() {
             return;
         }
@@ -171,10 +169,7 @@ impl Runner {
             exploit_id,
         } in output
         {
-            info!("RUNNER IS FINDING FLAGS");
             for flag in regex.captures_iter(&log.output) {
-                info!("GREPPED ONE FLAG");
-
                 let flag = flag[0].to_string();
 
                 let tick = Some(tick as i32);
