@@ -234,6 +234,7 @@ impl Runner {
             // only enabled exploits
             .filter(|(_, v)| v.enabled)
         {
+            info!("Attacking target '{:?}'", holder.target);
             let target_str = match &holder.target {
                 AttackTarget::Service(s) => s,
                 AttackTarget::Ips => "", // this service shouldnt exist

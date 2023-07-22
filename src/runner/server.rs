@@ -64,9 +64,12 @@ impl Server {
             blacklist: Vec<String>,
         }
 
+        println!("{}", String::from_utf8_lossy(json_config));
+
         let json_config = match serde_json::from_slice::<JsonConfig>(json_config) {
             Ok(json_config) => json_config,
             Err(_e) => {
+                info!("failed to parse json config {:?}", _e);
                 return Ok(reply::with_status(
                     reply::json(&json!({ "error": format!("{:?}", _e) })),
                     warp::http::StatusCode::BAD_REQUEST,
@@ -77,6 +80,7 @@ impl Server {
         let JsonConfig { service, blacklist } = json_config;
 
         let target = AttackTarget::Service(service);
+        info!("Setting target to {:?}", target);
 
         // spawn a task to build the exploit
         let docker = DockerInstance::new().unwrap();
@@ -99,7 +103,6 @@ impl Server {
         let exp = ExploitHolder {
             id: id.clone(),
             enabled: false,
-            // TODO, actually select target
             target,
             exploit: Exploits::DockerPool(pool),
             run_logs: HashMap::new(),
