@@ -178,7 +178,7 @@ impl Runner {
                 let target_ip = Some(target_ip.clone());
                 let exploit_id = Some(exploit_id.clone());
 
-                info!("Runner is registering flag directly on manager: {}", flag);
+                debug!("Runner is registering flag directly on manager: {}", flag);
 
                 manager.register_flag(Flag {
                     flag,
@@ -288,7 +288,7 @@ impl Runner {
                     rnr.log_run(&holder.id, log.clone()).await;
 
                     let elapsed = before.elapsed();
-                    info!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
+                    debug!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
                 });
             }
         }
