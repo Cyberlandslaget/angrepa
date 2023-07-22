@@ -23,13 +23,23 @@ async fn getter(
 ) {
     while let Ok(raw) = raw_flag_rx.recv_async().await {
         for flag in flag_regex.captures_iter(&raw) {
-            let flag = flag[0].to_string();
-            info!("Recieved flag {}", flag);
-            let flag = Flag {
-                flag,
-                ..Default::default()
-            };
-            parsed_flag_tx.send_async(flag).await.unwrap();
+            //let flag = flag[0].to_string();
+            //info!("Recieved flag {}", flag);
+
+            //let stamp = Some(chrono::Utc::now().naive_utc());
+
+            //let flag = Flag {
+            //    flag,
+            //    tick: None,
+            //    stamp,
+            //    exploit_id: todo!(),
+            //    target_ip: todo!(),
+            //    flagstore: todo!(),
+            //    sent: todo!(),
+            //    status: todo!(),
+            //};
+
+            //parsed_flag_tx.send_async(flag).await.unwrap();
         }
     }
 }

@@ -1,6 +1,7 @@
 use bollard::Docker;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use parking_lot::Mutex;
+use regex::Regex;
 use reqwest::Url;
 use std::{collections::HashMap, sync::Arc};
 
@@ -25,7 +26,7 @@ use exploit::exploit2::{
 mod server;
 use server::Server;
 
-use crate::manager::Manager;
+use crate::manager::{Flag, Manager};
 
 #[derive(Debug, Clone)]
 pub enum Exploits {
@@ -99,10 +100,13 @@ pub enum AttackTarget {
 /// RunLog with metadata
 #[derive(Debug, Clone)]
 pub struct StampedRunLog {
-    pub tick: i64,
-    // the task
-    pub flagstore: Option<String>,
+    // data
     pub log: RunLog,
+    // metadata
+    pub tick: i64,
+    pub flagstore: String,
+    pub target_ip: String,
+    pub exploit_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -144,7 +148,7 @@ impl Runner {
         debug!("inserted run log for tick {} for exploit {}", log.tick, id);
     }
 
-    async fn send_flags(&self, conf: &config::Root) {
+    async fn send_flags(&self, manager: Manager, regex: &Regex) {
         let output = {
             let mut lock = self.output_queue.lock();
             lock.drain(..).collect::<Vec<_>>()
@@ -154,35 +158,38 @@ impl Runner {
             return;
         }
 
-        // yank this from the *manager* config
-        let base = format!("http://{host}/submit", host = conf.manager.http_listener);
-        info!("Sending {} flags to {}", output.len(), base);
+        for StampedRunLog {
+            tick,
+            flagstore,
+            log,
+            target_ip,
+            exploit_id,
+        } in output
+        {
+            // find flags
 
-        let client = reqwest::Client::new();
+            for flag in regex.captures_iter(&log.output) {
+                let flag = flag[0].to_string();
 
-        for stamped in output {
-            let client = client.clone();
+                let tick = Some(tick as i32);
+                let stamp = Some(chrono::Utc::now().naive_utc());
+                let flagstore = Some(flagstore.clone());
+                let target_ip = Some(target_ip.clone());
+                let exploit_id = Some(exploit_id.clone());
 
-            let mut params = vec![("tick", stamped.tick.to_string())];
-            if let Some(flagstore) = stamped.flagstore {
-                params.push(("flagstore", flagstore));
+                info!("Runner is registering flag directly on manager: {}", flag);
+
+                manager.register_flag(Flag {
+                    flag,
+                    tick,
+                    stamp,
+                    exploit_id,
+                    target_ip,
+                    flagstore,
+                    sent: false,
+                    status: None,
+                });
             }
-
-            let url = Url::parse_with_params(&base, params).unwrap();
-
-            spawn(async move {
-                debug!("sending to {}", url);
-                let response = client.post(url).body(stamped.log.output).send().await;
-                match &response {
-                    Err(e) => warn!("error sending flag: {:?}", e),
-                    Ok(r) => {
-                        if !r.status().is_success() {
-                            warn!("error sending flag: {:?}", r);
-                        }
-                    }
-                }
-                trace!("got response: {:?}", response);
-            });
         }
     }
 
@@ -235,13 +242,11 @@ impl Runner {
             .filter(|(_, v)| v.enabled)
         {
             info!("Attacking target '{:?}'", holder.target);
-            let target_str = match &holder.target {
+            let flagstore = match &holder.target {
                 AttackTarget::Service(s) => s,
                 AttackTarget::Ips => "", // this service shouldnt exist
             };
-            let targets = manager.get_service_target(&target_str);
-
-            //let targets = [("1.2.3.4", "fakeid")];
+            let targets = manager.get_service_target(&flagstore);
 
             for (target_host, target_flagid) in targets {
                 let rnr = rnr.clone();
@@ -249,6 +254,8 @@ impl Runner {
 
                 // empty string if no flagid
                 let target_flagid = target_flagid.unwrap_or_default();
+
+                let flagstore = flagstore.to_owned();
 
                 tokio::spawn(async move {
                     let before = tokio::time::Instant::now();
@@ -272,8 +279,10 @@ impl Runner {
                     // append log
                     let log = StampedRunLog {
                         tick: current_tick,
-                        flagstore: None,
+                        flagstore,
                         log: log,
+                        target_ip: target_host,
+                        exploit_id: holder.id.clone(),
                     };
                     rnr.log_run(&holder.id, log.clone()).await;
 
@@ -345,6 +354,8 @@ impl Runner {
             .await
             .unwrap();
 
+        let flag_regex = Regex::new(&conf.common.format).unwrap();
+
         let mut flag_interval = interval(tokio::time::Duration::from_secs(1));
 
         loop {
@@ -352,7 +363,7 @@ impl Runner {
             select! {
                 _ = tick_interval.tick() => self.tick(manager, &conf.common).await,
                 // on another thread
-                _ = flag_interval.tick() => self.send_flags(conf).await,
+                _ = flag_interval.tick() => self.send_flags(manager, &flag_regex).await,
             }
         }
     }
