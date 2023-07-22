@@ -34,6 +34,7 @@ impl EnowarsFetcher {
 #[async_trait]
 impl Fetcher for EnowarsFetcher {
     async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
+        // TODO handle failures more gracefully (retry?)
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
         Ok(resp.services)
