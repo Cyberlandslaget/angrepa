@@ -144,7 +144,7 @@ impl Manager {
         let mut lock = self.flags.lock();
 
         if lock.contains_key(&flag.flag) {
-            info!("Flag {} already registered", flag.flag);
+            trace!("Flag {} already registered", flag.flag);
             return false;
         }
 
