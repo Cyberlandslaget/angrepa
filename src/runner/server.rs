@@ -302,17 +302,18 @@ impl Server {
                 Ok::<_, warp::Rejection>(reply::json(&ids))
             });
 
+        let cors = warp::cors()
+            .allow_any_origin()
+            .allow_methods(vec!["GET", "POST"]);
+
         let routes = log
             .or(log_ticks)
             .or(upload)
             .or(exploits)
             .or(start)
             .or(stop)
-            .or(hello);
+            .or(hello.with(cors));
 
-        // disable cors
-        let cors = warp::cors().allow_any_origin();
-
-        warp::serve(routes.with(cors)).run(self.host).await;
+        warp::serve(routes).run(self.host).await;
     }
 }
