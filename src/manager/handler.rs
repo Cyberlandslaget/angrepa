@@ -81,8 +81,6 @@ pub async fn run(
     // spawn the getter
     spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
 
-    let mut flag_queue = Vec::new();
-
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -92,19 +90,20 @@ pub async fn run(
 
         select!(
             _ = send_signal.tick() => {
-                let to_submit = flag_queue.clone();
-                flag_queue.clear();
+                // extract out flags from the queue, then delete them
+                let mut lock = manager.flag_queue.lock();
+                let to_submit = lock.drain(..).collect::<Vec<_>>();
+                drop(lock);
+
+                // get the raw text
+                let to_submit = to_submit.iter().map(|f| f.flag.clone()).collect::<Vec<_>>();
 
                 spawn(submit(manager, submitter.clone(), to_submit));
             },
             f = parsed_rx.recv_async() => {
                 let f = f.unwrap();
-                // add to db
-                let new = manager.register_flag(f.clone());
-
-                if new {
-                    flag_queue.push(f.flag);
-                }
+                // add to db and queue
+                 manager.register_flag(f.clone());
             },
         )
     }

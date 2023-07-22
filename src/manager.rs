@@ -112,6 +112,8 @@ pub struct Manager {
     services: Arc<Mutex<HashMap<String, Service>>>,
     /// last updated
     services_ips_last_tick: Arc<Mutex<Option<i32>>>,
+
+    flag_queue: Arc<Mutex<Vec<Flag>>>,
 }
 
 impl Manager {
@@ -133,6 +135,7 @@ impl Manager {
             ips: Arc::new(Mutex::new(Vec::new())),
             services: Arc::new(Mutex::new(HashMap::new())),
             services_ips_last_tick: Arc::new(Mutex::new(None)),
+            flag_queue: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -140,22 +143,28 @@ impl Manager {
     pub fn register_flag(&self, flag: Flag) -> bool {
         let mut lock = self.flags.lock();
 
-        //if lock.contains_key(&flag.flag) {
-        //    info!("Flag {} already registered", flag.flag);
-        //    return false;
-        //}
+        if lock.contains_key(&flag.flag) {
+            info!("Flag {} already registered", flag.flag);
+            return false;
+        }
 
         // insert locally
         lock.insert(flag.flag.clone(), flag.clone());
         drop(lock);
 
+        // insert into queue
+        let mut lock = self.flag_queue.lock();
+        lock.push(flag.clone());
+        drop(lock);
+
         // insert into db (should rly be done first but im lazy)
         let db = &mut db_connect().unwrap();
-        let _f: FlagModel = diesel::insert_into(angrapa::schema::flags::table)
+        let res = diesel::insert_into(angrapa::schema::flags::table)
             .values(&flag.to_model())
-            .get_result(db)
-            .unwrap();
-        debug!("Inserted flag {:?} into db", _f);
+            .get_result::<FlagModel>(db);
+        let res = res.unwrap();
+
+        debug!("Inserted flag {:?} into db", res);
 
         true
     }
