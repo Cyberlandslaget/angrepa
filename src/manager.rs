@@ -20,7 +20,7 @@ use listener::{Tcp, Web};
 
 use crate::runner::Runner;
 
-use self::fetcher::Service;
+use self::fetcher::{Service, Ticks};
 
 mod handler;
 
@@ -139,6 +139,10 @@ impl Manager {
         })
     }
 
+    pub fn all_ips(&self) -> Vec<String> {
+        self.ips.lock().clone()
+    }
+
     /// Register a new flag, will discard duplicated flag. Returns true if flag was new
     pub fn register_flag(&self, flag: Flag) -> bool {
         let mut lock = self.flags.lock();
@@ -218,40 +222,14 @@ impl Manager {
         drop(lock);
     }
 
-    /// Get ips and maybe flagids
-    /// If no data yet, empty vec
-    pub fn get_service_target(&self, service_str: &str) -> Vec<(String, Option<String>)> {
-        let lock = self.services.lock();
-        let service = lock.get(service_str);
+    /// Gets the ticks for this target, if it exists
+    pub fn get_service_targets(&self, service_str: &str) -> Option<Service> {
+        let service = {
+            let lock = self.services.lock();
+            lock.get(service_str).cloned()
+        };
 
-        if let Some(service) = service {
-            // this service exists
-
-            let mut out = Vec::new();
-            for (ip, flagid) in service.0.iter() {
-                // from json::Value to String
-                let flagid = serde_json::to_string(flagid).unwrap();
-
-                out.push((ip.clone(), Some(flagid)));
-            }
-
-            debug!(
-                "Service '{}' found, returning {} targets",
-                service_str,
-                out.len()
-            );
-            return out;
-        }
-        drop(lock);
-
-        // cant find service, just return ips
-        let ips = self.ips.lock().clone();
-        debug!(
-            "Service '{}' NOT found, returning {} ips",
-            service_str,
-            ips.len()
-        );
-        ips.into_iter().map(|ip| (ip, None)).collect()
+        Some(service?)
     }
 }
 

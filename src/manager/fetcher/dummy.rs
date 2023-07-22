@@ -24,12 +24,11 @@ impl Fetcher for DummyFetcher {
             )
         };
 
-        let test_tick = {
-            json! { ["user49", "user20"] }
-        };
+        let test_tick = json! {["user49", "user20"]};
 
         let mut ticks = HashMap::new();
-        ticks.insert("testservice".to_string(), test_tick);
+        ticks.insert(5, test_tick);
+
         let ticks = Ticks(ticks);
 
         let test_service = [(random_ip(), ticks)]

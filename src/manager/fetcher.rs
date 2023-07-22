@@ -22,8 +22,22 @@ pub enum Fetchers {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Service(pub HashMap<String, Ticks>);
 
+impl Service {
+    pub fn get_ticks_from_host(&self, host: &str) -> Option<&Ticks> {
+        self.0.get(host)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Ticks(pub HashMap<String, serde_json::Value>);
+pub struct Ticks(pub HashMap<i32, serde_json::Value>);
+
+impl Ticks {
+    /// Gets the highest tick
+    pub fn get_latest(&self) -> Option<(i32, &serde_json::Value)> {
+        // gets the value of the highest key
+        self.0.iter().max_by_key(|(k, _)| **k).map(|(k, v)| (*k, v))
+    }
+}
 
 /// Implements fetching flagids and hosts
 #[async_trait]

@@ -227,18 +227,18 @@ impl Runner {
         let current_tick = conf.current_tick(date);
 
         let rnr = self.clone();
-        let lock = self.exploits.lock();
+        let exploit_list = self.exploits.lock().clone();
 
         info!(
             "tick {}. exploits: {}, enabled: {}, disabled: {}",
             current_tick,
-            lock.len(),
-            lock.iter().filter(|(_, v)| v.enabled).count(),
-            lock.iter().filter(|(_, v)| !v.enabled).count(),
+            exploit_list.len(),
+            exploit_list.iter().filter(|(_, v)| v.enabled).count(),
+            exploit_list.iter().filter(|(_, v)| !v.enabled).count(),
         );
 
-        for (_id, holder) in lock
-            .iter()
+        for (_id, holder) in exploit_list
+            .into_iter()
             // only enabled exploits
             .filter(|(_, v)| v.enabled)
         {
@@ -246,17 +246,46 @@ impl Runner {
             let flagstore = match &holder.target {
                 AttackTarget::Service(s) => s,
                 AttackTarget::Ips => "", // this service shouldnt exist
-            };
-            let targets = manager.get_service_target(&flagstore);
+            }
+            .to_owned();
 
-            for (target_host, target_flagid) in targets {
+            let targets = manager.get_service_targets(&flagstore);
+
+            // find all IPs and if possible flagstores to attack
+            let mut going_to_exploit = Vec::new();
+
+            if let Some(targets) = targets {
+                // the service was found and we got all the targets
+                for (host, ticks) in targets.0.iter() {
+                    // get the latest tick
+                    let (_tick_value, flag_id) = match ticks.get_latest() {
+                        Some((tick_value, flag_id)) => (tick_value, flag_id),
+                        None => {
+                            warn!("No tick found for host {}", host);
+                            continue;
+                        }
+                    };
+
+                    // dump as string
+                    let flag_id = flag_id.to_string();
+
+                    // add this host and the flag_id to the list of targets that will be attacked
+                    going_to_exploit.push((host.to_owned(), flag_id));
+                }
+            } else {
+                // service not known
+                // instead, run against all ips, without any flagids
+
+                let ips = manager.all_ips();
+                for ip in ips {
+                    going_to_exploit.push((ip, "".to_string()));
+                }
+            }
+
+            for (target_host, target_flagid) in going_to_exploit {
                 let rnr = rnr.clone();
                 let holder = holder.clone();
-
-                // empty string if no flagid
-                let target_flagid = target_flagid.unwrap_or_default();
-
-                let flagstore = flagstore.to_owned();
+                let flagstore = flagstore.clone();
 
                 tokio::spawn(async move {
                     let before = tokio::time::Instant::now();
@@ -280,7 +309,7 @@ impl Runner {
                     // append log
                     let log = StampedRunLog {
                         tick: current_tick,
-                        flagstore,
+                        flagstore: flagstore.to_owned(),
                         log: log,
                         target_ip: target_host,
                         exploit_id: holder.id.clone(),
