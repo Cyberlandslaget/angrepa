@@ -304,7 +304,7 @@ impl Server {
 
         let cors = warp::cors()
             .allow_any_origin()
-            .allow_methods(vec!["GET", "POST, OPTIONS"]);
+            .allow_methods(vec!["GET", "POST"]);
 
         let routes = log
             .or(log_ticks)
