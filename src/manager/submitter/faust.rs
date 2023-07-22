@@ -82,7 +82,12 @@ impl Submitter for FaustSubmitter {
             let lines = body.split('\n').collect::<Vec<_>>();
 
             if lines.len() != flags.len() {
-                warn!("Got {} lines, but expected {}", lines.len(), flags.len());
+                warn!(
+                    "Got {} lines, but expected {}. Content {}",
+                    lines.len(),
+                    flags.len(),
+                    response
+                );
                 return Err(SubmitError::FormatError);
             }
 
