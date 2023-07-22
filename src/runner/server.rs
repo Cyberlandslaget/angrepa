@@ -1,8 +1,9 @@
+use rocket::serde::json::{json, Value};
 use rocket::{self, get, routes};
 
-#[get("/")]
-fn test() -> &'static str {
-    "Hello, world!"
+#[get("/templates")]
+fn test() -> Value {
+    json!({ "status": "ok" })
 }
 
 pub async fn run() {
