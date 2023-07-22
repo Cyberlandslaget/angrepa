@@ -288,7 +288,7 @@ impl Runner {
                     rnr.log_run(&holder.id, log.clone()).await;
 
                     let elapsed = before.elapsed();
-                    debug!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
+                    //debug!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
                 });
             }
         }
