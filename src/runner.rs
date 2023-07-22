@@ -135,7 +135,10 @@ impl Runner {
         {
             let mut lock = self.output_queue.lock();
             lock.push(log.clone());
-            info!("Inserted into output_queue, now has {} elements", lock.len());
+            info!(
+                "Inserted into output_queue, now has {} elements",
+                lock.len()
+            );
         }
 
         // insert into log database
@@ -363,10 +366,22 @@ impl Runner {
 
         loop {
             let manager = manager.clone();
+            let r = self.clone();
             select! {
-                _ = tick_interval.tick() => self.tick(manager, &conf.common).await,
-                // on another thread
-                _ = flag_interval.tick() => self.send_flags(manager, &flag_regex).await,
+                _ = tick_interval.tick() => {
+                    let manager = manager.clone();
+                    let common = conf.common.clone();
+                    spawn(async move {
+                        r.tick(manager, &common).await
+                    });
+                },
+                _ = flag_interval.tick() => {
+                    let manager = manager.clone();
+                    let flag_regex = flag_regex.clone();
+                    spawn(async move {
+                        r.send_flags(manager, &flag_regex).await
+                    });
+                },
             }
         }
     }
