@@ -8,9 +8,12 @@
 
 use regex::Regex;
 use tokio::{select, spawn};
-use tracing::info;
+use tracing::{debug, info};
 
-use crate::{submitter::Submitter, Flag, Manager};
+use crate::{
+    submitter::{FlagStatus, Submitter},
+    Flag, Manager,
+};
 
 /// Extracts flags from raw input
 async fn getter(
@@ -39,7 +42,19 @@ async fn submit(
 ) {
     info!("Submitting {:?}", flags);
     let results = submitter.submit(flags).await.unwrap();
+
+    let accepted = results
+        .iter()
+        .filter(|(_, status)| matches!(status, FlagStatus::Accepted));
+
+    info!(
+        "Got {} results, {} accepted.",
+        results.len(),
+        accepted.count()
+    );
+
     for (flag_str, status) in results {
+        debug!("Flag {} is {:?}", flag_str, status);
         manager.update_flag_status(&flag_str, status);
     }
 }
