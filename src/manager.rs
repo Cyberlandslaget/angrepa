@@ -18,6 +18,8 @@ use submitter::{FlagStatus, Submitters};
 mod listener;
 use listener::{Tcp, Web};
 
+use crate::runner::Runner;
+
 mod handler;
 
 mod fetcher;
@@ -177,7 +179,7 @@ impl Manager {
     }
 }
 
-pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
+pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Result<(), Report> {
     let flag_regex = Regex::new(&config.common.format)?;
 
     info!("manager started");
