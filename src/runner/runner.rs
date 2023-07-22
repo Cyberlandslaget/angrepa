@@ -22,8 +22,6 @@ use exploit::exploit2::{
     Exploit, ExploitInstance, RunLog,
 };
 
-use crate::server::Server;
-
 mod server;
 
 #[derive(Debug, Clone)]
@@ -405,10 +403,7 @@ async fn main() -> Result<(), Report> {
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    let host = config.runner.http_server.parse()?;
-    let server = Server::new(host, runner.clone());
-    let server_handle = spawn(async move { server.run().await });
-
+    let server_handle = spawn(async move { server::run().await });
     let runner_handle = spawn(async move { runner.run(&config).await });
 
     join_all(vec![runner_handle, server_handle]).await;
