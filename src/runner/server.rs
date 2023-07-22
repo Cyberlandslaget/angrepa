@@ -310,6 +310,9 @@ impl Server {
             .or(stop)
             .or(hello);
 
-        warp::serve(routes).run(self.host).await;
+        // disable cors
+        let cors = warp::cors().allow_any_origin();
+
+        warp::serve(routes.with(cors)).run(self.host).await;
     }
 }
