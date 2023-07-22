@@ -46,4 +46,19 @@ impl Fetcher for DummyFetcher {
 
         Ok(map)
     }
+
+    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+        let random_ip = || {
+            let mut rng = rand::thread_rng();
+            format!(
+                "{}.{}.{}.{}",
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+                rng.gen_range(0..255),
+                rng.gen_range(0..255)
+            )
+        };
+
+        Ok((0..5).map(|_| random_ip()).collect())
+    }
 }

@@ -16,13 +16,18 @@ pub struct AttackInfo {
 pub struct EnowarsFetcher {
     client: reqwest::Client,
     endpoint: String,
+    ips_endpoint: String,
 }
 
 impl EnowarsFetcher {
-    pub fn new(endpoint: String) -> Self {
+    pub fn new(endpoint: String, ips_endpoint: String) -> Self {
         let client = reqwest::Client::new();
 
-        Self { client, endpoint }
+        Self {
+            client,
+            endpoint,
+            ips_endpoint,
+        }
     }
 }
 
@@ -32,6 +37,20 @@ impl Fetcher for EnowarsFetcher {
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
         Ok(resp.services)
+    }
+
+    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+        let resp: String = self
+            .client
+            .get(&self.ips_endpoint)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let ips = resp.trim().lines().map(|s| s.trim().to_string()).collect();
+
+        Ok(ips)
     }
 }
 

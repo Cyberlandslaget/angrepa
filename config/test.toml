@@ -13,6 +13,7 @@ host = 'localhost:1337'
 header_suffix = "\n\n"
 [manager.fetcher]
 endpoint = 'https://7.enowars.com/scoreboard/attack.json'
+ips = 'https://7.enowars.com/api/data/ips'
 
 [runner]
 http_server = "0.0.0.0:8888"

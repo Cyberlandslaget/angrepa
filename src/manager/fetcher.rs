@@ -23,7 +23,10 @@ pub struct Service(HashMap<String, serde_json::Value>);
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
+    /// services (with flagids)
     async fn services(&self) -> Result<HashMap<String, Service>, Report>;
+    /// "backup" raw get all ips
+    async fn ips(&self) -> Result<Vec<String>, Report>;
 }
 
 // routine
@@ -68,7 +71,15 @@ impl Fetchers {
                     .ok_or(eyre!("Enowars fetcher endpoint must be a string"))?
                     .to_owned();
 
-                Ok(Self::Enowars(EnowarsFetcher::new(endpoint)))
+                let ips_endpoint = manager
+                    .fetcher
+                    .get("ips")
+                    .ok_or(eyre!("Enowars fetcher requires ip endpoint"))?
+                    .as_str()
+                    .ok_or(eyre!("Enowars fetcher endpoint must be a string"))?
+                    .to_owned();
+
+                Ok(Self::Enowars(EnowarsFetcher::new(endpoint, ips_endpoint)))
             }
             _ => Err(eyre!("Unknown fetcher {}", manager.fetcher_name)),
         }
