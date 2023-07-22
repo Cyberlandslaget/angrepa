@@ -31,29 +31,23 @@ async fn submit(
     }
 }
 
-pub async fn run(
-    manager: Manager,
-    submitter: impl Submitter + Send + Sync + Clone + 'static,
-) {
+pub async fn run(manager: Manager, submitter: impl Submitter + Send + Sync + Clone + 'static) {
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
         let manager = manager.clone();
+        send_signal.tick().await;
 
-        select!(
-            _ = send_signal.tick() => {
-                // extract out flags from the queue, then delete them
-                let mut lock = manager.flag_queue.lock();
-                let to_submit = lock.drain(..).collect::<Vec<_>>();
-                drop(lock);
+        // extract out flags from the queue, then delete them
+        let mut lock = manager.flag_queue.lock();
+        let to_submit = lock.drain(..).collect::<Vec<_>>();
+        drop(lock);
 
-                // get the raw text
-                let to_submit = to_submit.iter().map(|f| f.flag.clone()).collect::<Vec<_>>();
+        // get the raw text
+        let to_submit = to_submit.iter().map(|f| f.flag.clone()).collect::<Vec<_>>();
 
-                spawn(submit(manager, submitter.clone(), to_submit));
-            },
-        )
+        spawn(submit(manager, submitter.clone(), to_submit));
     }
 }
