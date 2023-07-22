@@ -140,10 +140,10 @@ impl Manager {
     pub fn register_flag(&self, flag: Flag) -> bool {
         let mut lock = self.flags.lock();
 
-        if lock.contains_key(&flag.flag) {
-            info!("Flag {} already registered", flag.flag);
-            return false;
-        }
+        //if lock.contains_key(&flag.flag) {
+        //    info!("Flag {} already registered", flag.flag);
+        //    return false;
+        //}
 
         // insert locally
         lock.insert(flag.flag.clone(), flag.clone());
