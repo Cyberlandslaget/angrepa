@@ -2,13 +2,12 @@ use bollard::Docker;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use parking_lot::Mutex;
 use regex::Regex;
-use reqwest::Url;
 use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::{eyre::eyre, Report};
 use futures::future::join_all;
 use tokio::{select, spawn, time::interval};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, warn};
 
 use angrapa::schema::exploits::dsl::exploits;
 use angrapa::{
@@ -136,6 +135,7 @@ impl Runner {
         {
             let mut lock = self.output_queue.lock();
             lock.push(log.clone());
+            info!("Inserted into output_queue, now has {} elements", lock.len());
         }
 
         // insert into log database
