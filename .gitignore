@@ -1,4 +1,4 @@
 /target
 .DS_Store
-priv.toml
+configs/priv.toml
 *.tar
