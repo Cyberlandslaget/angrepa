@@ -114,10 +114,7 @@ mod tests {
         }
 
         // make sure we got the same content as directly deserializing locally
-        assert_eq!(
-            serde_json::to_string(&services).unwrap(),
-            serde_json::to_string(&eno_deser()).unwrap()
-        );
+        assert_eq!(&services, &eno_deser());
 
         gameserver.abort();
     }
