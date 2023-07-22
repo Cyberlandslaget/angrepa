@@ -9,6 +9,7 @@ pub struct ExploitModel {
     pub service: String,
     pub blacklist: String,
     pub docker_image: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Insertable)]
@@ -19,6 +20,7 @@ pub struct ExploitInserter {
     pub service: String,
     pub blacklist: String,
     pub docker_image: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]

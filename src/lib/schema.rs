@@ -17,6 +17,7 @@ diesel::table! {
         service -> Text,
         blacklist -> Text,
         docker_image -> Text,
+        enabled -> Bool,
     }
 }
 
@@ -36,8 +37,4 @@ diesel::joinable!(execution -> exploit (exploit_id));
 diesel::joinable!(flag -> execution (execution_id));
 diesel::joinable!(flag -> exploit (exploit_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    execution,
-    exploit,
-    flag,
-);
+diesel::allow_tables_to_appear_in_same_query!(execution, exploit, flag,);
