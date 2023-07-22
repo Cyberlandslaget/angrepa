@@ -1,10 +1,20 @@
 use diesel::prelude::*;
 
-#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[derive(Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = super::schema::exploit)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ExploitModel {
     pub id: i32,
+    pub name: String,
+    pub service: String,
+    pub blacklist: String,
+    pub docker_image: String,
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = super::schema::exploit)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ExploitInserter {
     pub name: String,
     pub service: String,
     pub blacklist: String,
