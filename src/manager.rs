@@ -177,13 +177,10 @@ impl Manager {
     }
 }
 
-pub async fn main(config: config::Root) -> Result<(), Report> {
+pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
     let flag_regex = Regex::new(&config.common.format)?;
 
     info!("manager started");
-
-    // check flags in db
-    let manager = Manager::from_db()?;
 
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;

@@ -363,10 +363,9 @@ async fn reconstruct_exploit(
     })
 }
 
-pub async fn main(config: config::Root) -> Result<(), Report> {
+pub async fn main(config: config::Root, mut runner: Runner) -> Result<(), Report> {
     let common = &config.common;
 
-    let mut runner = Runner::new();
     let docker = Docker::connect_with_local_defaults()?;
 
     let db = &mut db_connect()?;

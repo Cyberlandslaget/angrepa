@@ -16,11 +16,15 @@ async fn main() -> Result<(), Report> {
     // setup logging
     args.setup_logging()?;
 
-    let runner = runner::main(config.clone());
-    let manager = manager::main(config.clone());
+    // make these here so they are the same across
+    let runner = runner::Runner::new();
+    let manager = manager::Manager::from_db()?;
 
-    let runner = spawn(async move { runner.await.unwrap() });
-    let manager = spawn(async move { manager.await.unwrap() });
+    let runner_thr = runner::main(config.clone(), runner);
+    let manager_thr = manager::main(config.clone(), manager);
+
+    let runner = spawn(async move { runner_thr.await.unwrap() });
+    let manager = spawn(async move { manager_thr.await.unwrap() });
 
     join_all([runner, manager]).await;
 
