@@ -20,7 +20,7 @@ async fn main() -> Result<(), Report> {
     let runner = runner::Runner::new();
     let manager = manager::Manager::from_db()?;
 
-    let runner_thr = runner::main(config.clone(), manager, runner);
+    let runner_thr = runner::main(config.clone(), manager.clone(), runner.clone());
     let manager_thr = manager::main(config.clone(), manager, runner);
 
     let runner = spawn(async move { runner_thr.await.unwrap() });

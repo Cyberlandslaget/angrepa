@@ -25,6 +25,8 @@ use exploit::exploit2::{
 mod server;
 use server::Server;
 
+use crate::manager::Manager;
+
 #[derive(Debug, Clone)]
 pub enum Exploits {
     DockerPool(DockerExploitPool),
