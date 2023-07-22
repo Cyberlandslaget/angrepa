@@ -213,7 +213,7 @@ impl Runner {
         info!("Registered exploit {}", exp.id);
     }
 
-    async fn tick(&self, conf: &Common) {
+    async fn tick(&self, manager: Manager, conf: &Common) {
         let date = chrono::Utc::now();
         let current_tick = conf.current_tick(date);
 
@@ -233,38 +233,52 @@ impl Runner {
             // only enabled exploits
             .filter(|(_, v)| v.enabled)
         {
-            let rnr = rnr.clone();
-            let holder = holder.clone();
-            tokio::spawn(async move {
-                let before = tokio::time::Instant::now();
-                let log = match holder.exploit {
-                    Exploits::DockerPool(pool) => {
-                        let inst = pool
-                            .start("1.2.3.4".to_string(), "fakeid".to_string())
-                            .await
-                            .unwrap();
-                        inst.wait_for_exit().await.unwrap()
-                    }
-                    Exploits::Docker(single) => {
-                        let inst = single
-                            .start("1.2.3.4".to_string(), "fakeid".to_string())
-                            .await
-                            .unwrap();
-                        inst.wait_for_exit().await.unwrap()
-                    }
-                };
+            let target_str = match &holder.target {
+                AttackTarget::Service(s) => s,
+                AttackTarget::Ips => "", // this service shouldnt exist
+            };
+            let targets = manager.get_service_target(&target_str);
 
-                // append log
-                let log = StampedRunLog {
-                    tick: current_tick,
-                    flagstore: None,
-                    log: log,
-                };
-                rnr.log_run(&holder.id, log.clone()).await;
+            //let targets = [("1.2.3.4", "fakeid")];
 
-                let elapsed = before.elapsed();
-                info!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
-            });
+            for (target_host, target_flagid) in targets {
+                let rnr = rnr.clone();
+                let holder = holder.clone();
+
+                // empty string if no flagid
+                let target_flagid = target_flagid.unwrap_or_default();
+
+                tokio::spawn(async move {
+                    let before = tokio::time::Instant::now();
+                    let log = match holder.exploit {
+                        Exploits::DockerPool(pool) => {
+                            let inst = pool
+                                .start(target_host.to_string(), target_flagid.to_string())
+                                .await
+                                .unwrap();
+                            inst.wait_for_exit().await.unwrap()
+                        }
+                        Exploits::Docker(single) => {
+                            let inst = single
+                                .start(target_host.to_string(), target_flagid.to_string())
+                                .await
+                                .unwrap();
+                            inst.wait_for_exit().await.unwrap()
+                        }
+                    };
+
+                    // append log
+                    let log = StampedRunLog {
+                        tick: current_tick,
+                        flagstore: None,
+                        log: log,
+                    };
+                    rnr.log_run(&holder.id, log.clone()).await;
+
+                    let elapsed = before.elapsed();
+                    info!("Execution took {:?}, output: {:?}", elapsed, log.log.output)
+                });
+            }
         }
     }
 
@@ -321,7 +335,7 @@ impl Runner {
         Ok(())
     }
 
-    async fn run(self, conf: &config::Root) {
+    async fn run(self, manager: Manager, conf: &config::Root) {
         let mut tick_interval = conf
             .common
             // make sure the tick has started
@@ -332,8 +346,9 @@ impl Runner {
         let mut flag_interval = interval(tokio::time::Duration::from_secs(1));
 
         loop {
+            let manager = manager.clone();
             select! {
-                _ = tick_interval.tick() => self.tick(&conf.common).await,
+                _ = tick_interval.tick() => self.tick(manager, &conf.common).await,
                 // on another thread
                 _ = flag_interval.tick() => self.send_flags(conf).await,
             }
@@ -367,7 +382,7 @@ async fn reconstruct_exploit(
 
 pub async fn main(
     config: config::Root,
-    _manager: Manager,
+    manager: Manager,
     mut runner: Runner,
 ) -> Result<(), Report> {
     let common = &config.common;
@@ -404,7 +419,7 @@ pub async fn main(
     let server = Server::new(host, runner.clone());
     let server_handle = spawn(async move { server.run().await });
 
-    let runner_handle = spawn(async move { runner.run(&config).await });
+    let runner_handle = spawn(async move { runner.run(manager, &config).await });
 
     join_all(vec![runner_handle, server_handle]).await;
 
