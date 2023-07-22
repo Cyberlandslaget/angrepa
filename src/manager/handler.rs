@@ -10,7 +10,7 @@ use regex::Regex;
 use tokio::{select, spawn};
 use tracing::{debug, info};
 
-use crate::{
+use super::{
     submitter::{FlagStatus, Submitter},
     Flag, Manager,
 };

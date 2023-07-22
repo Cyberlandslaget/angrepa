@@ -22,9 +22,8 @@ use exploit::exploit2::{
     Exploit, ExploitInstance, RunLog,
 };
 
-use crate::server::Server;
-
 mod server;
+use server::Server;
 
 #[derive(Debug, Clone)]
 pub enum Exploits {
@@ -364,17 +363,8 @@ async fn reconstruct_exploit(
     })
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Report> {
-    color_eyre::install()?;
-
-    // get config
-    let args = argh::from_env::<angrapa::config::Args>();
-    let config = args.get_config()?;
+pub async fn main(config: config::Root) -> Result<(), Report> {
     let common = &config.common;
-
-    // setup logging
-    args.setup_logging()?;
 
     let mut runner = Runner::new();
     let docker = Docker::connect_with_local_defaults()?;

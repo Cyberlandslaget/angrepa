@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use angrapa::config;
 use angrapa::schema::flags::dsl::flags;
 use angrapa::{db_connect, models::FlagModel};
 use color_eyre::Report;
@@ -176,17 +177,7 @@ impl Manager {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Report> {
-    color_eyre::install()?;
-
-    // get config
-    let args = argh::from_env::<angrapa::config::Args>();
-    let config = args.get_config()?;
-
-    // setup logging
-    args.setup_logging()?;
-
+pub async fn main(config: config::Root) -> Result<(), Report> {
     let flag_regex = Regex::new(&config.common.format)?;
 
     info!("manager started");

@@ -8,7 +8,7 @@ use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
 use super::wh::WebhookLayer;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Common {
     /// round length
     pub tick: u64,
@@ -72,7 +72,7 @@ impl Common {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Manager {
     pub http_listener: String,
     pub tcp_listener: String,
@@ -83,12 +83,12 @@ pub struct Manager {
     pub fetcher: toml::Table,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Runner {
     pub http_server: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Root {
     pub common: Common,
     pub manager: Manager,
