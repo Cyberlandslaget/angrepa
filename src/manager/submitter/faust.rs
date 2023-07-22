@@ -62,6 +62,8 @@ impl Submitter for FaustSubmitter {
                 match socket.read_line(&mut total_text).await {
                     Ok(n) => {
                         if n == 0 {
+                            // TODO return here saying try to resubmit
+                            warn!("EOF when reading from socket");
                             break;
                         }
                     }
