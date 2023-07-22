@@ -9,18 +9,14 @@ use color_eyre::Report;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use futures::future::join_all;
 use parking_lot::Mutex;
-use regex::Regex;
 use tracing::{debug, error, info, trace};
 
 mod submitter;
 use submitter::{FlagStatus, Submitters};
 
-mod listener;
-use listener::{Tcp, Web};
-
 use crate::runner::Runner;
 
-use self::fetcher::{Service, Ticks};
+use self::fetcher::Service;
 
 mod handler;
 
@@ -234,43 +230,8 @@ impl Manager {
 }
 
 pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Result<(), Report> {
-    let flag_regex = Regex::new(&config.common.format)?;
-
-    info!("manager started");
-
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
-
-    // set up channels
-    let (raw_flag_tx, raw_flag_rx) = flume::unbounded::<String>();
-
-    // run tcp listener on another thread
-    let tcp_listener = {
-        let flag_tx = raw_flag_tx.clone();
-
-        let host = config.manager.tcp_listener.parse()?;
-        let tcp = Tcp::new(host);
-
-        info!("tcp listener starting on {}:{}", host.ip(), host.port());
-
-        tokio::spawn(async move {
-            tcp.run(flag_tx).await.unwrap();
-        })
-    };
-
-    // run web listener on another thread
-    let http_listener = {
-        let flag_tx = raw_flag_tx.clone();
-
-        let host = config.manager.http_listener.parse()?;
-        let web = Web::new(host);
-
-        info!("http listener starting on {}:{}", host.ip(), host.port());
-
-        tokio::spawn(async move {
-            web.run(flag_tx).await.unwrap();
-        })
-    };
 
     // run submitter on another thread
     let manager2 = manager.clone();
@@ -279,10 +240,10 @@ pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Re
 
         match sub {
             Submitters::Dummy(submitter) => {
-                handler::run(manager, raw_flag_rx, submitter, flag_regex).await;
+                handler::run(manager, submitter).await;
             }
             Submitters::Faust(submitter) => {
-                handler::run(manager, raw_flag_rx, submitter, flag_regex).await;
+                handler::run(manager, submitter).await;
             }
         }
     });
@@ -302,13 +263,7 @@ pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Re
     });
 
     // join all
-    join_all(vec![
-        tcp_listener,
-        http_listener,
-        handler_handle,
-        fetcher_handle,
-    ])
-    .await;
+    join_all(vec![handler_handle, fetcher_handle]).await;
 
     Ok(())
 }
