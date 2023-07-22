@@ -39,7 +39,16 @@ impl Common {
         offset: tokio::time::Duration,
     ) -> Result<tokio::time::Interval, Report> {
         let time_since_start = chrono::Utc::now() - self.start;
-        let start = tokio::time::Instant::now() - time_since_start.to_std()?;
+
+        let start = if time_since_start < chrono::Duration::seconds(0) {
+            // its in the future, we have to flip stuff
+            debug!("Start is in the future");
+            tokio::time::Instant::now() + (-time_since_start).to_std()?
+        } else {
+            // its in the past, it werks
+            debug!("Start is in the past");
+            tokio::time::Instant::now() - time_since_start.to_std()?
+        };
         let tick = tokio::time::Duration::from_secs(self.tick);
 
         // offset by e.g. 1s to be safe we don't go too early
