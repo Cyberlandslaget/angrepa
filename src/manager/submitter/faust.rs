@@ -42,6 +42,7 @@ impl Submitter for FaustSubmitter {
         socket.read_until(b'\n', &mut header).await?;
         socket.read_until(b'\n', &mut header).await?;
         socket.read_until(b'\n', &mut header).await?;
+        debug!("Header read.");
 
         // send all flags
         let all_flags = flags.join("\n") + "\n";
