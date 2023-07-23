@@ -2,3 +2,4 @@
 .DS_Store
 config/priv.toml
 *.tar
+data/exploits
