@@ -1,24 +1,26 @@
+use angrapa::{db::Db, db_connect, models::ExploitInserter};
 use futures::TryStreamExt;
 use serde_json::json;
 use std::{collections::HashMap, net::SocketAddr};
 use tracing::{debug, info};
 use warp::{multipart::FormData, reply, Buf, Filter};
 
-use super::{AttackTarget, DockerInstance, ExploitHolder, Exploits, Runner};
+use crate::runner::exploit::exploit2::docker::DockerInstance;
 
 /// - Accepts new exploits over HTTP.
 /// - Returns stats for exploits
 pub struct Server {
     host: SocketAddr,
-    runner: Runner,
 }
 
 impl Server {
-    pub fn new(host: SocketAddr, runner: Runner) -> Self {
-        Self { host, runner }
+    pub fn new(host: SocketAddr) -> Self {
+        Self { host }
     }
 
-    async fn form(form: FormData, mut runner: Runner) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn form(form: FormData) -> Result<impl warp::Reply, warp::Rejection> {
+        let mut db = Db::new(angrapa::db_connect().unwrap());
+
         let fields = form
             .and_then(|mut field| async move {
                 let mut bytes: Vec<u8> = Vec::new();
@@ -60,6 +62,7 @@ impl Server {
 
         #[derive(serde::Deserialize)]
         struct JsonConfig {
+            name: String,
             service: String,
             blacklist: Vec<String>,
         }
@@ -77,10 +80,11 @@ impl Server {
             }
         };
 
-        let JsonConfig { service, blacklist } = json_config;
-
-        let target = AttackTarget::Service(service);
-        info!("Setting target to {:?}", target);
+        let JsonConfig {
+            name,
+            service,
+            blacklist,
+        } = json_config;
 
         // spawn a task to build the exploit
         let docker = DockerInstance::new().unwrap();
@@ -98,29 +102,24 @@ impl Server {
 
         let pool = exploit.spawn_pool().await.unwrap();
 
-        let id = format!("{:x}", rand::random::<u64>());
-
-        let exp = ExploitHolder {
-            id: id.clone(),
-            enabled: false,
-            target,
-            exploit: Exploits::DockerPool(pool),
-            run_logs: HashMap::new(),
-        };
-
-        info!("Successfully build new exploit");
-        runner.register_exp(exp).await;
+        let expl = db
+            .add_exploit(&ExploitInserter {
+                name,
+                service,
+                blacklist: blacklist.join("\n"),
+                docker_image: pool.image,
+                docker_container: pool.container,
+                enabled: false,
+            })
+            .unwrap();
 
         Ok(reply::with_status(
-            reply::json(&json!({ "id": id })),
+            reply::json(&json!({ "id": expl.id })),
             warp::http::StatusCode::OK,
         ))
     }
 
-    async fn start(
-        id: Option<String>,
-        mut runner: Runner,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn start(id: Option<i32>) -> Result<impl warp::Reply, warp::Rejection> {
         let id = if let Some(id) = id {
             id
         } else {
@@ -130,7 +129,9 @@ impl Server {
             ));
         };
 
-        let content = match runner.start(&id).await {
+        let mut db = Db::new(angrapa::db_connect().unwrap());
+
+        let content = match db.start_exploit(id) {
             Ok(_) => json!({ "msg": "ok" }),
             Err(err) => json!({ "error": format!("{:?}", err) }),
         };
@@ -141,10 +142,7 @@ impl Server {
         ))
     }
 
-    async fn stop(
-        id: Option<String>,
-        mut runner: Runner,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
+    async fn stop(id: Option<i32>) -> Result<impl warp::Reply, warp::Rejection> {
         let id = if let Some(id) = id {
             id
         } else {
@@ -154,7 +152,9 @@ impl Server {
             ));
         };
 
-        let content = match runner.stop(&id).await {
+        let mut db = Db::new(db_connect().unwrap());
+
+        let content = match db.stop_exploit(id) {
             Ok(_) => json!({ "msg": "ok" }),
             Err(err) => json!({ "error": format!("{:?}", err) }),
         };
@@ -165,96 +165,14 @@ impl Server {
         ))
     }
 
-    async fn logs_ticks(
-        id: Option<String>,
-        runner: Runner,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
-        let id = if let Some(id) = id {
-            id
-        } else {
-            return Ok(reply::with_status(
-                reply::json(&json!({ "error": "missing id" })),
-                warp::http::StatusCode::BAD_REQUEST,
-            ));
-        };
+    async fn exploits() -> Result<impl warp::Reply, warp::Rejection> {
+        let mut db = Db::new(db_connect().unwrap());
 
-        let mut ticks = {
-            let lock = runner.exploits.lock();
-            let instance = lock.get(&id);
-            let instance = match instance {
-                Some(instance) => instance,
-                None => {
-                    return Ok(reply::with_status(
-                        reply::json(&json!({ "error": "no such exploit" })),
-                        warp::http::StatusCode::BAD_REQUEST,
-                    ));
-                }
-            };
-            instance.run_logs.keys().cloned().collect::<Vec<_>>()
-        };
-        ticks.sort();
-
-        let content = json!({ "ticks": ticks });
+        let exploits = db.get_exploits().unwrap();
+        let ids = exploits.iter().map(|e| e.id).collect::<Vec<_>>();
 
         Ok(reply::with_status(
-            reply::json(&content),
-            warp::http::StatusCode::OK,
-        ))
-    }
-
-    async fn log(
-        id: Option<String>,
-        tick: Option<i64>,
-        runner: Runner,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
-        let id = if let Some(id) = id {
-            id
-        } else {
-            return Ok(reply::with_status(
-                reply::json(&json!({ "error": "missing id" })),
-                warp::http::StatusCode::BAD_REQUEST,
-            ));
-        };
-
-        let tick = if let Some(tick) = tick {
-            tick
-        } else {
-            return Ok(reply::with_status(
-                reply::json(&json!({ "error": "missing tick" })),
-                warp::http::StatusCode::BAD_REQUEST,
-            ));
-        };
-
-        let log = {
-            let lock = runner.exploits.lock();
-
-            let instance = lock.get(&id);
-            let instance = match instance {
-                Some(instance) => instance,
-                None => {
-                    return Ok(reply::with_status(
-                        reply::json(&json!({ "error": "no such id" })),
-                        warp::http::StatusCode::BAD_REQUEST,
-                    ));
-                }
-            };
-
-            let log = instance.run_logs.get(&tick);
-            let log = match log {
-                Some(log) => log,
-                None => {
-                    return Ok(reply::with_status(
-                        reply::json(&json!({ "error": "no such tick" })),
-                        warp::http::StatusCode::BAD_REQUEST,
-                    ));
-                }
-            };
-
-            log.clone()
-        };
-
-        Ok(reply::with_status(
-            reply::json(&json!({ "log": log.log.output })),
+            reply::json(&ids),
             warp::http::StatusCode::OK,
         ))
     }
@@ -263,88 +181,34 @@ impl Server {
         // warp server
         let hello = warp::get().map(|| "This is the runner");
 
-        let rnr = self.runner.clone();
         let upload = warp::post()
             .and(warp::path("upload"))
             .and(warp::multipart::form().max_length(5_000_000))
-            .map(move |form: FormData| {
-                let rnr = rnr.clone();
-                (form, rnr)
-            })
-            .and_then(|(f, rnr)| Server::form(f, rnr));
+            .map(move |form: FormData| form)
+            .and_then(|form| Server::form(form));
 
-        let rnr = self.runner.clone();
         let start = warp::post()
             .and(warp::path("start"))
             .and(warp::query::<HashMap<String, String>>())
-            .map(move |query: HashMap<String, String>| {
-                let rnr = rnr.clone();
-                (query.get("id").map(|s| s.to_string()), rnr)
-            })
-            .and_then(|(id, rnr)| Server::start(id, rnr));
+            .map(move |query: HashMap<String, String>| query.get("id").map(|s| s.parse().unwrap()))
+            .and_then(|id: Option<i32>| Server::start(id));
 
-        let rnr = self.runner.clone();
         let stop = warp::post()
             .and(warp::path("stop"))
             .and(warp::query::<HashMap<String, String>>())
-            .map(move |query: HashMap<String, String>| {
-                let rnr = rnr.clone();
-                (query.get("id").map(|s| s.to_string()), rnr)
-            })
-            .and_then(|(id, rnr)| Server::stop(id, rnr));
-
-        // GET /log/ticks?id=abc
-        // -> returns all ticks that have logs
-        let rnr = self.runner.clone();
-        let log_ticks = warp::get()
-            .and(warp::path("log"))
-            .and(warp::path("ticks"))
-            .and(warp::query::<HashMap<String, String>>())
-            .map(move |query: HashMap<String, String>| {
-                let rnr = rnr.clone();
-                (query.get("id").map(|s| s.to_string()), rnr)
-            })
-            .and_then(|(id, rnr)| Server::logs_ticks(id, rnr));
-
-        // GET /log?id=abc&tick=123
-        let rnr = self.runner.clone();
-        let log = warp::get()
-            .and(warp::path("log"))
-            .and(warp::path("get"))
-            .and(warp::query::<HashMap<String, String>>())
-            .map(move |query: HashMap<String, String>| {
-                let rnr = rnr.clone();
-                let id = query.get("id").map(|s| s.to_string());
-                let tick: Option<i64> = query.get("tick").and_then(|s| s.parse().ok());
-                (id, tick, rnr)
-            })
-            .and_then(|(id, tick, rnr)| Server::log(id, tick, rnr));
+            .map(move |query: HashMap<String, String>| query.get("id").map(|s| s.parse().unwrap()))
+            .and_then(|id: Option<i32>| Server::stop(id));
 
         // GET /exploits
-        let rnr = self.runner.clone();
         let exploits = warp::get()
             .and(warp::path("exploits"))
-            .map(move || {
-                let rnr = rnr.clone();
-                rnr
-            })
-            .and_then(|rnr: Runner| async move {
-                let lock = rnr.exploits.lock();
-                let ids = lock.keys().cloned().collect::<Vec<_>>();
-                Ok::<_, warp::Rejection>(reply::json(&ids))
-            });
+            .and_then(|| Server::exploits());
 
         let cors = warp::cors()
             .allow_any_origin()
             .allow_methods(vec!["GET", "POST"]);
 
-        let routes = log
-            .or(log_ticks)
-            .or(upload)
-            .or(exploits)
-            .or(start)
-            .or(stop)
-            .or(hello.with(cors));
+        let routes = upload.or(exploits).or(start).or(stop).or(hello.with(cors));
 
         warp::serve(routes).run(self.host).await;
     }

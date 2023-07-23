@@ -28,11 +28,29 @@ impl Db {
         Ok(exploits)
     }
 
-    pub fn add_exploit(&mut self, exp: &ExploitInserter) -> Result<(), Report> {
+    pub fn add_exploit(&mut self, exp: &ExploitInserter) -> Result<ExploitModel, Report> {
         use crate::schema::exploit::dsl::*;
 
-        diesel::insert_into(exploit)
+        Ok(diesel::insert_into(exploit)
             .values(exp)
+            .get_result(&mut self.conn)?)
+    }
+
+    pub fn start_exploit(&mut self, target_id: i32) -> Result<(), Report> {
+        use crate::schema::exploit::dsl::*;
+
+        diesel::update(exploit.filter(id.eq(target_id)))
+            .set(enabled.eq(true))
+            .execute(&mut self.conn)?;
+
+        Ok(())
+    }
+
+    pub fn stop_exploit(&mut self, target_id: i32) -> Result<(), Report> {
+        use crate::schema::exploit::dsl::*;
+
+        diesel::update(exploit.filter(id.eq(target_id)))
+            .set(enabled.eq(false))
             .execute(&mut self.conn)?;
 
         Ok(())

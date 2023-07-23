@@ -23,6 +23,7 @@ pub enum Fetchers {
 pub struct Service(pub HashMap<String, Ticks>);
 
 impl Service {
+    #[allow(dead_code)]
     pub fn get_ticks_from_host(&self, host: &str) -> Option<&Ticks> {
         self.0.get(host)
     }

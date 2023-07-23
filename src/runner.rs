@@ -14,30 +14,12 @@ use angrapa::{
 };
 
 mod exploit;
-use exploit::exploit2::{
-    docker::{DockerExploit, DockerExploitPool},
-    Exploit, ExploitInstance,
-};
+use exploit::exploit2::{docker::DockerExploitPool, Exploit, ExploitInstance};
 
-//mod server;
-//use server::Server;
+mod server;
+use server::Server;
 
 use crate::manager::Manager;
-
-#[derive(Debug, Clone)]
-pub enum Exploits {
-    DockerPool(DockerExploitPool),
-    Docker(DockerExploit),
-}
-
-impl Exploits {
-    pub fn as_str(&self) -> String {
-        match self {
-            Exploits::DockerPool(_) => "docker_pool".to_string(),
-            Exploits::Docker(_) => "docker".to_string(),
-        }
-    }
-}
 
 pub struct Runner {}
 
@@ -170,13 +152,13 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    //let host = config.runner.http_server.parse()?;
-    //let server = Server::new(host, runner.clone());
-    //let server_handle = spawn(async move { server.run().await });
+    let host = config.runner.http_server.parse()?;
+    let server = Server::new(host);
+    let server_handle = spawn(async move { server.run().await });
 
     let runner_handle = spawn(async move { Runner::run(manager, &config).await });
 
-    join_all(vec![runner_handle /*, server_handle*/]).await;
+    join_all(vec![runner_handle, server_handle]).await;
 
     Ok(())
 }
