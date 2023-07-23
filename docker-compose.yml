@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pass1
+      POSTGRES_DB: diesel_demo
+
+  adminer:
+    image: adminer
+    restart: always
+    depends_on: 
+      - db
+    ports:
+      - 8080:8080
