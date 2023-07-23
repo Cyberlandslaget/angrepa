@@ -1,18 +1,18 @@
-use rocket::{self, routes};
+use axum::Router;
+use std::net::SocketAddr;
 
 mod exploit;
 mod templates;
 
-use exploit::*;
-use templates::*;
-
 pub async fn run() {
-    // TODO: Shutdown on SIGINT
-    let result = rocket::build()
-        .mount("/templates", routes![list, download])
-        .mount("/exploit", routes![upload, start, stop])
-        .launch()
-        .await;
+    let app = Router::new()
+        .nest("/templates", templates::router())
+        .nest("/exploit", exploit::router());
 
-    result.expect("server failed unexpectedly");
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    tracing::info!("Webserver started on {addr}");
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
