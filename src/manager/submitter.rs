@@ -28,7 +28,7 @@ pub enum SubmitError {
 /// Adapted from https://web.archive.org/web/20230325144340/https://docs.ecsc2022.eu/ad_platform/
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString, strum::EnumIter)]
 pub enum FlagStatus {
-    Accepted,
+    Ok,
     Duplicate,
     Own,
     Old,

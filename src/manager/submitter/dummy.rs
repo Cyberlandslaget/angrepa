@@ -10,7 +10,7 @@ impl Submitter for DummySubmitter {
     async fn submit(&self, flags: Vec<String>) -> Result<Vec<(String, FlagStatus)>, SubmitError> {
         let statuses = flags
             .into_iter()
-            .map(|flag| (flag, FlagStatus::Accepted))
+            .map(|flag| (flag, FlagStatus::Ok))
             .collect();
         Ok(statuses)
     }

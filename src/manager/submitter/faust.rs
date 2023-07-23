@@ -108,7 +108,7 @@ impl Submitter for FaustSubmitter {
             };
 
             let status = match code {
-                "OK" => FlagStatus::Accepted,
+                "OK" => FlagStatus::Ok,
                 "DUP" => FlagStatus::Duplicate,
                 "OWN" => FlagStatus::Own,
                 "OLD" => FlagStatus::Old,

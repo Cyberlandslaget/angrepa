@@ -19,7 +19,7 @@ async fn submit(
 
     let accepted = results
         .iter()
-        .filter(|(_, status)| matches!(status, FlagStatus::Accepted));
+        .filter(|(_, status)| matches!(status, FlagStatus::Ok));
 
     info!(
         "Got {} results, {} accepted.",
