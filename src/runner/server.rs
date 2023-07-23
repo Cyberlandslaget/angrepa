@@ -1,3 +1,4 @@
+use rocket::http::{ContentType, Status};
 use rocket::serde::json::{json, Value};
 use rocket::{self, get, routes};
 
@@ -18,15 +19,12 @@ fn list_templates() -> Value {
 }
 
 #[get("/templates/<template>")]
-fn get_template(template: &str) -> Vec<u8> {
-    use tar::Builder;
-
-    let mut tar = Builder::new(Vec::new());
-
+fn get_template(template: &str) -> (Status, (ContentType, Vec<u8>)) {
+    let mut tar = tar::Builder::new(Vec::new());
     tar.append_dir_all(template, format!("./data/templates/{template}"))
         .unwrap();
 
-    tar.into_inner().unwrap()
+    (Status::Ok, (ContentType::TAR, tar.into_inner().unwrap()))
 }
 
 pub async fn run() {
