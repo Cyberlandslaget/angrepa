@@ -16,22 +16,42 @@ pub struct AttackInfo {
 pub struct EnowarsFetcher {
     client: reqwest::Client,
     endpoint: String,
+    ips_endpoint: String,
 }
 
 impl EnowarsFetcher {
-    pub fn new(endpoint: String) -> Self {
+    pub fn new(endpoint: String, ips_endpoint: String) -> Self {
         let client = reqwest::Client::new();
 
-        Self { client, endpoint }
+        Self {
+            client,
+            endpoint,
+            ips_endpoint,
+        }
     }
 }
 
 #[async_trait]
 impl Fetcher for EnowarsFetcher {
     async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
+        // TODO handle failures more gracefully (retry?)
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
         Ok(resp.services)
+    }
+
+    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+        let resp: String = self
+            .client
+            .get(&self.ips_endpoint)
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let ips = resp.trim().lines().map(|s| s.trim().to_string()).collect();
+
+        Ok(ips)
     }
 }
 
@@ -78,15 +98,23 @@ mod tests {
             warp::serve(endpoint).run(([127, 0, 0, 1], 9999)).await
         });
 
-        let fetcher = EnowarsFetcher::new("http://localhost:9999/endpoint".to_string());
+        let fetcher =
+            EnowarsFetcher::new("http://localhost:9999/endpoint".to_string(), "".to_string());
 
         let services = fetcher.services().await.unwrap();
 
+        dbg!(&services);
+
+        for (service, service_info) in services.iter() {
+            for (ip, ticks) in service_info.0.iter() {
+                for (tick, flagids) in ticks.0.iter() {
+                    println!("{} {} {} {}", service, ip, tick, flagids);
+                }
+            }
+        }
+
         // make sure we got the same content as directly deserializing locally
-        assert_eq!(
-            serde_json::to_string(&services).unwrap(),
-            serde_json::to_string(&eno_deser()).unwrap()
-        );
+        assert_eq!(&services, &eno_deser());
 
         gameserver.abort();
     }

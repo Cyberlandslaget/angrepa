@@ -1,13 +1,14 @@
 use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
 use serde::Deserialize;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tracing::warn;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+use tracing::{debug, warn};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct FaustSubmitter {
     host: String,
     /// Reads until this is found
+    #[allow(dead_code)]
     header_suffix: String,
 }
 
@@ -23,45 +24,70 @@ impl FaustSubmitter {
 #[async_trait]
 impl Submitter for FaustSubmitter {
     async fn submit(&self, flags: Vec<String>) -> Result<Vec<(String, FlagStatus)>, SubmitError> {
-        let mut socket = tokio::net::TcpStream::connect(&self.host).await?;
+        if flags.len() == 0 {
+            return Ok(Vec::new());
+        }
+
+        let socket = tokio::net::TcpStream::connect(&self.host).await?;
+
+        // bufread over it
+        let mut socket = tokio::io::BufStream::new(socket);
+
+        debug!("Opened socket.");
+
+        // read header
+        let mut header = Vec::new();
+
+        // hack
+        socket.read_until(b'\n', &mut header).await?;
+        socket.read_until(b'\n', &mut header).await?;
+        socket.read_until(b'\n', &mut header).await?;
+        debug!("Header read.");
 
         // send all flags
-        let all_flags = flags.join("\n");
+        let all_flags = flags.join("\n") + "\n";
         socket.write_all(all_flags.as_bytes()).await?;
+        socket.flush().await?;
 
         // read all data
         let response = {
-            let mut buf = [0u8; 1024];
-            let mut read_text: Vec<u8> = Vec::new();
+            let mut total_text = String::new();
+
             loop {
-                match socket.read(&mut buf).await {
+                if total_text.trim().lines().count() == flags.len() {
+                    debug!("Got all {} flags, so stopping.", flags.len());
+                    break;
+                }
+
+                match socket.read_line(&mut total_text).await {
                     Ok(n) => {
                         if n == 0 {
+                            // TODO return here saying try to resubmit
+                            warn!("EOF when reading from socket");
                             break;
                         }
-                        read_text.extend(&buf[..n]);
                     }
                     Err(e) => {
                         return Result::Err(e.into());
                     }
                 }
             }
-            read_text
+
+            total_text
         };
 
         // extract responses
-        let response = String::from_utf8_lossy(&response);
         let lines = {
-            let (_preheader, body) = response
-                .split_once(&self.header_suffix)
-                .ok_or(SubmitError::FormatError)?;
-
-            // remove any leading or trailing whitespace, just in case, they should never be part of
-            // flagformat anyway
-            let body = body.trim();
+            let body = response.trim();
             let lines = body.split('\n').collect::<Vec<_>>();
 
             if lines.len() != flags.len() {
+                warn!(
+                    "Got {} lines, but expected {}. Content {}",
+                    lines.len(),
+                    flags.len(),
+                    response
+                );
                 return Err(SubmitError::FormatError);
             }
 
@@ -72,7 +98,14 @@ impl Submitter for FaustSubmitter {
         for line in lines {
             // split twice on space to get 3 variables
             let (flag, rest) = line.split_once(' ').ok_or(SubmitError::FormatError)?;
-            let (code, _msg) = rest.split_once(' ').ok_or(SubmitError::FormatError)?;
+
+            // msg is optional
+            let (code, _msg) = {
+                match rest.split_once(' ') {
+                    Some((code, msg)) => (code, Some(msg)),
+                    None => (rest, None),
+                }
+            };
 
             let status = match code {
                 "OK" => FlagStatus::Accepted,

@@ -2,7 +2,17 @@
 ## Attack script runner for attack-defense CTFs
 
 # Setup
-1. Setup DB
+0. Tooling
+```
+cargo install diesel_cli --no-default-features --features postgres
+```
+
+1. Start DB
+```
+docker run -e POSTGRES_PASSWORD=pass1 -p 5432:5432 --rm postgres:latest
+```
+
+2. Setup DB
 ```
 diesel setup
 diesel migration run
