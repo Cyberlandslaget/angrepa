@@ -14,7 +14,7 @@ use angrapa::{
 };
 
 mod exploit;
-use exploit::exploit2::{docker::DockerExploitPool, Exploit, ExploitInstance};
+use exploit::exploit2::{docker::DockerExploitPool, Exploit};
 
 mod server;
 
@@ -78,10 +78,7 @@ impl Runner {
                     let started_at = chrono::Utc::now().naive_utc();
 
                     let log = instance
-                        .start(target_host.to_string(), target_flagid.to_string())
-                        .await
-                        .unwrap()
-                        .wait_for_exit()
+                        .run_till_completion(target_host.to_string(), target_flagid.to_string())
                         .await
                         .unwrap();
 
