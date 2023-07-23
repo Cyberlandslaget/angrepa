@@ -14,7 +14,7 @@ use angrapa::{
 };
 
 mod exploit;
-use exploit::exploit2::{docker::DockerExploitPool, Exploit};
+use exploit::exploit2::{docker::InitalizedExploit, Exploit};
 
 mod server;
 
@@ -67,7 +67,7 @@ impl Runner {
             }
 
             let docker = docker.clone();
-            let instance = DockerExploitPool::from_model(docker, exploit.clone())
+            let instance = InitalizedExploit::from_model(docker, exploit.clone())
                 .await
                 .unwrap();
 
