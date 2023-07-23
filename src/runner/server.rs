@@ -10,7 +10,7 @@ pub async fn run() {
     // TODO: Shutdown on SIGINT
     let result = rocket::build()
         .mount("/templates", routes![list, download])
-        .mount("/exploit", routes![upload])
+        .mount("/exploit", routes![upload, start, stop])
         .launch()
         .await;
 
