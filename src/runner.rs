@@ -124,7 +124,7 @@ impl Runner {
         }
     }
 
-    async fn run(self, manager: Manager, conf: &config::Root) {
+    async fn run(manager: Manager, conf: &config::Root) {
         let mut tick_interval = conf
             .common
             // make sure the tick has started
@@ -145,11 +145,7 @@ impl Runner {
     }
 }
 
-pub async fn main(
-    config: config::Root,
-    manager: Manager,
-    mut runner: Runner,
-) -> Result<(), Report> {
+pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
     let common = &config.common;
 
     let docker = Docker::connect_with_local_defaults()?;
@@ -169,7 +165,7 @@ pub async fn main(
     //let server = Server::new(host, runner.clone());
     //let server_handle = spawn(async move { server.run().await });
 
-    let runner_handle = spawn(async move { runner.run(manager, &config).await });
+    let runner_handle = spawn(async move { Runner::run(manager, &config).await });
 
     join_all(vec![runner_handle /*, server_handle*/]).await;
 

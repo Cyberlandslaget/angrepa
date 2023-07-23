@@ -229,7 +229,7 @@ impl Manager {
     }
 }
 
-pub async fn main(config: config::Root, manager: Manager, _runner: Runner) -> Result<(), Report> {
+pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
 
