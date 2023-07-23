@@ -1,8 +1,8 @@
 use color_eyre::Report;
-use diesel::{PgConnection, RunQueryDsl};
+use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 
 use crate::models::{
-    ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter,
+    ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter, FlagModel,
 };
 
 pub struct Db {
@@ -55,6 +55,40 @@ impl Db {
 
         diesel::insert_into(flag)
             .values(fl)
+            .execute(&mut self.conn)?;
+
+        Ok(())
+    }
+
+    pub fn update_flag_status(
+        &mut self,
+        search_text: &str,
+        new_status: &str,
+    ) -> Result<(), Report> {
+        use crate::schema::flag::dsl::*;
+
+        diesel::update(flag.filter(text.eq(search_text)))
+            .set(status.eq(new_status))
+            .execute(&mut self.conn)?;
+
+        Ok(())
+    }
+
+    pub fn get_unsubmitted_flags(&mut self) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::flag::dsl::*;
+
+        let flags = flag
+            .filter(submitted.eq(false))
+            .load::<FlagModel>(&mut self.conn)?;
+
+        Ok(flags)
+    }
+
+    pub fn set_flag_submitted(&mut self, target_id: i32) -> Result<(), Report> {
+        use crate::schema::flag::dsl::*;
+
+        diesel::update(flag.filter(id.eq(target_id)))
+            .set(submitted.eq(true))
             .execute(&mut self.conn)?;
 
         Ok(())

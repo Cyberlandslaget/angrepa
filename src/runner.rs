@@ -7,7 +7,7 @@ use tokio::spawn;
 use tracing::{info, warn};
 
 use angrapa::{
-    config::{self, Common},
+    config::{self},
     db::Db,
     db_connect,
     models::{ExecutionInserter, FlagInserter},
@@ -42,10 +42,7 @@ impl Exploits {
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, conf: &Common, flag_regex: Regex) {
-        let date = chrono::Utc::now();
-        let current_tick = conf.current_tick(date);
-
+    async fn tick(manager: Manager, flag_regex: Regex) {
         let mut db = Db::new(db_connect().unwrap());
 
         let exploits = db.get_exploits().unwrap();
@@ -97,8 +94,6 @@ impl Runner {
                 let instance = instance.clone();
                 let flag_regex = flag_regex.clone();
                 tokio::spawn(async move {
-                    let before = tokio::time::Instant::now();
-
                     let started_at = chrono::Utc::now().naive_utc();
 
                     let log = instance
@@ -134,7 +129,8 @@ impl Runner {
                             timestamp: chrono::Utc::now().naive_utc(),
                             execution_id: execution.id.clone(),
                             exploit_id: exploit.id.clone(),
-                        });
+                        })
+                        .unwrap();
                     }
                 });
             }
@@ -156,21 +152,15 @@ impl Runner {
             tick_interval.tick().await;
 
             let manager = manager.clone();
-            let common = conf.common.clone();
             let flag_regex = flag_regex.clone();
 
-            spawn(async move { Runner::tick(manager, &common, flag_regex).await });
+            spawn(async move { Runner::tick(manager, flag_regex).await });
         }
     }
 }
 
 pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
     let common = &config.common;
-
-    let docker = Docker::connect_with_local_defaults()?;
-
-    let db = &mut db_connect()?;
-    info!("Connected to database");
 
     // time until start
     common.sleep_until_start().await;
