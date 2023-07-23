@@ -56,6 +56,7 @@ async fn download(Path(template): Path<String>) -> impl IntoResponse {
         .unwrap()
 }
 
+// /templates/
 pub fn router() -> Router {
     Router::new()
         .route("/", get(list))
