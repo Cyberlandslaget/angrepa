@@ -3,3 +3,4 @@
 config/priv.toml
 *.tar
 data/exploits
+attack.json
