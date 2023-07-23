@@ -148,8 +148,8 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    //let host = config.runner.http_server.parse()?;
-    let server_handle = spawn(async move { server::run().await });
+    let server_addr = config.runner.http_server.parse()?;
+    let server_handle = spawn(async move { server::run(server_addr).await });
 
     let runner_handle = spawn(async move { Runner::run(manager, &config).await });
 
