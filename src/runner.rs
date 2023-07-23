@@ -10,7 +10,7 @@ use angrapa::{
     config::{self, Common},
     db::Db,
     db_connect,
-    models::ExecutionInserter,
+    models::{ExecutionInserter, FlagInserter},
 };
 
 mod exploit;
@@ -42,7 +42,7 @@ impl Exploits {
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, conf: &Common) {
+    async fn tick(manager: Manager, conf: &Common, flag_regex: Regex) {
         let date = chrono::Utc::now();
         let current_tick = conf.current_tick(date);
 
@@ -95,6 +95,7 @@ impl Runner {
 
             for (target_host, target_flagid) in going_to_exploit {
                 let instance = instance.clone();
+                let flag_regex = flag_regex.clone();
                 tokio::spawn(async move {
                     let before = tokio::time::Instant::now();
 
@@ -111,14 +112,30 @@ impl Runner {
                     let finished_at = chrono::Utc::now().naive_utc();
 
                     let mut db = Db::new(db_connect().unwrap());
-                    db.add_execution(&ExecutionInserter {
-                        exploit_id: exploit.id.clone(),
-                        output: log.output,
-                        started_at,
-                        finished_at,
-                    });
+                    let execution = db
+                        .add_execution(&ExecutionInserter {
+                            exploit_id: exploit.id.clone(),
+                            output: log.output.clone(),
+                            started_at,
+                            finished_at,
+                        })
+                        .unwrap();
 
-                    // TODO add flags too
+                    // find flags in the string
+                    let flags = flag_regex
+                        .captures_iter(&log.output)
+                        .map(|cap| cap[0].to_string());
+
+                    for flag in flags {
+                        db.add_flag(&FlagInserter {
+                            text: flag,
+                            status: "".to_string(),
+                            submitted: false,
+                            timestamp: chrono::Utc::now().naive_utc(),
+                            execution_id: execution.id.clone(),
+                            exploit_id: exploit.id.clone(),
+                        });
+                    }
                 });
             }
         }
@@ -140,7 +157,9 @@ impl Runner {
 
             let manager = manager.clone();
             let common = conf.common.clone();
-            spawn(async move { Runner::tick(manager, &common).await });
+            let flag_regex = flag_regex.clone();
+
+            spawn(async move { Runner::tick(manager, &common, flag_regex).await });
         }
     }
 }

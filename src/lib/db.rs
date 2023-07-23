@@ -1,7 +1,9 @@
 use color_eyre::Report;
 use diesel::{PgConnection, RunQueryDsl};
 
-use crate::models::{ExecutionInserter, ExploitInserter, ExploitModel, FlagInserter};
+use crate::models::{
+    ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter,
+};
 
 pub struct Db {
     conn: PgConnection,
@@ -38,14 +40,12 @@ impl Db {
 
     // execution
 
-    pub fn add_execution(&mut self, exec: &ExecutionInserter) -> Result<(), Report> {
+    pub fn add_execution(&mut self, exec: &ExecutionInserter) -> Result<ExecutionModel, Report> {
         use crate::schema::execution::dsl::*;
 
-        diesel::insert_into(execution)
+        Ok(diesel::insert_into(execution)
             .values(exec)
-            .execute(&mut self.conn)?;
-
-        Ok(())
+            .get_result(&mut self.conn)?)
     }
 
     // flag
