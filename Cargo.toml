@@ -9,6 +9,7 @@ edition = "2021"
 argh = "0.1.10"
 async-trait = "0.1.71"
 axum = { version = "0.6.19", features = ["macros"] }
+axum_typed_multipart = "0.5.1"
 bollard = "0.14.0"
 chrono = "0.4.26"
 color-eyre = "0.6.2"
