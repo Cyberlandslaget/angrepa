@@ -17,7 +17,6 @@ mod exploit;
 use exploit::exploit2::{docker::DockerExploitPool, Exploit, ExploitInstance};
 
 mod server;
-use server::Server;
 
 use crate::manager::Manager;
 
@@ -152,9 +151,8 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    let host = config.runner.http_server.parse()?;
-    let server = Server::new(host);
-    let server_handle = spawn(async move { server.run().await });
+    //let host = config.runner.http_server.parse()?;
+    let server_handle = spawn(async move { server::run().await });
 
     let runner_handle = spawn(async move { Runner::run(manager, &config).await });
 
