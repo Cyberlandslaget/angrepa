@@ -1,7 +1,0 @@
-[default.limits]
-form = "128 MiB"
-bytes = "128 MiB"
-data-form = "128 MiB"
-file = "128 MiB"
-json = "128 MiB"
-string = "128 MiB"
