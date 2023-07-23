@@ -1,57 +1,21 @@
-//! The handler is responsible for
-//! - Extracting flags from raw data
-//! - Regularly sending flags to the submitter
-//!
-//! It therefore consists of a few parts, running in parallel:
-//! - A getter *routine*, which takes raw data (from listeners), and gives flags
-//! - A submitter function, which sends the passwed flags to the submitter
+use angrapa::{db::Db, db_connect, models::FlagModel};
+use tokio::spawn;
+use tracing::info;
 
-use regex::Regex;
-use tokio::{select, spawn};
-use tracing::{debug, info};
-
-use super::{
-    submitter::{FlagStatus, Submitter},
-    Flag, Manager,
-};
-
-/// Extracts flags from raw input
-async fn getter(
-    raw_flag_rx: flume::Receiver<String>,
-    parsed_flag_tx: flume::Sender<Flag>,
-    flag_regex: Regex,
-) {
-    while let Ok(raw) = raw_flag_rx.recv_async().await {
-        for flag in flag_regex.captures_iter(&raw) {
-            //let flag = flag[0].to_string();
-            //info!("Recieved flag {}", flag);
-
-            //let stamp = Some(chrono::Utc::now().naive_utc());
-
-            //let flag = Flag {
-            //    flag,
-            //    tick: None,
-            //    stamp,
-            //    exploit_id: todo!(),
-            //    target_ip: todo!(),
-            //    flagstore: todo!(),
-            //    sent: todo!(),
-            //    status: todo!(),
-            //};
-
-            //parsed_flag_tx.send_async(flag).await.unwrap();
-        }
-    }
-}
+use super::submitter::{FlagStatus, Submitter};
 
 /// Submits flags
 async fn submit(
-    manager: Manager,
+    mut db: Db,
     submitter: impl Submitter + Send + Sync + Clone + 'static,
-    flags: Vec<String>,
+    flags: Vec<FlagModel>,
 ) {
-    info!("Submitting {:?}", flags);
-    let results = submitter.submit(flags).await.unwrap();
+    let flag_strings = flags.iter().map(|f| f.text.clone()).collect::<Vec<_>>();
+
+    let results = submitter.submit(flag_strings).await.unwrap();
+    for flag in flags {
+        db.set_flag_submitted(flag.id).unwrap();
+    }
 
     let accepted = results
         .iter()
@@ -64,47 +28,23 @@ async fn submit(
     );
 
     for (flag_str, status) in results {
-        debug!("Flag {} is {:?}", flag_str, status);
-        manager.update_flag_status(&flag_str, status);
+        db.update_flag_status(&flag_str, &status.to_string())
+            .unwrap();
     }
 }
 
-pub async fn run(
-    manager: Manager,
-    raw_flag_rx: flume::Receiver<String>,
-    submitter: impl Submitter + Send + Sync + Clone + 'static,
-    flag_regex: Regex,
-) {
-    // set up channelsStrinStrin
-    let (parsed_tx, parsed_rx) = flume::unbounded::<Flag>();
-
-    // spawn the getter
-    spawn(getter(raw_flag_rx, parsed_tx, flag_regex));
-
+pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static) {
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
-        let manager = manager.clone();
+        let mut db = Db::new(db_connect().unwrap());
+        send_signal.tick().await;
 
-        select!(
-            _ = send_signal.tick() => {
-                // extract out flags from the queue, then delete them
-                let mut lock = manager.flag_queue.lock();
-                let to_submit = lock.drain(..).collect::<Vec<_>>();
-                drop(lock);
+        // extract out flags from the queue, then delete them
+        let unsubmitted = db.get_unsubmitted_flags().unwrap();
 
-                // get the raw text
-                let to_submit = to_submit.iter().map(|f| f.flag.clone()).collect::<Vec<_>>();
-
-                spawn(submit(manager, submitter.clone(), to_submit));
-            },
-            f = parsed_rx.recv_async() => {
-                let f = f.unwrap();
-                // add to db and queue
-                 manager.register_flag(f.clone());
-            },
-        )
+        spawn(submit(db, submitter.clone(), unsubmitted));
     }
 }
