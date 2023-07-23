@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "angrapa"
+name = "angrepa"
 version = "0.1.0"
 dependencies = [
  "argh",

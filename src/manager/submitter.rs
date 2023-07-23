@@ -1,4 +1,4 @@
-use angrapa::config;
+use angrepa::config;
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use thiserror::Error;

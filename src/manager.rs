@@ -1,5 +1,5 @@
 use self::fetcher::Service;
-use angrapa::config;
+use angrepa::config;
 use color_eyre::Report;
 use futures::future::join_all;
 use parking_lot::Mutex;

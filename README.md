@@ -1,4 +1,4 @@
-# angrapa
+# angrepa
 ## Attack script runner for attack-defense CTFs
 
 # Setup

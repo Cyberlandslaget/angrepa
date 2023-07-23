@@ -97,7 +97,7 @@ pub struct Root {
 
 // common args, used by both manager and runner
 #[derive(FromArgs)]
-/// Angrapa
+/// Angrepa
 pub struct Args {
     /// path to toml configuration file
     #[argh(positional)]

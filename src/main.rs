@@ -10,7 +10,7 @@ async fn main() -> Result<(), Report> {
     color_eyre::install()?;
 
     // get config
-    let args = argh::from_env::<angrapa::config::Args>();
+    let args = argh::from_env::<angrepa::config::Args>();
     let config = args.get_config()?;
 
     // setup logging

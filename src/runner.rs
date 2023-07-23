@@ -6,7 +6,7 @@ use futures::future::join_all;
 use tokio::spawn;
 use tracing::{info, warn};
 
-use angrapa::{
+use angrepa::{
     config::{self},
     db::Db,
     db_connect,

@@ -1,4 +1,4 @@
-use angrapa::{db::Db, db_connect, models::FlagModel};
+use angrepa::{db::Db, db_connect, models::FlagModel};
 use tokio::spawn;
 use tracing::info;
 
