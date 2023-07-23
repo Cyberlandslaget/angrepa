@@ -7,10 +7,11 @@
 cargo install diesel_cli --no-default-features --features postgres
 ```
 
-1. Start DB
+1. Start DB and adminer
 ```
-docker run -e POSTGRES_PASSWORD=pass1 -p 5432:5432 --rm postgres:latest
+docker compose up
 ```
+    - Optional: change username/password in .env and docker-compose.yml
 
 2. Setup DB
 ```
