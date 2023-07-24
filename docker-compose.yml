@@ -5,9 +5,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: pass1
-      POSTGRES_DB: diesel_demo
+      POSTGRES_USER: angrepa
+      POSTGRES_PASSWORD: a
+      POSTGRES_DB: angrepa
 
   adminer:
     image: adminer
