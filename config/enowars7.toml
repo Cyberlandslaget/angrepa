@@ -18,7 +18,7 @@ endpoint = 'https://7.enowars.com/scoreboard/attack.json'
 ips = 'https://7.enowars.com/api/data/ips'
 
 [runner]
-http_server = "0.0.0.0:8888"
+http_server = "0.0.0.0:8000"
 
 [database]
 username = "angrepa"
