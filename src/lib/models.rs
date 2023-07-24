@@ -9,7 +9,7 @@ pub struct ExploitModel {
     pub service: String,
     pub blacklist: Vec<Option<String>>,
     pub docker_image: String,
-    pub docker_container: String,
+    pub docker_containers: Vec<Option<String>>,
     pub enabled: bool,
 }
 
@@ -21,7 +21,7 @@ pub struct ExploitInserter {
     pub service: String,
     pub blacklist: Vec<String>,
     pub docker_image: String,
-    pub docker_container: String,
+    pub docker_containers: Vec<String>,
     pub enabled: bool,
 }
 

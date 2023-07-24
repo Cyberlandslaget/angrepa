@@ -67,20 +67,22 @@ impl Runner {
             }
 
             let docker = docker.clone();
-            let instance = InitalizedExploit::from_model(docker, exploit.clone())
+            let mut instance = InitalizedExploit::from_model(docker, exploit.clone())
                 .await
                 .unwrap();
 
             for (target_host, target_flagid) in going_to_exploit {
-                let instance = instance.clone();
                 let flag_regex = flag_regex.clone();
+
+                let log_future = instance
+                    .run(target_host.to_string(), target_flagid.to_string())
+                    .await
+                    .unwrap();
+
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
-                    let log = instance
-                        .run_till_completion(target_host.to_string(), target_flagid.to_string())
-                        .await
-                        .unwrap();
+                    let log = log_future.await.unwrap();
 
                     let finished_at = chrono::Utc::now().naive_utc();
 

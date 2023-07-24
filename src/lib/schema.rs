@@ -17,7 +17,7 @@ diesel::table! {
         service -> Text,
         blacklist -> Array<Nullable<Text>>,
         docker_image -> Text,
-        docker_container -> Text,
+        docker_containers -> Array<Nullable<Text>>,
         enabled -> Bool,
     }
 }
