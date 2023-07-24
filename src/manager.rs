@@ -63,7 +63,7 @@ impl Manager {
             lock.get(service_str).cloned()
         };
 
-        Some(service?)
+        service
     }
 }
 
@@ -73,15 +73,16 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
 
     // run submitter on another thread
     let manager2 = manager.clone();
+    let db_url = config.database.url();
     let handler_handle = tokio::spawn(async move {
         info!("handler starting");
 
         match sub {
             Submitters::Dummy(submitter) => {
-                handler::run(submitter).await;
+                handler::run(submitter, &db_url).await;
             }
             Submitters::Faust(submitter) => {
-                handler::run(submitter).await;
+                handler::run(submitter, &db_url).await;
             }
         }
     });

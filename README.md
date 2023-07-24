@@ -7,21 +7,22 @@
 cargo install diesel_cli --no-default-features --features postgres
 ```
 
-1. Start DB and adminer
+1. Create a [config](./config/)
+
+2. Create a CTF specific [fetcher](./src/manager/fetcher/) and [submitter](./src/manager/submitter/)
+    - Add your fetcher and submitter to [fetcher.rs](./src/manager/fetcher.rs) and [submitter.rs](./src/manager/submitter.rs)
+
+3. Start DB and adminer
+    - Optional: change username/password in [config](./config/) and [docker-compose.yml](./docker-compose.yml)
 ```
 docker compose up
 ```
-    - Optional: change username/password in .env and docker-compose.yml
 
-2. Setup DB
+4. Setup DB
 ```
 diesel setup
 diesel migration run
 ```
-
-3. Create a [config](./config/)
-
-4. Create a CTF specific [fetcher](./src/manager/fetcher/) and [submitter](./src/manager/submitter/).
 
 5. Run with the specific config
 ```
