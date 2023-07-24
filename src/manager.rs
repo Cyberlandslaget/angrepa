@@ -1,11 +1,12 @@
 use self::fetcher::Service;
-use angrepa::config;
 use color_eyre::Report;
 use futures::future::join_all;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::info;
+
+use super::CONFIG;
 
 mod submitter;
 use submitter::Submitters;
@@ -67,9 +68,9 @@ impl Manager {
     }
 }
 
-pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
-    let sub = Submitters::from_conf(&config.manager)?;
-    let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
+pub async fn main(manager: Manager) -> Result<(), Report> {
+    let sub = Submitters::from_conf()?;
+    let fetch = fetcher::Fetchers::from_conf()?;
 
     // run submitter on another thread
     let manager2 = manager.clone();
@@ -91,12 +92,8 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
         info!("fetcher starting");
 
         match fetch {
-            fetcher::Fetchers::Enowars(fetcher) => {
-                fetcher::run(fetcher, manager2, &config.common).await
-            }
-            fetcher::Fetchers::Dummy(fetcher) => {
-                fetcher::run(fetcher, manager2, &config.common).await
-            }
+            fetcher::Fetchers::Enowars(fetcher) => fetcher::run(fetcher, manager2).await,
+            fetcher::Fetchers::Dummy(fetcher) => fetcher::run(fetcher, manager2).await,
         };
     });
 

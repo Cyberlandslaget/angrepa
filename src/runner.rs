@@ -7,11 +7,12 @@ use tokio::spawn;
 use tracing::{info, warn};
 
 use angrepa::{
-    config::{self},
     db::Db,
     db_connect,
     models::{ExecutionInserter, FlagInserter},
 };
+
+use super::CONFIG;
 
 mod exploit;
 use exploit::exploit2::{docker::InitalizedExploit, Exploit};
@@ -115,15 +116,15 @@ impl Runner {
         }
     }
 
-    async fn run(manager: Manager, conf: &config::Root) {
-        let mut tick_interval = conf
+    async fn run(manager: Manager) {
+        let mut tick_interval = CONFIG
             .common
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
             .await
             .unwrap();
 
-        let flag_regex = Regex::new(&conf.common.format).unwrap();
+        let flag_regex = Regex::new(&CONFIG.common.format).unwrap();
 
         loop {
             let manager = manager.clone();
@@ -137,8 +138,8 @@ impl Runner {
     }
 }
 
-pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
-    let common = &config.common;
+pub async fn main(manager: Manager) -> Result<(), Report> {
+    let common = &CONFIG.common;
 
     // time until start
     common.sleep_until_start().await;
@@ -148,10 +149,9 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
 
-    let server_addr = config.runner.http_server.parse()?;
-    let server_handle = spawn(async move { server::run(server_addr).await });
+    let server_handle = spawn(async move { server::run().await });
 
-    let runner_handle = spawn(async move { Runner::run(manager, &config).await });
+    let runner_handle = spawn(async move { Runner::run(manager).await });
 
     join_all(vec![runner_handle, server_handle]).await;
 

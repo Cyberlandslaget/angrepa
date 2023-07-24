@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use angrepa::config;
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use serde::{Deserialize, Serialize};
+
+use super::CONFIG;
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
@@ -50,7 +51,8 @@ pub trait Fetcher {
 }
 
 // routine
-pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Common) {
+pub async fn run(fetcher: impl Fetcher, manager: Manager) {
+    let common = &CONFIG.common;
     let mut tick_interval = common
         .get_tick_interval(tokio::time::Duration::from_secs(1))
         .await
@@ -87,7 +89,8 @@ pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Commo
 
 // Deserialize
 impl Fetchers {
-    pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
+    pub fn from_conf() -> Result<Self, Report> {
+        let manager = &CONFIG.manager;
         match manager.fetcher_name.as_str() {
             "dummy" => Ok(Self::Dummy(DummyFetcher {})),
             "enowars" => {

@@ -1,7 +1,8 @@
-use angrepa::config;
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use thiserror::Error;
+
+use super::CONFIG;
 
 // implementations
 mod faust;
@@ -47,7 +48,8 @@ pub trait Submitter {
 
 // Deserialize
 impl Submitters {
-    pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
+    pub fn from_conf() -> Result<Self, Report> {
+        let manager = &CONFIG.manager;
         match manager.submitter_name.as_str() {
             "dummy" => Ok(Self::Dummy(DummySubmitter {})),
             "faust" => {
