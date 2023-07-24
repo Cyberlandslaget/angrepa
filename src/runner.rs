@@ -68,7 +68,9 @@ impl Runner {
             }
 
             let docker = docker.clone();
-            let mut instance = InitalizedExploit::from_model(docker, exploit.clone())
+            let db = Db::new(&mut conn);
+
+            let mut instance = InitalizedExploit::from_model(docker, exploit.clone(), db)
                 .await
                 .unwrap();
 

@@ -56,6 +56,16 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
+    pub fn set_docker_containers(&mut self, ids: Vec<String>) -> Result<(), Report> {
+        use crate::schema::exploit::dsl::*;
+
+        diesel::update(exploit)
+            .set(docker_containers.eq(ids))
+            .execute(self.conn)?;
+
+        Ok(())
+    }
+
     // execution
 
     pub fn add_execution(&mut self, exec: &ExecutionInserter) -> Result<ExecutionModel, Report> {
