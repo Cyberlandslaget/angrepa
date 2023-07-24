@@ -4,6 +4,8 @@ use tracing::info;
 
 use super::submitter::{FlagStatus, Submitter};
 
+use super::CONFIG;
+
 /// Submits flags
 async fn submit(
     mut db: Db,
@@ -39,7 +41,7 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static) {
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
-        let mut db = Db::new(db_connect().unwrap());
+        let mut db = Db::new(db_connect(&CONFIG.database.url()).unwrap());
         send_signal.tick().await;
 
         // extract out flags from the queue, then delete them

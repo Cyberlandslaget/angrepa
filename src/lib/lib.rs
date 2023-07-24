@@ -6,13 +6,7 @@ pub mod wh;
 
 use color_eyre::Report;
 use diesel::{Connection, PgConnection};
-use dotenvy::dotenv;
-use std::env;
 
-pub fn db_connect() -> Result<PgConnection, Report> {
-    dotenv()?;
-
-    let url = env::var("DATABASE_URL")?;
-
-    Ok(PgConnection::establish(&url)?)
+pub fn db_connect(db_url: &String) -> Result<PgConnection, Report> {
+    Ok(PgConnection::establish(db_url.as_str())?)
 }

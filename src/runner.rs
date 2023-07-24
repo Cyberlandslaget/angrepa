@@ -25,7 +25,7 @@ pub struct Runner {}
 
 impl Runner {
     async fn tick(manager: Manager, flag_regex: Regex) {
-        let mut db = Db::new(db_connect().unwrap());
+        let mut db = Db::new(db_connect(&CONFIG.database.url()).unwrap());
 
         let exploits = db.get_exploits().unwrap();
 
@@ -85,7 +85,7 @@ impl Runner {
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
-                    let mut db = Db::new(db_connect().unwrap());
+                    let mut db = Db::new(db_connect(&CONFIG.database.url()).unwrap());
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id.clone(),
