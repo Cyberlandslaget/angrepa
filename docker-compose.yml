@@ -12,6 +12,8 @@ services:
   adminer:
     image: adminer
     restart: always
+    environment:
+      - ADMINER_DESIGN=nette
     depends_on: 
       - db
     ports:
