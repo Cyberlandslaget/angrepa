@@ -38,8 +38,22 @@ async fn exploit_one(
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            json!({ "status": "error", "message": format!("Failed to get exploits: {:?}", e) })
+            json!({ "status": "error", "message": format!("Failed to get exploit: {:?}", e) })
                 .into(),
+        ),
+    }
+}
+
+// GET /logs/flags
+async fn flags_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    match db.flags_all() {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
         ),
     }
 }
@@ -49,5 +63,6 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/exploits", get(exploits_all))
         .route("/exploit/:id", get(exploit_one))
+        .route("/flags", get(flags_all))
         .with_state(state)
 }

@@ -1,4 +1,4 @@
-use crate::models::ExploitModel;
+use crate::models::{ExploitModel, FlagModel};
 use color_eyre::Report;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 
@@ -21,5 +21,13 @@ impl<'a> Db<'a> {
             .load::<ExploitModel>(self.conn)?;
 
         Ok(exploits)
+    }
+
+    pub fn flags_all(&mut self) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::flag::dsl::*;
+
+        let flags = flag.load::<FlagModel>(self.conn)?;
+
+        Ok(flags)
     }
 }
