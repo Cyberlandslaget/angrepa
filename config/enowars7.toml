@@ -6,8 +6,6 @@ webhook = 'https://discord.com/api/webhooks/1131298841619083314/dRksylbBiaETqhlL
 tick = 60
 
 [manager]
-http_listener = "0.0.0.0:8000"
-tcp_listener = "0.0.0.0:8001"
 submitter_name = 'faust'
 fetcher_name = 'enowars'
 [manager.submitter]
@@ -18,10 +16,10 @@ endpoint = 'https://7.enowars.com/scoreboard/attack.json'
 ips = 'https://7.enowars.com/api/data/ips'
 
 [runner]
-http_server = "0.0.0.0:8888"
+http_server = "0.0.0.0:8000"
 
 [database]
-username = "postgres"
-password = "pass1"
+username = "angrepa"
+password = "a"
 host = "localhost"
-db = "diesel_demo"
+db = "angrepa"
