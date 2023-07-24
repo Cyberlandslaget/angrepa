@@ -25,7 +25,7 @@ async fn exploits_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    match db.exploits_all() {
+    match db.exploits() {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -43,7 +43,7 @@ async fn exploit_one(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    match db.exploits_one(id) {
+    match db.exploit(id) {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -62,8 +62,8 @@ async fn exploit_flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    if let Some(since) = query.since {
-        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+    let since = match query.since {
+        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
             Some(since) => since,
             None => {
                 return (
@@ -71,25 +71,16 @@ async fn exploit_flags(
                     json!({ "status": "error", "message": "Invalid timestamp" }).into(),
                 )
             }
-        };
+        },
+        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
 
-        match db.exploit_flags_since(id, since) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
-    } else {
-        match db.exploit_all_flags(id) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
+    match db.exploit_flags_since(id, since) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
+        ),
     }
 }
 
@@ -101,8 +92,8 @@ async fn flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    if let Some(since) = query.since {
-        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+    let since = match query.since {
+        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
             Some(since) => since,
             None => {
                 return (
@@ -110,25 +101,16 @@ async fn flags(
                     json!({ "status": "error", "message": "Invalid timestamp" }).into(),
                 )
             }
-        };
+        },
+        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
 
-        match db.flags_since(since) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
-    } else {
-        match db.flags_all() {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
+    match db.flags_since(since) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
+        ),
     }
 }
 
@@ -140,8 +122,8 @@ async fn executions(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    if let Some(since) = query.since {
-        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+    let since = match query.since {
+        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
             Some(since) => since,
             None => {
                 return (
@@ -149,24 +131,17 @@ async fn executions(
                     json!({ "status": "error", "message": "Invalid timestamp" }).into(),
                 )
             }
-        };
-        match db.executions_since(since) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
-                    .into(),
-            ),
-        }
-    } else {
-        match db.executions_all() {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
-                    .into(),
-            ),
-        }
+        },
+        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
+
+    match db.executions_since(since) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
+                .into(),
+        ),
     }
 }
 
@@ -197,8 +172,8 @@ async fn service_flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    if let Some(since) = query.since {
-        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+    let since = match query.since {
+        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
             Some(since) => since,
             None => {
                 return (
@@ -206,25 +181,16 @@ async fn service_flags(
                     json!({ "status": "error", "message": "Invalid timestamp" }).into(),
                 )
             }
-        };
+        },
+        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
 
-        match db.service_flags_since(&service, since) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
-    } else {
-        match db.service_all_flags(&service) {
-            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
-                    .into(),
-            ),
-        }
+    match db.service_flags_since(&service, since) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
+        ),
     }
 }
 
