@@ -54,7 +54,7 @@ async fn exploit_one(
 }
 
 // GET /logs/flags?start=TIMESTAMP
-async fn flags_all(
+async fn flags(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
@@ -92,11 +92,27 @@ async fn flags_all(
     }
 }
 
+// GET /logs/executions
+async fn executions_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    match db.executions_all() {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
+                .into(),
+        ),
+    }
+}
+
 // /logs/
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/exploits", get(exploits_all))
         .route("/exploit/:id", get(exploit_one))
-        .route("/flags", get(flags_all))
+        .route("/flags", get(flags))
+        .route("/executions", get(executions_all))
         .with_state(state)
 }

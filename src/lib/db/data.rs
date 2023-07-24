@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use color_eyre::Report;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 
-use crate::models::{ExploitModel, FlagModel};
+use crate::models::{ExecutionModel, ExploitModel, FlagModel};
 
 use super::Db;
 
@@ -41,5 +41,13 @@ impl<'a> Db<'a> {
             .load::<FlagModel>(self.conn)?;
 
         Ok(flags)
+    }
+
+    pub fn executions_all(&mut self) -> Result<Vec<ExecutionModel>, Report> {
+        use crate::schema::execution::dsl::*;
+
+        let executions = execution.load::<ExecutionModel>(self.conn)?;
+
+        Ok(executions)
     }
 }
