@@ -94,4 +94,22 @@ impl<'a> Db<'a> {
 
         Ok(flags)
     }
+
+    pub fn service_executions_since(
+        &mut self,
+        service_name: &String,
+        since: NaiveDateTime,
+    ) -> Result<Vec<ExecutionModel>, Report> {
+        use crate::schema::*;
+
+        let exploits = exploit::table
+            .filter(exploit::service.eq(service_name))
+            .load::<ExploitModel>(self.conn)?;
+
+        let executions = ExecutionModel::belonging_to(&exploits)
+            .filter(execution::started_at.ge(since))
+            .load::<ExecutionModel>(self.conn)?;
+
+        Ok(executions)
+    }
 }

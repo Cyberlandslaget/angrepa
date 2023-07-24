@@ -194,6 +194,37 @@ async fn service_flags(
     }
 }
 
+// GET /logs/service/:service/executions?since=OPTIONAL_TIMESTAMP
+async fn service_executions(
+    State(state): State<Arc<AppState>>,
+    Path(service): Path<String>,
+    query: Query<QueryPage>,
+) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    let since = match query.since {
+        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
+            Some(since) => since,
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+                )
+            }
+        },
+        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    };
+
+    match db.service_executions_since(&service, since) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
+        ),
+    }
+}
+
 // /logs/
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -204,5 +235,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/executions", get(executions))
         .route("/service/:service/exploits", get(service_exploits))
         .route("/service/:service/flags", get(service_flags))
+        .route("/service/:service/executions", get(service_executions))
         .with_state(state)
 }
