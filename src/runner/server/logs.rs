@@ -15,7 +15,7 @@ use super::AppState;
 
 #[derive(Deserialize)]
 struct QueryPage {
-    start: Option<i64>,
+    since: Option<i64>,
     #[allow(dead_code)]
     end: Option<i64>,
 }
@@ -61,7 +61,7 @@ async fn flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    if let Some(since) = query.start {
+    if let Some(since) = query.since {
         let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
             Some(since) => since,
             None => {
@@ -92,18 +92,41 @@ async fn flags(
     }
 }
 
-// GET /logs/executions
-async fn executions_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+// GET /logs/executions?start=TIMESTAMP
+async fn executions(
+    State(state): State<Arc<AppState>>,
+    query: Query<QueryPage>,
+) -> (StatusCode, Json<Value>) {
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    match db.executions_all() {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
-                .into(),
-        ),
+    if let Some(since) = query.since {
+        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+            Some(since) => since,
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+                )
+            }
+        };
+        match db.executions_since(since) {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
+                    .into(),
+            ),
+        }
+    } else {
+        match db.executions_all() {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
+                    .into(),
+            ),
+        }
     }
 }
 
@@ -113,6 +136,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/exploits", get(exploits_all))
         .route("/exploit/:id", get(exploit_one))
         .route("/flags", get(flags))
-        .route("/executions", get(executions_all))
+        .route("/executions", get(executions))
         .with_state(state)
 }

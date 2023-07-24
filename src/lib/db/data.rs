@@ -50,4 +50,17 @@ impl<'a> Db<'a> {
 
         Ok(executions)
     }
+
+    pub fn executions_since(
+        &mut self,
+        since: NaiveDateTime,
+    ) -> Result<Vec<ExecutionModel>, Report> {
+        use crate::schema::execution::dsl::*;
+
+        let executions = execution
+            .filter(started_at.ge(since))
+            .load::<ExecutionModel>(self.conn)?;
+
+        Ok(executions)
+    }
 }
