@@ -14,7 +14,7 @@ use angrepa::{
 };
 
 mod exploit;
-use exploit::exploit2::{docker::InitalizedExploit, Exploit};
+use exploit::{docker::InitalizedExploit, Exploit};
 
 mod server;
 
