@@ -63,4 +63,14 @@ impl<'a> Db<'a> {
 
         Ok(executions)
     }
+
+    pub fn service_exploits(&mut self, service_name: &String) -> Result<Vec<ExploitModel>, Report> {
+        use crate::schema::exploit::dsl::*;
+
+        let exploits = exploit
+            .filter(service.eq(service_name))
+            .load::<ExploitModel>(self.conn)?;
+
+        Ok(exploits)
+    }
 }

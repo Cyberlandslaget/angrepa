@@ -130,6 +130,24 @@ async fn executions(
     }
 }
 
+// GET /logs/service/:service/exploits
+async fn service_exploits(
+    State(state): State<Arc<AppState>>,
+    Path(service): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    match db.service_exploits(&service) {
+        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to get exploit: {:?}", e) })
+                .into(),
+        ),
+    }
+}
+
 // /logs/
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -137,5 +155,6 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/exploit/:id", get(exploit_one))
         .route("/flags", get(flags))
         .route("/executions", get(executions))
+        .route("/service/:service/exploits", get(service_exploits))
         .with_state(state)
 }
