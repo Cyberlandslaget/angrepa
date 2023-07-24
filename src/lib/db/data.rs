@@ -26,6 +26,38 @@ impl<'a> Db<'a> {
         Ok(exploits)
     }
 
+    pub fn exploit_all_flags(&mut self, exp_id: i32) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::*;
+
+        let exploits = exploit::table
+            .filter(exploit::id.eq(exp_id))
+            .load::<ExploitModel>(self.conn)?;
+
+        let flags = FlagModel::belonging_to(&exploits)
+            .select(FlagModel::as_select())
+            .load::<FlagModel>(self.conn)?;
+
+        Ok(flags)
+    }
+
+    pub fn exploit_flags_since(
+        &mut self,
+        exp_id: i32,
+        since: NaiveDateTime,
+    ) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::*;
+
+        let exploits = exploit::table
+            .filter(exploit::id.eq(exp_id))
+            .load::<ExploitModel>(self.conn)?;
+
+        let flags = FlagModel::belonging_to(&exploits)
+            .filter(flag::timestamp.ge(since))
+            .load::<FlagModel>(self.conn)?;
+
+        Ok(flags)
+    }
+
     pub fn flags_all(&mut self) -> Result<Vec<FlagModel>, Report> {
         use crate::schema::flag::dsl::*;
 

@@ -53,7 +53,47 @@ async fn exploit_one(
     }
 }
 
-// GET /logs/flags?start=TIMESTAMP
+// GET /logs/exploit/:id/flags?since=OPTIONAL_TIMESTAMP
+async fn exploit_flags(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+    query: Query<QueryPage>,
+) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    if let Some(since) = query.since {
+        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+            Some(since) => since,
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+                )
+            }
+        };
+
+        match db.exploit_flags_since(id, since) {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
+                    .into(),
+            ),
+        }
+    } else {
+        match db.exploit_all_flags(id) {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
+                    .into(),
+            ),
+        }
+    }
+}
+
+// GET /logs/flags?since=OPTIONAL_TIMESTAMP
 async fn flags(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
@@ -92,7 +132,7 @@ async fn flags(
     }
 }
 
-// GET /logs/executions?start=TIMESTAMP
+// GET /logs/executions?since=OPTIONAL_TIMESTAMP
 async fn executions(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
@@ -148,7 +188,7 @@ async fn service_exploits(
     }
 }
 
-// GET /logs/service/:service/flags
+// GET /logs/service/:service/flags?since=OPTIONAL_TIMESTAMP
 async fn service_flags(
     State(state): State<Arc<AppState>>,
     Path(service): Path<String>,
@@ -193,6 +233,7 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/exploits", get(exploits_all))
         .route("/exploit/:id", get(exploit_one))
+        .route("/exploit/:id/flags", get(exploit_flags))
         .route("/flags", get(flags))
         .route("/executions", get(executions))
         .route("/service/:service/exploits", get(service_exploits))
