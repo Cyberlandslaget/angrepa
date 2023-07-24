@@ -8,9 +8,10 @@ pub struct ExploitModel {
     pub name: String,
     pub service: String,
     pub blacklist: Vec<Option<String>>,
+    pub enabled: bool,
     pub docker_image: String,
     pub docker_containers: Vec<Option<String>>,
-    pub enabled: bool,
+    pub pool_size: i32,
 }
 
 #[derive(Debug, Clone, Insertable)]
@@ -20,9 +21,10 @@ pub struct ExploitInserter {
     pub name: String,
     pub service: String,
     pub blacklist: Vec<String>,
+    pub enabled: bool,
     pub docker_image: String,
     pub docker_containers: Vec<String>,
-    pub enabled: bool,
+    pub pool_size: i32,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]
