@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use color_eyre::Report;
+use diesel::prelude::*;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 
 use crate::models::{ExecutionModel, ExploitModel, FlagModel};
@@ -72,5 +73,19 @@ impl<'a> Db<'a> {
             .load::<ExploitModel>(self.conn)?;
 
         Ok(exploits)
+    }
+
+    pub fn service_all_flags(&mut self, service_name: &String) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::*;
+
+        let exploits = exploit::table
+            .filter(exploit::service.eq(service_name))
+            .load::<ExploitModel>(self.conn)?;
+
+        let flags = FlagModel::belonging_to(&exploits)
+            .select(FlagModel::as_select())
+            .load::<FlagModel>(self.conn)?;
+
+        Ok(flags)
     }
 }
