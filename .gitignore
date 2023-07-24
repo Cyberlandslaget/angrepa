@@ -3,4 +3,5 @@
 config/priv.toml
 *.tar
 data/exploits
+data/postgres
 attack.json
