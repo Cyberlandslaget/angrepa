@@ -1,6 +1,8 @@
-use crate::models::{ExploitModel, FlagModel};
+use chrono::NaiveDateTime;
 use color_eyre::Report;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
+
+use crate::models::{ExploitModel, FlagModel};
 
 use super::Db;
 
@@ -27,6 +29,16 @@ impl<'a> Db<'a> {
         use crate::schema::flag::dsl::*;
 
         let flags = flag.load::<FlagModel>(self.conn)?;
+
+        Ok(flags)
+    }
+
+    pub fn flags_since(&mut self, since: NaiveDateTime) -> Result<Vec<FlagModel>, Report> {
+        use crate::schema::flag::dsl::*;
+
+        let flags = flag
+            .filter(timestamp.ge(since))
+            .load::<FlagModel>(self.conn)?;
 
         Ok(flags)
     }

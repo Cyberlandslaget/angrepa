@@ -1,15 +1,24 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     routing::get,
     Json, Router,
 };
+use chrono::NaiveDateTime;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 use angrepa::db::Db;
 
 use super::AppState;
+
+#[derive(Deserialize)]
+struct QueryPage {
+    start: Option<i64>,
+    #[allow(dead_code)]
+    end: Option<i64>,
+}
 
 // GET /logs/exploits
 async fn exploits_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
@@ -44,17 +53,42 @@ async fn exploit_one(
     }
 }
 
-// GET /logs/flags
-async fn flags_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+// GET /logs/flags?start=TIMESTAMP
+async fn flags_all(
+    State(state): State<Arc<AppState>>,
+    query: Query<QueryPage>,
+) -> (StatusCode, Json<Value>) {
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    match db.flags_all() {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
-        ),
+    if let Some(since) = query.start {
+        let since = match NaiveDateTime::from_timestamp_opt(since, 0) {
+            Some(since) => since,
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+                )
+            }
+        };
+
+        match db.flags_since(since) {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
+                    .into(),
+            ),
+        }
+    } else {
+        match db.flags_all() {
+            Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
+                    .into(),
+            ),
+        }
     }
 }
 
