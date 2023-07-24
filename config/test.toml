@@ -17,3 +17,9 @@ ips = 'https://7.enowars.com/api/data/ips'
 
 [runner]
 http_server = "0.0.0.0:8888"
+
+[database]
+username = "postgres"
+password = "pass1"
+host = "localhost"
+db = "diesel_demo"

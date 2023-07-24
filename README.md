@@ -11,7 +11,7 @@ cargo install diesel_cli --no-default-features --features postgres
 ```
 docker compose up
 ```
-    - Optional: change username/password in .env and docker-compose.yml
+    - Optional: change username/password in config and docker-compose.yml
 
 2. Setup DB
 ```

@@ -23,8 +23,9 @@ use crate::manager::Manager;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, flag_regex: Regex) {
-        let mut db = Db::new(db_connect().unwrap());
+    async fn tick(manager: Manager, flag_regex: Regex, db_url: &String) {
+        let mut conn = db_connect(db_url).unwrap();
+        let mut db = Db::new(&mut conn);
 
         let exploits = db.get_exploits().unwrap();
 
@@ -74,6 +75,8 @@ impl Runner {
             for (target_host, target_flagid) in going_to_exploit {
                 let instance = instance.clone();
                 let flag_regex = flag_regex.clone();
+                let db_url = db_url.clone();
+
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
@@ -84,7 +87,8 @@ impl Runner {
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
-                    let mut db = Db::new(db_connect().unwrap());
+                    let mut conn = db_connect(&db_url).unwrap();
+                    let mut db = Db::new(&mut conn);
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id.clone(),
@@ -115,15 +119,15 @@ impl Runner {
         }
     }
 
-    async fn run(manager: Manager, conf: &config::Root) {
-        let mut tick_interval = conf
+    async fn run(manager: Manager, config: &config::Root) {
+        let mut tick_interval = config
             .common
             // make sure the tick has started
             .get_tick_interval(tokio::time::Duration::from_secs(1))
             .await
             .unwrap();
 
-        let flag_regex = Regex::new(&conf.common.format).unwrap();
+        let flag_regex = Regex::new(&config.common.format).unwrap();
 
         loop {
             let manager = manager.clone();
@@ -131,8 +135,8 @@ impl Runner {
 
             let manager = manager.clone();
             let flag_regex = flag_regex.clone();
-
-            spawn(async move { Runner::tick(manager, flag_regex).await });
+            let db_url = config.database.url();
+            spawn(async move { Runner::tick(manager, flag_regex, &db_url).await });
         }
     }
 }
@@ -149,7 +153,8 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     info!("CTF started {:?} ago", time_since_start);
 
     let server_addr = config.runner.http_server.parse()?;
-    let server_handle = spawn(async move { server::run(server_addr).await });
+    let db_url = config.database.url();
+    let server_handle = spawn(async move { server::run(server_addr, &db_url).await });
 
     let runner_handle = spawn(async move { Runner::run(manager, &config).await });
 

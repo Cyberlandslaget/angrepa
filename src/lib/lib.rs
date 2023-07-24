@@ -5,14 +5,15 @@ pub mod schema;
 pub mod wh;
 
 use color_eyre::Report;
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use diesel::{Connection, PgConnection};
-use dotenvy::dotenv;
-use std::env;
 
-pub fn db_connect() -> Result<PgConnection, Report> {
-    dotenv()?;
+pub fn db_connect(url: &String) -> Result<PgConnection, Report> {
+    Ok(PgConnection::establish(url)?)
+}
 
-    let url = env::var("DATABASE_URL")?;
-
-    Ok(PgConnection::establish(&url)?)
+pub fn get_connection_pool(url: &String) -> Result<Pool<ConnectionManager<PgConnection>>, Report> {
+    let manager = ConnectionManager::<PgConnection>::new(url);
+    Ok(Pool::builder().test_on_check_out(true).build(manager)?)
 }
