@@ -15,10 +15,11 @@ diesel::table! {
         id -> Int4,
         name -> Text,
         service -> Text,
-        blacklist -> Text,
-        docker_image -> Text,
-        docker_container -> Text,
+        blacklist -> Array<Nullable<Text>>,
         enabled -> Bool,
+        docker_image -> Text,
+        docker_containers -> Array<Nullable<Text>>,
+        pool_size -> Int4,
     }
 }
 

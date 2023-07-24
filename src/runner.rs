@@ -14,7 +14,7 @@ use angrepa::{
 };
 
 mod exploit;
-use exploit::exploit2::{docker::InitalizedExploit, Exploit};
+use exploit::{docker::InitalizedExploit, Exploit};
 
 mod server;
 
@@ -23,7 +23,7 @@ use crate::manager::Manager;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, flag_regex: Regex, db_url: &String) {
+    async fn tick(manager: Manager, flag_regex: Regex, db_url: &str) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
@@ -68,22 +68,25 @@ impl Runner {
             }
 
             let docker = docker.clone();
-            let instance = InitalizedExploit::from_model(docker, exploit.clone())
+            let db = Db::new(&mut conn);
+
+            let mut instance = InitalizedExploit::from_model(docker, exploit.clone(), db)
                 .await
                 .unwrap();
 
             for (target_host, target_flagid) in going_to_exploit {
-                let instance = instance.clone();
                 let flag_regex = flag_regex.clone();
-                let db_url = db_url.clone();
+                let db_url = db_url.to_owned();
+
+                let log_future = instance
+                    .run(target_host.to_string(), target_flagid.to_string())
+                    .await
+                    .unwrap();
 
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
-                    let log = instance
-                        .run_till_completion(target_host.to_string(), target_flagid.to_string())
-                        .await
-                        .unwrap();
+                    let log = log_future.await.unwrap();
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
