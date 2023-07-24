@@ -8,6 +8,8 @@ services:
       POSTGRES_USER: angrepa
       POSTGRES_PASSWORD: a
       POSTGRES_DB: angrepa
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
 
   adminer:
     image: adminer
