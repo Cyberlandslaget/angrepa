@@ -5,7 +5,7 @@ use tracing::info;
 use super::submitter::{FlagStatus, Submitter};
 
 /// Submits flags
-async fn submit<'a>(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: String) {
+async fn submit(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: String) {
     let mut conn = db_connect(&db_url).unwrap();
     let mut db = Db::new(&mut conn);
 

@@ -9,6 +9,8 @@ pub struct Db<'a> {
     conn: &'a mut PgConnection,
 }
 
+mod data;
+
 impl<'a> Db<'a> {
     pub fn new(conn: &'a mut PgConnection) -> Self {
         Self { conn }
