@@ -28,15 +28,19 @@ pub enum SubmitError {
 /// Adapted from https://web.archive.org/web/20230325144340/https://docs.ecsc2022.eu/ad_platform/
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString, strum::EnumIter)]
 pub enum FlagStatus {
+    #[strum(serialize = "OK")]
     Ok,
+    #[strum(serialize = "DUP")]
     Duplicate,
+    #[strum(serialize = "OWN")]
     Own,
+    #[strum(serialize = "OLD")]
     Old,
+    #[strum(serialize = "INV")]
     Invalid,
-    /// Server refused flag
+    /// Server refused flag. Pre or post competition.
+    #[strum(serialize = "ERR")]
     Error,
-    /// Didn't understand the response
-    Unknown,
 }
 
 /// Implements the low-level operation of submitting a bunch of flags
