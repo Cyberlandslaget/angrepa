@@ -63,7 +63,7 @@ impl Manager {
             lock.get(service_str).cloned()
         };
 
-        Some(service?)
+        service
     }
 }
 

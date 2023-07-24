@@ -91,7 +91,7 @@ impl Runner {
                     let mut db = Db::new(&mut conn);
                     let execution = db
                         .add_execution(&ExecutionInserter {
-                            exploit_id: exploit.id.clone(),
+                            exploit_id: exploit.id,
                             output: log.output.clone(),
                             started_at,
                             finished_at,
@@ -109,8 +109,8 @@ impl Runner {
                             status: "".to_string(),
                             submitted: false,
                             timestamp: chrono::Utc::now().naive_utc(),
-                            execution_id: execution.id.clone(),
-                            exploit_id: exploit.id.clone(),
+                            execution_id: execution.id,
+                            exploit_id: exploit.id,
                         })
                         .unwrap();
                     }

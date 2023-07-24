@@ -15,7 +15,7 @@ impl<'a> Db<'a> {
     }
 
     pub fn conn(&self) -> &PgConnection {
-        &self.conn
+        self.conn
     }
 
     // exploits

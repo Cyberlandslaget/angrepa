@@ -24,7 +24,7 @@ impl FaustSubmitter {
 #[async_trait]
 impl Submitter for FaustSubmitter {
     async fn submit(&self, flags: Vec<String>) -> Result<Vec<(String, FlagStatus)>, SubmitError> {
-        if flags.len() == 0 {
+        if flags.is_empty() {
             return Ok(Vec::new());
         }
 

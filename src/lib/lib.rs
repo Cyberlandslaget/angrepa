@@ -9,7 +9,7 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::{Connection, PgConnection};
 
-pub fn db_connect(url: &String) -> Result<PgConnection, Report> {
+pub fn db_connect(url: &str) -> Result<PgConnection, Report> {
     Ok(PgConnection::establish(url)?)
 }
 

@@ -35,13 +35,13 @@ async fn submit<'a>(submitter: impl Submitter + Send + Sync + Clone + 'static, d
     }
 }
 
-pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &String) {
+pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
     // submit every 5s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
         send_signal.tick().await;
-        spawn(submit(submitter.clone(), db_url.clone()));
+        spawn(submit(submitter.clone(), db_url.to_owned()));
     }
 }
