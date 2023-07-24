@@ -23,7 +23,7 @@ use crate::manager::Manager;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, flag_regex: Regex, db_url: &String) {
+    async fn tick(manager: Manager, flag_regex: Regex, db_url: &str) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
@@ -74,7 +74,7 @@ impl Runner {
 
             for (target_host, target_flagid) in going_to_exploit {
                 let flag_regex = flag_regex.clone();
-                let db_url = db_url.clone();
+                let db_url = db_url.to_owned();
 
                 let log_future = instance
                     .run(target_host.to_string(), target_flagid.to_string())
