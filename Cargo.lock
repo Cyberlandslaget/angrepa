@@ -66,6 +66,7 @@ dependencies = [
  "tar",
  "thiserror",
  "tokio",
+ "tokio-util",
  "toml",
  "tower-http",
  "tracing",
