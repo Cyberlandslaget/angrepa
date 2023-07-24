@@ -4,8 +4,6 @@ format = "ECSC_[A-Za-z0-9\\+/]{32}"
 tick = 5
 
 [manager]
-http_listener = "0.0.0.0:8000"
-tcp_listener = "0.0.0.0:8001"
 submitter_name = 'dummy'
 fetcher_name = 'dummy'
 [manager.submitter]
