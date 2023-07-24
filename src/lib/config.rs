@@ -89,10 +89,28 @@ pub struct Runner {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct Database {
+    pub username: String,
+    pub password: String,
+    pub host: String,
+    pub db: String,
+}
+
+impl Database {
+    pub fn url(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}/{}",
+            self.username, self.password, self.host, self.db
+        )
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Root {
     pub common: Common,
     pub manager: Manager,
     pub runner: Runner,
+    pub database: Database,
 }
 
 // common args, used by both manager and runner

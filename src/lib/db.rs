@@ -5,12 +5,12 @@ use crate::models::{
     ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter, FlagModel,
 };
 
-pub struct Db {
-    conn: PgConnection,
+pub struct Db<'a> {
+    conn: &'a mut PgConnection,
 }
 
-impl Db {
-    pub fn new(conn: PgConnection) -> Self {
+impl<'a> Db<'a> {
+    pub fn new(conn: &'a mut PgConnection) -> Self {
         Self { conn }
     }
 
@@ -23,7 +23,7 @@ impl Db {
     pub fn get_exploits(&mut self) -> Result<Vec<ExploitModel>, Report> {
         use crate::schema::exploit::dsl::*;
 
-        let exploits = exploit.load::<ExploitModel>(&mut self.conn)?;
+        let exploits = exploit.load::<ExploitModel>(self.conn)?;
 
         Ok(exploits)
     }
@@ -33,7 +33,7 @@ impl Db {
 
         Ok(diesel::insert_into(exploit)
             .values(exp)
-            .get_result(&mut self.conn)?)
+            .get_result(self.conn)?)
     }
 
     pub fn start_exploit(&mut self, target_id: i32) -> Result<(), Report> {
@@ -41,7 +41,7 @@ impl Db {
 
         diesel::update(exploit.filter(id.eq(target_id)))
             .set(enabled.eq(true))
-            .execute(&mut self.conn)?;
+            .execute(self.conn)?;
 
         Ok(())
     }
@@ -51,7 +51,7 @@ impl Db {
 
         diesel::update(exploit.filter(id.eq(target_id)))
             .set(enabled.eq(false))
-            .execute(&mut self.conn)?;
+            .execute(self.conn)?;
 
         Ok(())
     }
@@ -63,7 +63,7 @@ impl Db {
 
         Ok(diesel::insert_into(execution)
             .values(exec)
-            .get_result(&mut self.conn)?)
+            .get_result(self.conn)?)
     }
 
     // flag
@@ -71,9 +71,7 @@ impl Db {
     pub fn add_flag(&mut self, fl: &FlagInserter) -> Result<(), Report> {
         use crate::schema::flag::dsl::*;
 
-        diesel::insert_into(flag)
-            .values(fl)
-            .execute(&mut self.conn)?;
+        diesel::insert_into(flag).values(fl).execute(self.conn)?;
 
         Ok(())
     }
@@ -87,7 +85,7 @@ impl Db {
 
         diesel::update(flag.filter(text.eq(search_text)))
             .set(status.eq(new_status))
-            .execute(&mut self.conn)?;
+            .execute(self.conn)?;
 
         Ok(())
     }
@@ -97,7 +95,7 @@ impl Db {
 
         let flags = flag
             .filter(submitted.eq(false))
-            .load::<FlagModel>(&mut self.conn)?;
+            .load::<FlagModel>(self.conn)?;
 
         Ok(flags)
     }
@@ -107,7 +105,7 @@ impl Db {
 
         diesel::update(flag.filter(id.eq(target_id)))
             .set(submitted.eq(true))
-            .execute(&mut self.conn)?;
+            .execute(self.conn)?;
 
         Ok(())
     }
