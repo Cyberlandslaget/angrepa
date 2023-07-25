@@ -46,9 +46,9 @@ diesel::table! {
     target (id) {
         id -> Int4,
         flag_id -> Text,
+        exploited -> Bool,
         service -> Text,
         team -> Text,
-        exploited -> Bool,
     }
 }
 
