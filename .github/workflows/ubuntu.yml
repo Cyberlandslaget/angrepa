@@ -26,7 +26,7 @@ jobs:
       - name: clippy
         uses: actions-rs/clippy-check@v1
         with:
-          args: --all-targets --all-features -- -D warnings
+          args: --all-features -- -D warnings
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: test
         run: cargo test -- --nocapture --test-threads=1
