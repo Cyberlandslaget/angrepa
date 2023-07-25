@@ -121,4 +121,27 @@ impl<'a> Db<'a> {
 
         Ok(())
     }
+
+    // service
+
+    pub fn add_service(&mut self, name_str: &str) -> Result<(), Report> {
+        use crate::schema::service::dsl::*;
+
+        diesel::insert_into(service)
+            .values(name.eq(name_str))
+            .execute(self.conn)?;
+
+        Ok(())
+    }
+
+    /// since service only has a name, only return a bool
+    pub fn service_exists(&mut self, name_str: &str) -> Result<bool, Report> {
+        use crate::schema::service::dsl::*;
+
+        // is there an entry with name = name_str?
+        let exists = diesel::select(diesel::dsl::exists(service.filter(name.eq(name_str))))
+            .get_result(self.conn)?;
+
+        Ok(exists)
+    }
 }

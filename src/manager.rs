@@ -1,5 +1,6 @@
 use self::fetcher::Service;
-use angrepa::config;
+use angrepa::db::Db;
+use angrepa::{config, db_connect};
 use color_eyre::Report;
 use futures::future::join_all;
 use parking_lot::Mutex;
@@ -70,6 +71,15 @@ impl Manager {
 pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
+
+    // first insert service names
+    let mut conn = db_connect(&config.database.url()).unwrap();
+    let mut db = Db::new(&mut conn);
+
+    for service in &config.common.services {
+        // NOP if already exists)
+        db.add_service(service)?;
+    }
 
     // run submitter on another thread
     let manager2 = manager.clone();
