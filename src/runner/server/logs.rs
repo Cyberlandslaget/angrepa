@@ -62,17 +62,14 @@ async fn exploit_flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    let since = match query.since {
-        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
-            Some(since) => since,
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
-                )
-            }
-        },
-        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    let since = match NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0) {
+        Some(since) => since,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+            )
+        }
     };
 
     match db.exploit_flags_since(id, since) {
@@ -92,17 +89,14 @@ async fn flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    let since = match query.since {
-        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
-            Some(since) => since,
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
-                )
-            }
-        },
-        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    let since = match NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0) {
+        Some(since) => since,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+            )
+        }
     };
 
     match db.flags_since(since) {
@@ -122,17 +116,14 @@ async fn executions(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    let since = match query.since {
-        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
-            Some(since) => since,
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
-                )
-            }
-        },
-        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    let since = match NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0) {
+        Some(since) => since,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+            )
+        }
     };
 
     match db.executions_since(since) {
@@ -172,17 +163,14 @@ async fn service_flags(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    let since = match query.since {
-        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
-            Some(since) => since,
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
-                )
-            }
-        },
-        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    let since = match NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0) {
+        Some(since) => since,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+            )
+        }
     };
 
     match db.service_flags_since(&service, since) {
@@ -203,17 +191,14 @@ async fn service_executions(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    let since = match query.since {
-        Some(since) => match NaiveDateTime::from_timestamp_opt(since, 0) {
-            Some(since) => since,
-            None => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    json!({ "status": "error", "message": "Invalid timestamp" }).into(),
-                )
-            }
-        },
-        None => NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+    let since = match NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0) {
+        Some(since) => since,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                json!({ "status": "error", "message": "Invalid timestamp" }).into(),
+            )
+        }
     };
 
     match db.service_executions_since(&service, since) {
