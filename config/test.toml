@@ -8,7 +8,6 @@ submitter_name = 'dummy'
 fetcher_name = 'dummy'
 [manager.submitter]
 host = 'localhost:1337'
-header_suffix = "\n\n"
 [manager.fetcher]
 endpoint = 'https://7.enowars.com/scoreboard/attack.json'
 ips = 'https://7.enowars.com/api/data/ips'
