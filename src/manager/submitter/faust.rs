@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -107,19 +109,14 @@ impl Submitter for FaustSubmitter {
                 }
             };
 
-            let status = match code {
-                "OK" => FlagStatus::Ok,
-                "DUP" => FlagStatus::Duplicate,
-                "OWN" => FlagStatus::Own,
-                "OLD" => FlagStatus::Old,
-                "INV" => FlagStatus::Invalid,
-                "ERR" => FlagStatus::Error,
-                _ => {
-                    warn!("Unknown flag status: {} for flag {}", code, flag);
+            let status = FlagStatus::from_str(code).unwrap_or_else(|_| {
+                warn!(
+                    "Unknown flag status: {} for flag {}, putting ERR",
+                    code, flag
+                );
 
-                    FlagStatus::Unknown
-                }
-            };
+                FlagStatus::Error
+            });
 
             statuses.push((flag.to_string(), status));
         }
