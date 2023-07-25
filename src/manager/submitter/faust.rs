@@ -7,17 +7,11 @@ use tracing::{debug, warn};
 #[derive(Clone, Debug, Deserialize)]
 pub struct FaustSubmitter {
     host: String,
-    /// Reads until this is found
-    #[allow(dead_code)]
-    header_suffix: String,
 }
 
 impl FaustSubmitter {
-    pub fn new(host: String, header_suffix: String) -> Self {
-        Self {
-            host,
-            header_suffix,
-        }
+    pub fn new(host: String) -> Self {
+        Self { host }
     }
 }
 
@@ -36,12 +30,12 @@ impl Submitter for FaustSubmitter {
         debug!("Opened socket.");
 
         // read header
-        let mut header = Vec::new();
+        let mut header: Vec<u8> = Vec::new();
 
-        // hack
-        socket.read_until(b'\n', &mut header).await?;
-        socket.read_until(b'\n', &mut header).await?;
-        socket.read_until(b'\n', &mut header).await?;
+        // https://ctf-gameserver.org/submission/
+        while !header.ends_with(b"\n\n") {
+            socket.read_until(b'\n', &mut header).await?;
+        }
         debug!("Header read.");
 
         // send all flags

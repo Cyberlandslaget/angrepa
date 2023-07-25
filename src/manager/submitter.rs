@@ -59,15 +59,7 @@ impl Submitters {
                     .ok_or(eyre!("Faust submitter host must be a string"))?
                     .to_owned();
 
-                let header_suffix = manager
-                    .submitter
-                    .get("header_suffix")
-                    .ok_or(eyre!("Faust submitter requires header_suffix"))?
-                    .as_str()
-                    .ok_or(eyre!("Faust submitter header_suffix must be a string"))?
-                    .to_owned();
-
-                let faust = FaustSubmitter::new(host, header_suffix);
+                let faust = FaustSubmitter::new(host);
 
                 Ok(Self::Faust(faust))
             }
