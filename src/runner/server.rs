@@ -9,6 +9,7 @@ use angrepa::get_connection_pool;
 
 mod exploit;
 mod logs;
+mod ping;
 mod templates;
 
 pub struct AppState {
@@ -24,6 +25,7 @@ pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
         .nest("/templates", templates::router())
         .nest("/exploit", exploit::router(Arc::clone(&app_state)))
         .nest("/logs", logs::router(app_state))
+        .nest("/ping", ping::router())
         .layer(CorsLayer::new().allow_methods(Any).allow_origin(Any));
 
     tracing::info!("Webserver started on {addr}");
