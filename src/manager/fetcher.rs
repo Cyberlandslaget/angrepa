@@ -1,6 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use angrepa::config;
+use angrepa::{
+    config,
+    models::{FlagInserter, FlagidInserter},
+};
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use serde::{Deserialize, Serialize};
@@ -78,6 +81,24 @@ pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Commo
         info!("tick {}", tick_number);
 
         let ips = fetcher.ips().await.unwrap();
+
+        for (service_name, service) in &services {
+            for (team_ip, ticks) in &service.0 {
+                for (tick, flag_id) in &ticks.0 {
+                    // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
+
+                    let exists = false;
+
+                    if exists {
+                        let inserter = FlagidInserter {
+                            flag_id: flag_id.to_string(),
+                            service: service_name.to_owned(),
+                            team: team_ip.to_owned(),
+                        };
+                    }
+                }
+            }
+        }
 
         // then save it
         manager.save_ips_services(tick_number as i32, ips, services.clone());

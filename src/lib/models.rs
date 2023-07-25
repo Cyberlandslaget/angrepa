@@ -80,3 +80,14 @@ pub struct FlagInserter {
     pub execution_id: i32,
     pub exploit_id: i32,
 }
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = super::schema::flagid)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct FlagidInserter {
+    pub flag_id: String,
+    /// FOREIGN KEY
+    pub service: String,
+    /// FOREIGN KEY
+    pub team: String,
+}
