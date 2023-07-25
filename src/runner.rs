@@ -78,10 +78,17 @@ impl Runner {
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
-                let log_future = instance
+                let run = instance
                     .run(target_host.to_string(), target_flagid.to_string())
-                    .await
-                    .unwrap();
+                    .await;
+
+                let log_future = match run {
+                    Ok(run) => run,
+                    Err(err) => {
+                        warn!("Failed to run exploit: {:?}", err);
+                        continue;
+                    }
+                };
 
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
@@ -150,7 +157,6 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     // time until start
     common.sleep_until_start().await;
     assert!(chrono::Utc::now() >= common.start);
-    info!("Manager woke up!");
 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
@@ -164,17 +170,4 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     join_all(vec![runner_handle, server_handle]).await;
 
     Ok(())
-}
-
-#[allow(dead_code)]
-fn tarify(path: &str) -> Result<Vec<u8>, Report> {
-    use tar::Builder;
-
-    let mut tar = Builder::new(Vec::new());
-
-    tar.append_dir_all(".", path)?;
-    tar.finish()?;
-
-    let tar = tar.into_inner()?;
-    Ok(tar)
 }

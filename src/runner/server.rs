@@ -1,4 +1,4 @@
-use axum::Router;
+use axum::{http::StatusCode, routing::get, Router};
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::PgConnection;
@@ -21,6 +21,7 @@ pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
     });
 
     let app = Router::new()
+        .route("/ping", get(|| async { (StatusCode::OK, "pong") }))
         .nest("/templates", templates::router())
         .nest("/exploit", exploit::router(Arc::clone(&app_state)))
         .nest("/logs", logs::router(app_state))

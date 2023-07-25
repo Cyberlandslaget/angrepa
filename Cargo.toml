@@ -2,6 +2,7 @@
 name = "angrepa"
 version = "0.1.0"
 edition = "2021"
+default-run = "angrepa_server"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,7 +21,7 @@ hex = "0.4.3"
 parking_lot = "0.12.1"
 rand = "0.8.5"
 regex = "1.9.1"
-reqwest = { version = "0.11.18", features = ["json"] }
+reqwest = { version = "0.11.18", features = ["json", "multipart"] }
 serde = { version = "1.0.171", features = ["derive", "serde_derive", "alloc"] }
 serde_json = "1.0.103"
 strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
@@ -38,3 +39,11 @@ webhook = "2.1.2"
 
 [lib]
 path = "src/lib/lib.rs"
+
+[[bin]]
+name = "angrepa_server"
+path = "src/main.rs"
+
+[[bin]]
+name = "angrepa"
+path = "src/cli.rs"
