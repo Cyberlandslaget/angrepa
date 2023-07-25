@@ -15,17 +15,13 @@ pub struct AppState {
     db: Pool<ConnectionManager<PgConnection>>,
 }
 
-pub async fn ping() -> (StatusCode, &'static str) {
-    (StatusCode::OK, "pong")
-}
-
 pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
     let app_state = Arc::new(AppState {
         db: get_connection_pool(db_url).unwrap(),
     });
 
     let app = Router::new()
-        .route("/ping", get(ping))
+        .route("/ping", get(|| async { (StatusCode::OK, "pong") }))
         .nest("/templates", templates::router())
         .nest("/exploit", exploit::router(Arc::clone(&app_state)))
         .nest("/logs", logs::router(app_state))
