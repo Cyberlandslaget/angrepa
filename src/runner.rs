@@ -81,7 +81,7 @@ impl Runner {
                 let run = instance
                     .run(target_host.to_string(), target_flagid.to_string())
                     .await;
-                
+
                 let log_future = match run {
                     Ok(run) => run,
                     Err(err) => {
