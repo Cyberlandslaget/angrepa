@@ -78,10 +78,17 @@ impl Runner {
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
-                let log_future = instance
+                let run = instance
                     .run(target_host.to_string(), target_flagid.to_string())
-                    .await
-                    .unwrap();
+                    .await;
+                
+                let log_future = match run {
+                    Ok(run) => run,
+                    Err(err) => {
+                        warn!("Failed to run exploit: {:?}", err);
+                        continue;
+                    }
+                };
 
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
