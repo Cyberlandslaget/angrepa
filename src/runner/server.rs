@@ -8,6 +8,7 @@ use tower_http::cors::{Any, CorsLayer};
 use angrepa::get_connection_pool;
 
 mod exploit;
+mod logs;
 mod templates;
 
 pub struct AppState {
@@ -21,7 +22,8 @@ pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
 
     let app = Router::new()
         .nest("/templates", templates::router())
-        .nest("/exploit", exploit::router(app_state))
+        .nest("/exploit", exploit::router(Arc::clone(&app_state)))
+        .nest("/logs", logs::router(app_state))
         .layer(CorsLayer::new().allow_methods(Any).allow_origin(Any));
 
     tracing::info!("Webserver started on {addr}");

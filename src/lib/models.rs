@@ -1,6 +1,7 @@
 use diesel::prelude::*;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Queryable, Selectable)]
+#[derive(Serialize, Debug, Clone, Queryable, Selectable, Identifiable)]
 #[diesel(table_name = super::schema::exploit)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ExploitModel {
@@ -27,9 +28,12 @@ pub struct ExploitInserter {
     pub pool_size: i32,
 }
 
-#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[derive(
+    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Associations, Identifiable,
+)]
 #[diesel(table_name = super::schema::execution)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(belongs_to(ExploitModel, foreign_key = exploit_id))]
 pub struct ExecutionModel {
     pub id: i32,
     pub exploit_id: i32,
@@ -48,9 +52,13 @@ pub struct ExecutionInserter {
     pub finished_at: chrono::NaiveDateTime,
 }
 
-#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[derive(
+    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations,
+)]
 #[diesel(table_name = super::schema::flag)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(belongs_to(ExecutionModel, foreign_key = execution_id))]
+#[diesel(belongs_to(ExploitModel, foreign_key = exploit_id))]
 pub struct FlagModel {
     pub id: i32,
     pub text: String,
