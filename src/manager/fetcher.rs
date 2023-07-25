@@ -80,7 +80,7 @@ pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Commo
         let ips = fetcher.ips().await.unwrap();
 
         // then save it
-        manager.update_ips_services(tick_number as i32, ips, services.clone());
+        manager.save_ips_services(tick_number as i32, ips, services.clone());
 
         // some checks
         if let Some(last) = last_services {

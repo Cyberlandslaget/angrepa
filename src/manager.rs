@@ -38,7 +38,7 @@ impl Manager {
     }
 
     /// Update ips and services
-    pub fn update_ips_services(
+    pub fn save_ips_services(
         &self,
         tick: i32,
         ips: Vec<String>,
