@@ -7,6 +7,7 @@ diesel::table! {
         output -> Text,
         started_at -> Timestamp,
         finished_at -> Timestamp,
+        flagid_id -> Int4,
     }
 }
 
@@ -58,6 +59,8 @@ diesel::table! {
 }
 
 diesel::joinable!(execution -> exploit (exploit_id));
+diesel::joinable!(execution -> flagid (flagid_id));
+diesel::joinable!(exploit -> service (service));
 diesel::joinable!(flag -> execution (execution_id));
 diesel::joinable!(flag -> exploit (exploit_id));
 diesel::joinable!(flagid -> service (service));
