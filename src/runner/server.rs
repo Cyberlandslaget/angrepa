@@ -1,4 +1,4 @@
-use axum::Router;
+use axum::{http::StatusCode, routing::get, Router};
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::PgConnection;
@@ -9,11 +9,14 @@ use angrepa::get_connection_pool;
 
 mod exploit;
 mod logs;
-mod ping;
 mod templates;
 
 pub struct AppState {
     db: Pool<ConnectionManager<PgConnection>>,
+}
+
+pub async fn ping() -> (StatusCode, &'static str) {
+    (StatusCode::OK, "pong")
 }
 
 pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
@@ -22,10 +25,10 @@ pub async fn run(addr: std::net::SocketAddr, db_url: &String) {
     });
 
     let app = Router::new()
+        .route("/ping", get(ping))
         .nest("/templates", templates::router())
         .nest("/exploit", exploit::router(Arc::clone(&app_state)))
         .nest("/logs", logs::router(app_state))
-        .nest("/ping", ping::router())
         .layer(CorsLayer::new().allow_methods(Any).allow_origin(Any));
 
     tracing::info!("Webserver started on {addr}");
