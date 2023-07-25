@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use angrepa::config;
 use async_trait::async_trait;
@@ -9,7 +9,7 @@ mod enowars;
 pub use enowars::EnowarsFetcher;
 mod dummy;
 pub use dummy::DummyFetcher;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use super::Manager;
 
@@ -65,8 +65,17 @@ pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Commo
 
         // get updated info
         let services = fetcher.services().await.unwrap();
-        let service_names = services.keys().collect::<Vec<_>>();
-        info!("tick {}: services: {:?}", tick_number, service_names);
+        let service_names = services.keys().cloned().collect::<HashSet<_>>();
+
+        if service_names != common.services {
+            error!(
+                "Fetcher and config disagree on service names! {:?} != {:?}",
+                service_names, common.services
+            );
+            continue;
+        }
+
+        info!("tick {}", tick_number);
 
         let ips = fetcher.ips().await.unwrap();
 

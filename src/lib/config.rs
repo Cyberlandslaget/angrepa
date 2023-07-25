@@ -2,6 +2,7 @@ use argh::FromArgs;
 use chrono::DateTime;
 use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
+use std::collections::HashSet;
 use tokio::time::{interval_at, MissedTickBehavior};
 use tracing::{debug, info};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter};
@@ -14,6 +15,7 @@ pub struct Common {
     pub tick: u64,
     pub format: String,
     pub start: DateTime<chrono::Utc>,
+    pub services: HashSet<String>,
 }
 
 impl Common {
@@ -193,6 +195,7 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::Common;
+    use std::collections::HashSet;
 
     #[test]
     fn tick_rounding() {
@@ -207,6 +210,7 @@ mod tests {
                 ),
                 chrono::Utc,
             ),
+            services: HashSet::new(),
         };
 
         // exactly at start
