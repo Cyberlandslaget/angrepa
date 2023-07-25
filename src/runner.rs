@@ -157,7 +157,6 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     // time until start
     common.sleep_until_start().await;
     assert!(chrono::Utc::now() >= common.start);
-    info!("Manager woke up!");
 
     let time_since_start = chrono::Utc::now() - common.start;
     info!("CTF started {:?} ago", time_since_start);
