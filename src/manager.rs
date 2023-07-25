@@ -6,7 +6,7 @@ use futures::future::join_all;
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 mod submitter;
 use submitter::Submitters;
@@ -78,7 +78,12 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
 
     for service in &config.common.services {
         // a NOP if service already exists
-        db.add_service(service)?;
+        if let Err(e) = db.add_service(service) {
+            warn!(
+                "Failed to add service: '{service}', probably already present. Error: {}",
+                e
+            );
+        }
     }
 
     // run submitter on another thread
