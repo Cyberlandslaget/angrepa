@@ -2,6 +2,7 @@
 name = "angrepa"
 version = "0.1.0"
 edition = "2021"
+default-run = "angrepa"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -38,3 +39,11 @@ webhook = "2.1.2"
 
 [lib]
 path = "src/lib/lib.rs"
+
+[[bin]]
+name = "angrepa"
+path = "src/main.rs"
+
+[[bin]]
+name = "cli"
+path = "src/cli.rs"
