@@ -31,6 +31,8 @@ struct Args {
 enum Command {
     Ping(Ping),
     Upload(Upload),
+    Start(Start),
+    Stop(Stop),
 }
 
 #[derive(FromArgs, Debug)]
@@ -63,6 +65,24 @@ struct Upload {
     blacklist: Option<String>,
 }
 
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "start")]
+/// start an exploit
+struct Start {
+    #[argh(positional)]
+    /// id of exploit
+    id: i32,
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "stop")]
+/// stop an exploit
+struct Stop {
+    #[argh(positional)]
+    /// id of exploit
+    id: i32,
+}
+
 #[tokio::main]
 async fn main() {
     let mut args = argh::from_env::<Args>();
@@ -78,6 +98,8 @@ async fn main() {
     match &args.cmd {
         Command::Ping(ping) => ping.run(&args).await,
         Command::Upload(upload) => upload.run(&args).await,
+        Command::Start(start) => start.run(&args).await,
+        Command::Stop(stop) => stop.run(&args).await,
     }
 }
 
@@ -171,6 +193,74 @@ impl Upload {
             println!("Sucessfully built exploit {}", build.id);
         } else {
             println!("Failed to build: {}", build.status);
+        }
+    }
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct GenericResponse {
+    status: String,
+    msg: Option<String>,
+}
+
+impl GenericResponse {
+    fn is_ok(&self) -> bool {
+        self.status == "ok"
+    }
+}
+
+impl Start {
+    async fn run(&self, args: &Args) {
+        let client = reqwest::Client::new();
+
+        let endpoint = format!("/exploit/start/{}", self.id);
+        let url = args.host.join(&endpoint).unwrap();
+
+        let resp: GenericResponse = client
+            .post(url.clone())
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+
+        if resp.is_ok() {
+            println!("Stopped exploit {}", self.id);
+        } else {
+            println!(
+                "Failed to stop exploit {}: {}",
+                self.id,
+                resp.msg.unwrap_or_default()
+            );
+        }
+    }
+}
+
+impl Stop {
+    async fn run(&self, args: &Args) {
+        let client = reqwest::Client::new();
+
+        let endpoint = format!("/exploit/stop/{}", self.id);
+        let url = args.host.join(&endpoint).unwrap();
+
+        let resp: GenericResponse = client
+            .post(url.clone())
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+
+        if resp.is_ok() {
+            println!("Stopped exploit {}", self.id);
+        } else {
+            println!(
+                "Failed to stop exploit {}: {}",
+                self.id,
+                resp.msg.unwrap_or_default()
+            );
         }
     }
 }
