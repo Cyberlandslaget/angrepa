@@ -171,16 +171,3 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
 
     Ok(())
 }
-
-#[allow(dead_code)]
-fn tarify(path: &str) -> Result<Vec<u8>, Report> {
-    use tar::Builder;
-
-    let mut tar = Builder::new(Vec::new());
-
-    tar.append_dir_all(".", path)?;
-    tar.finish()?;
-
-    let tar = tar.into_inner()?;
-    Ok(tar)
-}
