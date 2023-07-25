@@ -4,7 +4,7 @@ use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
 use tokio::time::{interval_at, MissedTickBehavior};
 use tracing::{debug, info};
-use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter};
 
 use super::wh::WebhookLayer;
 
@@ -159,12 +159,17 @@ impl Args {
     }
 
     pub fn setup_logging(&self) -> Result<(), Report> {
-        let subscriber = tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(if self.debug {
+        let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            if self.debug {
                 "debug,hyper=info"
             } else {
                 "info"
-            })
+            }
+            .into()
+        });
+
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            .with_env_filter(filter)
             .finish();
 
         let wh_url = self.get_wh_url()?;
