@@ -7,10 +7,7 @@ tick = 5
 submitter_name = 'dummy'
 fetcher_name = 'dummy'
 [manager.submitter]
-host = 'localhost:1337'
 [manager.fetcher]
-endpoint = 'https://7.enowars.com/scoreboard/attack.json'
-ips = 'https://7.enowars.com/api/data/ips'
 
 [runner]
 http_server = "0.0.0.0:8000"
