@@ -77,7 +77,7 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let mut db = Db::new(&mut conn);
 
     for service in &config.common.services {
-        // NOP if already exists)
+        // a NOP if service already exists
         db.add_service(service)?;
     }
 
