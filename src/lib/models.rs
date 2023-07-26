@@ -112,7 +112,6 @@ pub struct FlagInserter {
 pub struct TargetModel {
     pub id: i32,
     pub flag_id: String,
-    pub exploited: bool,
     pub service: String,
     pub team: String,
     pub created_at: chrono::NaiveDateTime,

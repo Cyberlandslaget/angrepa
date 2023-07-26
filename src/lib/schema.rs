@@ -46,7 +46,6 @@ diesel::table! {
     target (id) {
         id -> Int4,
         flag_id -> Text,
-        exploited -> Bool,
         service -> Text,
         team -> Text,
         created_at -> Timestamp,
@@ -68,11 +67,4 @@ diesel::joinable!(flag -> exploit (exploit_id));
 diesel::joinable!(target -> service (service));
 diesel::joinable!(target -> team (team));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    execution,
-    exploit,
-    flag,
-    service,
-    target,
-    team,
-);
+diesel::allow_tables_to_appear_in_same_query!(execution, exploit, flag, service, target, team,);

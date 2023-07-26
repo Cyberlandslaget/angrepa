@@ -2,6 +2,7 @@ use crate::models::{
     ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter, FlagModel,
     TargetInserter, TargetModel,
 };
+use diesel::prelude::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 
 mod data;
@@ -165,12 +166,13 @@ impl<'a> Db<'a> {
         &mut self,
         oldest: chrono::NaiveDateTime,
     ) -> Result<Vec<(Vec<TargetModel>, ExploitModel)>, DbError> {
-        use crate::schema::{exploit, target};
+        use crate::schema::{execution, exploit, target};
 
         // to be exploitable a target must
-        // 1. not be exploited (exploited = false)
+        // 1. not already be exploited by the specific exploit
+        //       (but can be exploited by another exploit)
         // 2. have an active exploit pointing to it
-        // 3. not be older than the N ticks where N is the number of old ticks you can exploit
+        // 3. not be older than the N ticks/seconds where N is the max age of a flag
         //
         // targets will also be sorted by oldest first to prioritize flags that are about to expire
 
@@ -178,17 +180,20 @@ impl<'a> Db<'a> {
             .filter(exploit::enabled.eq(true))
             .load::<ExploitModel>(self.conn)?;
 
+        let relevant_executions = ExecutionModel::belonging_to(&active_exploits)
+            .filter(execution::finished_at.gt(oldest))
+            .select(execution::target_id)
+            .load::<i32>(self.conn)?;
+
         let mut target_exploits = Vec::new();
 
         for exploit in active_exploits {
-            let targets: Vec<TargetModel> = diesel::update(
-                target::table
-                    .filter(target::exploited.eq(false)) // 1.
-                    .filter(target::service.eq(&exploit.service)) // 2.
-                    .filter(target::created_at.gt(oldest)), // 3.
-            )
-            .set(target::exploited.eq(true))
-            .get_results(self.conn)?;
+            let targets: Vec<TargetModel> = target::table
+                .filter(target::id.ne_all(&relevant_executions)) // 1.
+                .filter(target::service.eq(&exploit.service)) // 2.
+                .filter(target::created_at.gt(oldest)) // 3.
+                .order(target::created_at.asc())
+                .load::<TargetModel>(self.conn)?;
 
             target_exploits.push((targets, exploit));
         }
