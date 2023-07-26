@@ -284,10 +284,10 @@ impl Start {
             .unwrap();
 
         if resp.is_ok() {
-            println!("Stopped exploit {}", self.id);
+            println!("Started exploit {}", self.id);
         } else {
             println!(
-                "Failed to stop exploit {}: {}",
+                "Failed to start exploit {}: {}",
                 self.id,
                 resp.msg.unwrap_or_default()
             );
