@@ -30,7 +30,7 @@ impl Runner {
         let oldest =
             chrono::Utc::now().naive_utc() - chrono::Duration::seconds(oldest_possible_flags);
 
-        let targets = match db.get_exploitable_target(oldest) {
+        let targets = match db.get_exploitable_targets_updating(oldest) {
             Ok(targets) => targets,
             Err(err) => {
                 warn!("Failed to get exploitable targets: {:?}", err);
@@ -78,8 +78,6 @@ impl Runner {
                             target_id: target.id,
                         })
                         .unwrap();
-
-                    db.target_exploited(target.id).unwrap();
 
                     // find flags in the string
                     let flags = flag_regex

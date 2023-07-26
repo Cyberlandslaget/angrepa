@@ -161,7 +161,7 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
-    pub fn get_exploitable_target(
+    pub fn get_exploitable_targets_updating(
         &mut self,
         oldest: chrono::NaiveDateTime,
     ) -> Result<Vec<(Vec<TargetModel>, ExploitModel)>, DbError> {
@@ -178,32 +178,22 @@ impl<'a> Db<'a> {
             .filter(exploit::enabled.eq(true))
             .load::<ExploitModel>(self.conn)?;
 
-        let target_exploits = active_exploits
-            .into_iter()
-            .map(|exploit| {
-                let target = target::table
+        let mut target_exploits = Vec::new();
+
+        for exploit in active_exploits {
+            let targets: Vec<TargetModel> = diesel::update(
+                target::table
                     .filter(target::exploited.eq(false)) // 1.
                     .filter(target::service.eq(&exploit.service)) // 2.
-                    .filter(target::created_at.gt(oldest)) // 3.
-                    .order(target::created_at.asc())
-                    .load::<TargetModel>(self.conn)
-                    .unwrap();
+                    .filter(target::created_at.gt(oldest)), // 3.
+            )
+            .set(target::exploited.eq(true))
+            .get_results(self.conn)?;
 
-                (target, exploit)
-            })
-            .collect::<Vec<(Vec<TargetModel>, ExploitModel)>>();
+            target_exploits.push((targets, exploit));
+        }
 
         Ok(target_exploits)
-    }
-
-    pub fn target_exploited(&mut self, target_id: i32) -> Result<(), DbError> {
-        use crate::schema::target::dsl::*;
-
-        diesel::update(target.filter(id.eq(target_id)))
-            .set(exploited.eq(true))
-            .execute(self.conn)?;
-
-        Ok(())
     }
 
     /// Ignores conflicts
