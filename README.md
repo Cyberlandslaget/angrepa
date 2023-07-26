@@ -1,7 +1,33 @@
 # angrepa
 ## Attack script runner for attack-defense CTFs
 
-# Setup
+# Client (CLI) Setup
+To install the `angrepa` cli, you need an up to date rust installation. `rustup` is strongly recommended, and a one-liner for your operating system can be found at https://rustup.rs/
+
+1. Downloading the repo
+```
+git clone git@github.com:cyberlandslaget/angrepa.git
+cd angrepa
+```
+
+2. Installing angrepa
+```
+cargo install --path . --bin angrepa
+```
+
+3. Updating angrepa
+```
+git pull
+cargo install --path . --bin angrepa
+```
+
+Angrepa does not update itself, so make sure to update it! In the future it's
+planned that include the git hash in the client and server, and give a warning
+if the client is outdated.
+
+See [CLI Examples](#cli-by-example) for some usage examples.
+
+# Server Setup
 0. Tooling
 ```
 cargo install diesel_cli --no-default-features --features postgres
@@ -51,6 +77,36 @@ $ RUST_LOG=trace cargo r config/enowars7.toml
 2023-...Z TRACE hyper::client::client: handshake complete, spawning background dispatcher task
 ```
 
-# ...
+# CLI by Example
+The default host is `http://angrepa.cybl`. http is assumed if no prefix is
+specified.
 
-Currently in testing phase, code is not structured correctly.
+## Custom host
+```sh
+$ angrepa -h localhost:8000 ping
+got pong in 34.777167ms
+```
+
+## Upload
+```sh
+$ angrepa upload data/exploit_tests/new --name 'my exploit' --service 'testservice'
+Uploading 4096B file
+Sucessfully built exploit 2
+```
+
+## Start & stop
+```sh
+$ angrepa start 2
+Stopped exploit 2
+$ angrepa stop 2
+Stopped exploit 2
+```
+
+## Download
+```
+$ angrepa download 2 --path .
+./download_2
+./download_2/exploit.py
+./download_2/Dockerfile
+./download_2/requirements.txt
+```
