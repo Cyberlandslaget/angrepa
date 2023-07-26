@@ -241,16 +241,14 @@ impl Download {
             let full_path = out_dir.clone().join(file.header().path().unwrap());
 
             if full_path.to_str().unwrap().ends_with("/") {
-                // skip directories
-                continue;
+                std::fs::create_dir_all(full_path).unwrap()
+            } else {
+                let mut data = Vec::new();
+                file.read_to_end(&mut data).unwrap();
+                println!("{}", full_path.display());
+
+                std::fs::write(full_path, data).unwrap();
             }
-
-            let mut data = Vec::new();
-            file.read_to_end(&mut data).unwrap();
-            //println!("{:?}: {}", full_path, String::from_utf8_lossy(&data));
-            println!("{}", full_path.display());
-
-            std::fs::write(full_path, data).unwrap();
         }
     }
 }
