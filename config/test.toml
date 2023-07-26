@@ -1,7 +1,9 @@
 [common]
 start = "2023-07-18T12:00:00Z"
 format = "ECSC_[A-Za-z0-9\\+/]{32}"
-tick = 5
+tick = 20
+oldest_possible_flags = 200
+services = ["testservice"]
 
 [manager]
 submitter_name = 'dummy'

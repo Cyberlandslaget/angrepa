@@ -18,69 +18,39 @@ use exploit::{docker::InitalizedExploit, Exploit};
 
 mod server;
 
-use crate::manager::Manager;
-
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(manager: Manager, flag_regex: Regex, db_url: &str) {
+    async fn tick(flag_regex: Regex, db_url: &String, oldest_possible_flags: i64) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
-        let exploits = db.get_exploits().unwrap();
-
         let docker = Docker::connect_with_local_defaults().unwrap();
 
-        for exploit in exploits {
-            if !exploit.enabled {
-                continue;
+        let oldest =
+            chrono::Utc::now().naive_utc() - chrono::Duration::seconds(oldest_possible_flags);
+
+        let targets = match db.get_exploitable_targets_updating(oldest) {
+            Ok(targets) => targets,
+            Err(err) => {
+                warn!("Failed to get exploitable targets: {:?}", err);
+                return;
             }
+        };
 
-            let targets = manager.get_service_targets(&exploit.service);
-
-            let mut going_to_exploit = Vec::new();
-            if let Some(targets) = targets {
-                // the service was found and we got all the targets
-                for (host, ticks) in targets.0.iter() {
-                    // get the latest tick
-                    let (_tick_value, flag_id) = match ticks.get_latest() {
-                        Some((tick_value, flag_id)) => (tick_value, flag_id),
-                        None => {
-                            warn!("No tick found for host {}", host);
-                            continue;
-                        }
-                    };
-
-                    // dump as string
-                    let flag_id = flag_id.to_string();
-
-                    // add this host and the flag_id to the list of targets that will be attacked
-                    going_to_exploit.push((host.to_owned(), flag_id));
-                }
-            } else {
-                // service not known
-                // instead, run against all ips, without any flagids
-
-                let ips = manager.all_ips();
-                for ip in ips {
-                    going_to_exploit.push((ip, "".to_string()));
-                }
-            }
-
+        for (targets, exploit) in targets {
             let docker = docker.clone();
-            let db = Db::new(&mut conn);
 
-            let mut instance = InitalizedExploit::from_model(docker, exploit.clone(), db)
-                .await
-                .unwrap();
+            let mut instance =
+                InitalizedExploit::from_model(docker, exploit.clone(), Db::new(&mut conn))
+                    .await
+                    .unwrap();
 
-            for (target_host, target_flagid) in going_to_exploit {
+            for target in targets {
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
-                let run = instance
-                    .run(target_host.to_string(), target_flagid.to_string())
-                    .await;
+                let run = instance.run(target.team, target.flag_id).await;
 
                 let log_future = match run {
                     Ok(run) => run,
@@ -105,6 +75,7 @@ impl Runner {
                             output: log.output.clone(),
                             started_at,
                             finished_at,
+                            target_id: target.id,
                         })
                         .unwrap();
 
@@ -129,7 +100,7 @@ impl Runner {
         }
     }
 
-    async fn run(manager: Manager, config: &config::Root) {
+    async fn run(config: &config::Root) {
         let mut tick_interval = config
             .common
             // make sure the tick has started
@@ -140,18 +111,17 @@ impl Runner {
         let flag_regex = Regex::new(&config.common.format).unwrap();
 
         loop {
-            let manager = manager.clone();
             tick_interval.tick().await;
 
-            let manager = manager.clone();
             let flag_regex = flag_regex.clone();
             let db_url = config.database.url();
-            spawn(async move { Runner::tick(manager, flag_regex, &db_url).await });
+            let oldest_possible_flags = config.common.oldest_possible_flags;
+            spawn(async move { Runner::tick(flag_regex, &db_url, oldest_possible_flags).await });
         }
     }
 }
 
-pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> {
+pub async fn main(config: config::Root) -> Result<(), Report> {
     let common = &config.common;
 
     // time until start
@@ -165,7 +135,7 @@ pub async fn main(config: config::Root, manager: Manager) -> Result<(), Report> 
     let db_url = config.database.url();
     let server_handle = spawn(async move { server::run(server_addr, &db_url).await });
 
-    let runner_handle = spawn(async move { Runner::run(manager, &config).await });
+    let runner_handle = spawn(async move { Runner::run(&config).await });
 
     join_all(vec![runner_handle, server_handle]).await;
 

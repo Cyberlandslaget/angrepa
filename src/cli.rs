@@ -204,15 +204,17 @@ impl Upload {
         #[derive(serde::Deserialize)]
         struct BuildResponse {
             id: i32,
-            status: String,
         }
 
-        let build = resp.json::<BuildResponse>().await.unwrap();
+        let response = resp.text().await.unwrap();
 
-        if build.status == "ok" {
+        let generic: GenericResponse = serde_json::from_str(&response).unwrap();
+
+        if generic.status == "ok" {
+            let build: BuildResponse = serde_json::from_str(&response).unwrap();
             println!("Sucessfully built exploit {}", build.id);
         } else {
-            println!("Failed to build: {}", build.status);
+            println!("Failed to build: {:?}", generic.message.unwrap_or_default());
         }
     }
 }
@@ -258,7 +260,7 @@ impl Download {
 #[derive(serde::Deserialize, Debug)]
 struct GenericResponse {
     status: String,
-    msg: Option<String>,
+    message: Option<String>,
 }
 
 impl GenericResponse {
@@ -289,7 +291,7 @@ impl Start {
             println!(
                 "Failed to start exploit {}: {}",
                 self.id,
-                resp.msg.unwrap_or_default()
+                resp.message.unwrap_or_default()
             );
         }
     }
@@ -317,7 +319,7 @@ impl Stop {
             println!(
                 "Failed to stop exploit {}: {}",
                 self.id,
-                resp.msg.unwrap_or_default()
+                resp.message.unwrap_or_default()
             );
         }
     }

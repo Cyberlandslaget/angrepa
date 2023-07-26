@@ -7,6 +7,7 @@ diesel::table! {
         output -> Text,
         started_at -> Timestamp,
         finished_at -> Timestamp,
+        target_id -> Int4,
     }
 }
 
@@ -35,8 +36,35 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    service (name) {
+        name -> Text,
+    }
+}
+
+diesel::table! {
+    target (id) {
+        id -> Int4,
+        flag_id -> Text,
+        service -> Text,
+        team -> Text,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    team (ip) {
+        ip -> Text,
+        name -> Nullable<Text>,
+    }
+}
+
 diesel::joinable!(execution -> exploit (exploit_id));
+diesel::joinable!(execution -> target (target_id));
+diesel::joinable!(exploit -> service (service));
 diesel::joinable!(flag -> execution (execution_id));
 diesel::joinable!(flag -> exploit (exploit_id));
+diesel::joinable!(target -> service (service));
+diesel::joinable!(target -> team (team));
 
-diesel::allow_tables_to_appear_in_same_query!(execution, exploit, flag,);
+diesel::allow_tables_to_appear_in_same_query!(execution, exploit, flag, service, target, team,);
