@@ -223,7 +223,9 @@ impl Download {
         std::fs::read_dir(&self.path).expect("failed to read output directory. does it exist?");
         let dirname = format!("download_{}", self.id);
         let out_dir = self.path.join(dirname);
-        println!("{}", out_dir.to_str().unwrap());
+        if out_dir.exists() {
+            println!("Warning: {} already exists!", out_dir.display());
+        }
         std::fs::create_dir_all(&out_dir).unwrap();
 
         // download
