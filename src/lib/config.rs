@@ -16,6 +16,7 @@ pub struct Common {
     pub format: String,
     pub start: DateTime<chrono::Utc>,
     pub services: HashSet<String>,
+    pub oldest_possible_flags: i64,
 }
 
 impl Common {
@@ -211,6 +212,7 @@ mod tests {
                 chrono::Utc,
             ),
             services: HashSet::new(),
+            oldest_possible_flags: 600,
         };
 
         // exactly at start

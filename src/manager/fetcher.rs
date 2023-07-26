@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use angrepa::{
-    config,
-    models::{FlagInserter, FlagidInserter},
-};
+use angrepa::db::Db;
+use angrepa::get_connection_pool;
+use angrepa::{config, models::TargetInserter};
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use serde::{Deserialize, Serialize};
@@ -13,8 +12,6 @@ pub use enowars::EnowarsFetcher;
 mod dummy;
 pub use dummy::DummyFetcher;
 use tracing::{error, info, warn};
-
-use super::Manager;
 
 #[derive(Debug)]
 pub enum Fetchers {
@@ -53,13 +50,35 @@ pub trait Fetcher {
 }
 
 // routine
-pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Common) {
+pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
+    let common = &config.common;
+
     let mut tick_interval = common
         .get_tick_interval(tokio::time::Duration::from_secs(1))
         .await
         .unwrap();
 
-    let mut last_services = None;
+    let db_url = config.database.url();
+    let db_pool = match get_connection_pool(&db_url) {
+        Ok(db) => db,
+        Err(e) => return warn!("Could not acquire a database pool: {e}"),
+    };
+
+    let conn = &mut match db_pool.get() {
+        Ok(conn) => conn,
+        Err(e) => return warn!("Could not acquire a database connection: {}", e),
+    };
+
+    let mut db = Db::new(conn);
+
+    fetcher.ips().await.unwrap().into_iter().for_each(|ip| {
+        if let Err(e) = db.add_team(&ip) {
+            warn!(
+                "Failed to add team: '{ip}', probably already present. Error: {}",
+                e
+            );
+        }
+    });
 
     loop {
         // wait for new tick
@@ -80,38 +99,42 @@ pub async fn run(fetcher: impl Fetcher, manager: Manager, common: &config::Commo
 
         info!("tick {}", tick_number);
 
-        let ips = fetcher.ips().await.unwrap();
-
         for (service_name, service) in &services {
             for (team_ip, ticks) in &service.0 {
-                for (tick, flag_id) in &ticks.0 {
+                for (_tick, flag_id) in &ticks.0 {
                     // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
 
                     let exists = false;
 
-                    if exists {
-                        let inserter = FlagidInserter {
+                    if !exists {
+                        let inserter = TargetInserter {
                             flag_id: flag_id.to_string(),
                             service: service_name.to_owned(),
                             team: team_ip.to_owned(),
+                            created_at: chrono::Utc::now().naive_utc(),
                         };
+
+                        let conn = &mut match db_pool.get() {
+                            Ok(conn) => conn,
+                            Err(e) => {
+                                error!("Could not acquire a database connection: {}", e);
+                                continue;
+                            }
+                        };
+
+                        let mut db = Db::new(conn);
+
+                        match db.add_target(&inserter) {
+                            Ok(_) => (),
+                            Err(e) => {
+                                error!("Could not add target: {}", e);
+                                continue;
+                            }
+                        }
                     }
                 }
             }
         }
-
-        // then save it
-        manager.save_ips_services(tick_number as i32, ips, services.clone());
-
-        // some checks
-        if let Some(last) = last_services {
-            if last == services {
-                // something is wrong, the flagids did not update!
-                warn!("Got the same services as last time");
-            }
-        }
-
-        last_services = Some(services);
     }
 }
 

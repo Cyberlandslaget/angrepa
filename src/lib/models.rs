@@ -1,9 +1,12 @@
 use diesel::prelude::*;
 use serde::Serialize;
 
-#[derive(Serialize, Debug, Clone, Queryable, Selectable, Identifiable)]
+#[derive(
+    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations,
+)]
 #[diesel(table_name = super::schema::exploit)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
+#[diesel(belongs_to(ServiceModel, foreign_key = service))]
 pub struct ExploitModel {
     pub id: i32,
     pub name: String,
@@ -30,6 +33,7 @@ pub struct ExploitInserter {
 
 #[derive(Serialize, Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = super::schema::team)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct TeamModel {
     pub ip: String,
     pub name: Option<String>,
@@ -37,6 +41,7 @@ pub struct TeamModel {
 
 #[derive(Serialize, Debug, Clone, Queryable, Selectable)]
 #[diesel(table_name = super::schema::service)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ServiceModel {
     pub name: String,
 }
@@ -97,16 +102,20 @@ pub struct FlagInserter {
     pub exploit_id: i32,
 }
 
-#[derive(Serialize, Debug, Clone, Queryable, Selectable)]
+#[derive(
+    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations,
+)]
 #[diesel(table_name = super::schema::target)]
 #[diesel(belongs_to(ServiceModel, foreign_key = service))]
 #[diesel(belongs_to(TeamModel, foreign_key = team))]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct TargetModel {
     pub id: i32,
     pub flag_id: String,
     pub exploited: bool,
     pub service: String,
     pub team: String,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Insertable)]
@@ -118,4 +127,5 @@ pub struct TargetInserter {
     pub service: String,
     /// FOREIGN KEY
     pub team: String,
+    pub created_at: chrono::NaiveDateTime,
 }

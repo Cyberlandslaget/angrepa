@@ -4,6 +4,7 @@ start = "2023-07-22T12:00:00Z"
 format = 'ENO[A-Za-z0-9+\/=]{48}'
 #webhook = 'https://discord.com/api/webhooks/1131298841619083314/dRksylbBiaETqhlLLJ7KwQ-h0gtMcl8XbBFLyPYYPybogSAAL5bJfgUh2zEW11lhyMql'
 tick = 60
+oldest_possible_flags = 600
 services = [
     "asocialnetwork",
     "bollwerk",

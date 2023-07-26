@@ -3,6 +3,7 @@ use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 
 use crate::models::{
     ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter, FlagModel,
+    TargetInserter, TargetModel,
 };
 
 pub struct Db<'a> {
@@ -143,5 +144,68 @@ impl<'a> Db<'a> {
             .get_result(self.conn)?;
 
         Ok(exists)
+    }
+
+    pub fn add_target(&mut self, trg: &TargetInserter) -> Result<(), Report> {
+        use crate::schema::target::dsl::*;
+
+        diesel::insert_into(target).values(trg).execute(self.conn)?;
+
+        Ok(())
+    }
+
+    pub fn get_exploitable_target(
+        &mut self,
+        oldest: chrono::NaiveDateTime,
+    ) -> Result<Vec<(Vec<TargetModel>, ExploitModel)>, Report> {
+        use crate::schema::{exploit, target};
+
+        // to be exploitable a target must
+        // 1. not be exploited (exploited = false)
+        // 2. have an active exploit pointing to it
+        // 3. not be older than the N ticks where N is the number of old ticks you can exploit
+        //
+        // targets will also be sorted by oldest first to prioritize flags that are about to expire
+
+        let active_exploits = exploit::table
+            .filter(exploit::enabled.eq(true))
+            .load::<ExploitModel>(self.conn)?;
+
+        let target_exploits = active_exploits
+            .into_iter()
+            .map(|exploit| {
+                let target = target::table
+                    .filter(target::exploited.eq(false)) // 1.
+                    .filter(target::service.eq(&exploit.service)) // 2.
+                    .filter(target::created_at.gt(oldest)) // 3.
+                    .order(target::created_at.asc())
+                    .load::<TargetModel>(self.conn)
+                    .unwrap();
+
+                (target, exploit)
+            })
+            .collect::<Vec<(Vec<TargetModel>, ExploitModel)>>();
+
+        Ok(target_exploits)
+    }
+
+    pub fn target_exploited(&mut self, target_id: i32) -> Result<(), Report> {
+        use crate::schema::target::dsl::*;
+
+        diesel::update(target.filter(id.eq(target_id)))
+            .set(exploited.eq(true))
+            .execute(self.conn)?;
+
+        Ok(())
+    }
+
+    pub fn add_team(&mut self, ip_str: &str) -> Result<(), Report> {
+        use crate::schema::team::dsl::*;
+
+        diesel::insert_into(team)
+            .values(ip.eq(ip_str))
+            .execute(self.conn)?;
+
+        Ok(())
     }
 }
