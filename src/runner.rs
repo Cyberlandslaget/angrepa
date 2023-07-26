@@ -1,4 +1,5 @@
 use bollard::Docker;
+use chrono::NaiveDateTime;
 use regex::Regex;
 
 use color_eyre::Report;
@@ -21,16 +22,13 @@ mod server;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(flag_regex: Regex, db_url: &String, oldest_possible_flags: i64) {
+    async fn tick(flag_regex: Regex, db_url: &String, earliest_valid_time: NaiveDateTime) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
         let docker = Docker::connect_with_local_defaults().unwrap();
 
-        let oldest =
-            chrono::Utc::now().naive_utc() - chrono::Duration::seconds(oldest_possible_flags);
-
-        let targets = match db.get_exploitable_targets_updating(oldest) {
+        let targets = match db.get_exploitable_targets_updating(earliest_valid_time) {
             Ok(targets) => targets,
             Err(err) => {
                 warn!("Failed to get exploitable targets: {:?}", err);
@@ -115,8 +113,17 @@ impl Runner {
 
             let flag_regex = flag_regex.clone();
             let db_url = config.database.url();
-            let oldest_possible_flags = config.common.oldest_possible_flags;
-            spawn(async move { Runner::tick(flag_regex, &db_url, oldest_possible_flags).await });
+
+            // mid inbetween so that if we start ex. 0.01s earlier than last tick, we dont take too many
+            // -0.5 because of the afformentioned in-betweening
+            let flag_validity_period =
+                (config.common.flag_validity as f32 - 0.5) * (config.common.tick as f32);
+            let flag_validity_period = std::time::Duration::from_secs_f32(flag_validity_period);
+
+            let earliest_valid_time = chrono::Utc::now().naive_utc()
+                - chrono::Duration::from_std(flag_validity_period).unwrap();
+
+            spawn(async move { Runner::tick(flag_regex, &db_url, earliest_valid_time).await });
         }
     }
 }
