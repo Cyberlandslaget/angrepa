@@ -125,11 +125,14 @@ impl<'a> Db<'a> {
 
     // service
 
-    pub fn add_service(&mut self, name_str: &str) -> Result<(), Report> {
+    /// Ignores conflicts
+    pub fn add_service_checked(&mut self, name_str: &str) -> Result<(), Report> {
         use crate::schema::service::dsl::*;
 
         diesel::insert_into(service)
             .values(name.eq(name_str))
+            .on_conflict(name)
+            .do_nothing()
             .execute(self.conn)?;
 
         Ok(())
@@ -199,11 +202,14 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
-    pub fn add_team(&mut self, ip_str: &str) -> Result<(), Report> {
+    /// Ignores conflicts
+    pub fn add_team_checked(&mut self, ip_str: &str) -> Result<(), Report> {
         use crate::schema::team::dsl::*;
 
         diesel::insert_into(team)
             .values(ip.eq(ip_str))
+            .on_conflict(ip)
+            .do_nothing()
             .execute(self.conn)?;
 
         Ok(())

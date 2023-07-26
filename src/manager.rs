@@ -20,11 +20,8 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
 
     for service in &config.common.services {
         // a NOP if service already exists
-        if let Err(e) = db.add_service(service) {
-            warn!(
-                "Failed to add service: '{service}', probably already present. Error: {}",
-                e
-            );
+        if let Err(e) = db.add_service_checked(service) {
+            warn!("Failed to add service: '{service}'. Error: {}", e);
         }
     }
 
