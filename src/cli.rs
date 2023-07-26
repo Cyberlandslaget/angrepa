@@ -242,7 +242,7 @@ impl Download {
 
             let full_path = out_dir.clone().join(file.header().path().unwrap());
 
-            if full_path.to_str().unwrap().ends_with("/") {
+            if full_path.to_str().unwrap().ends_with('/') {
                 std::fs::create_dir_all(full_path).unwrap()
             } else {
                 let mut data = Vec::new();
