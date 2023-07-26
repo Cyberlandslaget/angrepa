@@ -34,6 +34,7 @@ pub struct Ticks(pub HashMap<i32, serde_json::Value>);
 
 impl Ticks {
     /// Gets the highest tick
+    #[allow(dead_code)]
     pub fn get_latest(&self) -> Option<(i32, &serde_json::Value)> {
         // gets the value of the highest key
         self.0.iter().max_by_key(|(k, _)| **k).map(|(k, v)| (*k, v))
@@ -101,6 +102,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         for (service_name, service) in &services {
             for (team_ip, ticks) in &service.0 {
+                #[allow(clippy::for_kv_map)]
                 for (_tick, flag_id) in &ticks.0 {
                     // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
 

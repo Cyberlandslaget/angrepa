@@ -22,13 +22,13 @@ pub struct Runner {}
 
 impl Runner {
     async fn tick(flag_regex: Regex, db_url: &String, oldest_possible_flags: i64) {
-        let mut conn = db_connect(&db_url).unwrap();
+        let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
         let docker = Docker::connect_with_local_defaults().unwrap();
 
-        let oldest = chrono::Utc::now().naive_utc()
-            - chrono::Duration::seconds(oldest_possible_flags as i64);
+        let oldest =
+            chrono::Utc::now().naive_utc() - chrono::Duration::seconds(oldest_possible_flags);
 
         let targets = match db.get_exploitable_target(oldest) {
             Ok(targets) => targets,
