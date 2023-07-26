@@ -1,4 +1,10 @@
+use argh::{self, FromArgs};
 use color_eyre::Report;
+use colored::Colorize;
+use reqwest::{
+    multipart::{Form, Part},
+    Url,
+};
 use serde_json::json;
 use std::{
     io::{Cursor, Read},
@@ -6,12 +12,6 @@ use std::{
     process::exit,
 };
 use tar::Archive;
-
-use argh::{self, FromArgs};
-use reqwest::{
-    multipart::{Form, Part},
-    Url,
-};
 use tokio::time::Instant;
 
 #[derive(FromArgs, Debug)]
@@ -204,6 +204,7 @@ impl Upload {
         #[derive(serde::Deserialize)]
         struct BuildResponse {
             id: i32,
+            build_log: String,
         }
 
         let response = resp.text().await.unwrap();
@@ -212,9 +213,10 @@ impl Upload {
 
         if generic.status == "ok" {
             let build: BuildResponse = serde_json::from_str(&response).unwrap();
-            println!("Sucessfully built exploit {}", build.id);
+            println!("{}", build.build_log.trim().blue());
+            println!("Successfully built exploit {}", build.id);
         } else {
-            println!("Failed to build: {:?}", generic.message.unwrap_or_default());
+            println!("Failed to build: '{}'", generic.message.unwrap_or_default());
         }
     }
 }
