@@ -1,6 +1,11 @@
 use color_eyre::Report;
 use serde_json::json;
-use std::{path::PathBuf, process::exit};
+use std::{
+    io::{Cursor, Read},
+    path::PathBuf,
+    process::exit,
+};
+use tar::Archive;
 
 use argh::{self, FromArgs};
 use reqwest::{
@@ -31,6 +36,7 @@ struct Args {
 enum Command {
     Ping(Ping),
     Upload(Upload),
+    Download(Download),
     Start(Start),
     Stop(Stop),
 }
@@ -66,6 +72,19 @@ struct Upload {
 }
 
 #[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "download")]
+/// download an exploit
+struct Download {
+    #[argh(positional)]
+    /// exploit id
+    id: i32,
+
+    #[argh(option)]
+    /// directory to place the exploit folder in
+    path: PathBuf,
+}
+
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "start")]
 /// start an exploit
 struct Start {
@@ -98,6 +117,7 @@ async fn main() {
     match &args.cmd {
         Command::Ping(ping) => ping.run(&args).await,
         Command::Upload(upload) => upload.run(&args).await,
+        Command::Download(download) => download.run(&args).await,
         Command::Start(start) => start.run(&args).await,
         Command::Stop(stop) => stop.run(&args).await,
     }
@@ -197,6 +217,44 @@ impl Upload {
     }
 }
 
+impl Download {
+    async fn run(&self, args: &Args) {
+        // make sure all arguments are valid
+        std::fs::read_dir(&self.path).expect("failed to read output directory. does it exist?");
+        let dirname = format!("download_{}", self.id);
+        let out_dir = self.path.join(dirname);
+        if out_dir.exists() {
+            println!("Warning: {} already exists!", out_dir.display());
+        }
+        std::fs::create_dir_all(&out_dir).unwrap();
+
+        // download
+        let client = reqwest::Client::new();
+        let endpoint = format!("/exploit/download/{}", self.id);
+        let url = args.host.join(&endpoint).unwrap();
+
+        let tar = client.get(url).send().await.unwrap().bytes().await.unwrap();
+
+        // untar
+        let mut tar = Archive::new(Cursor::new(tar));
+        for file in tar.entries().unwrap() {
+            let mut file = file.unwrap();
+
+            let full_path = out_dir.clone().join(file.header().path().unwrap());
+
+            if full_path.to_str().unwrap().ends_with('/') {
+                std::fs::create_dir_all(full_path).unwrap()
+            } else {
+                let mut data = Vec::new();
+                file.read_to_end(&mut data).unwrap();
+                println!("{}", full_path.display());
+
+                std::fs::write(full_path, data).unwrap();
+            }
+        }
+    }
+}
+
 #[derive(serde::Deserialize, Debug)]
 struct GenericResponse {
     status: String,
@@ -226,10 +284,10 @@ impl Start {
             .unwrap();
 
         if resp.is_ok() {
-            println!("Stopped exploit {}", self.id);
+            println!("Started exploit {}", self.id);
         } else {
             println!(
-                "Failed to stop exploit {}: {}",
+                "Failed to start exploit {}: {}",
                 self.id,
                 resp.msg.unwrap_or_default()
             );
