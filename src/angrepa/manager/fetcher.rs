@@ -103,9 +103,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             for (team_ip, ticks) in &service.0 {
                 for (tick, flag_id) in &ticks.0 {
                     // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
-                    let seen = !seen_flagids.insert((service_name.clone(), team_ip.clone(), *tick));
+                    let new = seen_flagids.insert((service_name.clone(), team_ip.clone(), *tick));
 
-                    if seen {
+                    if !new {
                         continue;
                     }
 
