@@ -8,14 +8,14 @@ use std::{path::PathBuf, process::exit, str::FromStr};
 pub struct Template {
     #[argh(subcommand)]
     /// what to do
-    cmd: TemplateCommands,
+    cmd: TemplateCommand,
 }
 
 impl Template {
     pub async fn run(&self, args: &super::Args) {
         match &self.cmd {
-            TemplateCommands::Ls(x) => x.run(args).await,
-            TemplateCommands::Download(x) => x.run(args).await,
+            TemplateCommand::Ls(x) => x.run(args).await,
+            TemplateCommand::Download(x) => x.run(args).await,
         }
     }
 }
@@ -23,7 +23,7 @@ impl Template {
 #[derive(FromArgs, Debug)]
 #[argh(subcommand)]
 /// Template commands
-pub enum TemplateCommands {
+pub enum TemplateCommand {
     Ls(Ls),
     Download(Download),
 }
