@@ -106,6 +106,7 @@ pub struct Untarrer {
 impl Untarrer {
     pub fn untar(self, out_dir: &Path) -> Result<(), Report> {
         let mut tar = Archive::new(Cursor::new(self.data));
+        std::fs::create_dir_all(out_dir).unwrap();
 
         for file in tar.entries()? {
             let mut file = file?;
