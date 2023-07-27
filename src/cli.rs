@@ -14,16 +14,18 @@ use std::{
 use tar::Archive;
 use tokio::time::Instant;
 
+pub mod template;
+
 #[derive(FromArgs, Debug)]
 /// cli
-struct Args {
+pub struct Args {
     #[argh(
         option,
         short = 'h',
         default = r#""http://angrepa.cybl".parse().expect("invalid url (missing http://?)")"#
     )]
     /// the ataka instance to connect to
-    host: Url,
+    pub host: Url,
 
     #[argh(subcommand)]
     /// what to do
@@ -39,6 +41,7 @@ enum Command {
     Download(Download),
     Start(Start),
     Stop(Stop),
+    Template(template::Template),
 }
 
 #[derive(FromArgs, Debug)]
@@ -120,6 +123,7 @@ async fn main() {
         Command::Download(download) => download.run(&args).await,
         Command::Start(start) => start.run(&args).await,
         Command::Stop(stop) => stop.run(&args).await,
+        Command::Template(templ) => templ.run(&args).await,
     }
 }
 
