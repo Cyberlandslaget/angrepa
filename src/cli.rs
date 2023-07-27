@@ -22,7 +22,7 @@ pub struct Args {
     #[argh(
         option,
         short = 'h',
-        default = r#""http://angrepa.cybl".parse().expect("invalid url (missing http://?)")"#
+        default = r#""http://angrepa.cybl:8000".parse().expect("invalid url")"#
     )]
     /// the ataka instance to connect to
     pub host: Url,
