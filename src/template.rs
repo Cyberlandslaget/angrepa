@@ -1,8 +1,6 @@
-use std::process::exit;
-
+use crate::{GenericResponse, Untarrer};
 use argh::FromArgs;
-
-use crate::GenericResponse;
+use std::{path::PathBuf, process::exit, str::FromStr};
 
 #[derive(FromArgs, Debug)]
 /// ls or download templates
@@ -16,7 +14,8 @@ pub struct Template {
 impl Template {
     pub async fn run(&self, args: &super::Args) {
         match &self.cmd {
-            TemplateCommands::Ls(ls) => ls.run(args).await,
+            TemplateCommands::Ls(x) => x.run(args).await,
+            TemplateCommands::Download(x) => x.run(args).await,
         }
     }
 }
@@ -26,11 +25,12 @@ impl Template {
 /// Template commands
 pub enum TemplateCommands {
     Ls(Ls),
+    Download(Download),
 }
 
 #[derive(FromArgs, Debug)]
-/// List all templates
 #[argh(subcommand, name = "ls")]
+/// List all templates
 pub struct Ls {}
 
 impl Ls {
@@ -56,5 +56,34 @@ impl Ls {
         for templ in template_response.templates {
             println!("- {}", templ)
         }
+    }
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "download")]
+/// Download template
+pub struct Download {
+    #[argh(positional)]
+    /// the template to download
+    name: String,
+
+    #[argh(option, default = r#"PathBuf::from_str(".").unwrap()"#)]
+    /// directory to place the exploit in
+    path: PathBuf,
+}
+
+impl Download {
+    pub async fn run(&self, args: &super::Args) {
+        let client = reqwest::Client::new();
+
+        let endpoint = format!("/templates/{}", self.name);
+        let url = args.host.join(&endpoint).unwrap();
+        let resp = client.get(url).send().await.unwrap().bytes().await.unwrap();
+
+        let templ_path = format!("templ_{}", self.name);
+        let path = self.path.clone().join(&templ_path);
+
+        let untarrer = Untarrer { data: resp.into() };
+        untarrer.untar(&path).unwrap();
     }
 }

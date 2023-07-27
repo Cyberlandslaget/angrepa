@@ -1,5 +1,5 @@
 use argh::{self, FromArgs};
-use color_eyre::Report;
+use color_eyre::{eyre::eyre, Report};
 use colored::Colorize;
 use reqwest::{
     multipart::{Form, Part},
@@ -8,7 +8,7 @@ use reqwest::{
 use serde_json::json;
 use std::{
     io::{Cursor, Read},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::exit,
 };
 use tar::Archive;
@@ -244,22 +244,40 @@ impl Download {
         let tar = client.get(url).send().await.unwrap().bytes().await.unwrap();
 
         // untar
-        let mut tar = Archive::new(Cursor::new(tar));
-        for file in tar.entries().unwrap() {
-            let mut file = file.unwrap();
+        let untarrer = Untarrer { data: tar.into() };
+        untarrer.untar(&out_dir).unwrap();
+    }
+}
 
-            let full_path = out_dir.clone().join(file.header().path().unwrap());
+pub struct Untarrer {
+    pub data: Vec<u8>,
+}
 
-            if full_path.to_str().unwrap().ends_with('/') {
-                std::fs::create_dir_all(full_path).unwrap()
+impl Untarrer {
+    pub fn untar(self, out_dir: &Path) -> Result<(), Report> {
+        let mut tar = Archive::new(Cursor::new(self.data));
+
+        for file in tar.entries()? {
+            let mut file = file?;
+
+            let full_path = out_dir.clone().join(file.header().path()?);
+
+            if full_path
+                .to_str()
+                .ok_or(eyre!("failed to stringify path"))?
+                .ends_with('/')
+            {
+                std::fs::create_dir_all(full_path)?
             } else {
                 let mut data = Vec::new();
-                file.read_to_end(&mut data).unwrap();
+                file.read_to_end(&mut data)?;
                 println!("{}", full_path.display());
 
-                std::fs::write(full_path, data).unwrap();
+                std::fs::write(full_path, data)?;
             }
         }
+
+        Ok(())
     }
 }
 

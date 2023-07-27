@@ -87,9 +87,20 @@ $ angrepa -h localhost:8000 ping
 got pong in 34.777167ms
 ```
 
+## Download template
+```
+$ angrepa template ls
+- python
+- py_java
+$ angrepa template download python
+./templ_python/exploit.py
+./templ_python/Dockerfile
+./templ_python/requirements.txt
+```
+
 ## Upload
 ```sh
-$ angrepa upload data/exploit_tests/new --name 'my exploit' --service 'testservice'
+$ angrepa upload templ_python --name 'my exploit' --service 'testservice'
 Uploading 4096B file
 Sucessfully built exploit 2
 ```
@@ -97,7 +108,7 @@ Sucessfully built exploit 2
 ## Start & stop
 ```sh
 $ angrepa start 2
-Stopped exploit 2
+Started exploit 2
 $ angrepa stop 2
 Stopped exploit 2
 ```
