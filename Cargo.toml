@@ -26,6 +26,7 @@ reqwest = { version = "0.11.18", features = ["json", "multipart"] }
 serde = { version = "1.0.171", features = ["derive", "serde_derive", "alloc"] }
 serde_json = "1.0.103"
 strum = { version = "0.25.0", features = ["strum_macros", "derive"] }
+tabled = { version = "0.13.0", features = ["color"] }
 tar = "0.4.39"
 thiserror = "1.0.43"
 tokio = { version = "1.29.1", features = ["full"] }
@@ -39,12 +40,12 @@ warp = "0.3.5"
 webhook = "2.1.2"
 
 [lib]
-path = "src/lib/lib.rs"
+path = "src/angrepa/lib/lib.rs"
 
 [[bin]]
 name = "angrepa_server"
-path = "src/main.rs"
+path = "src/angrepa/main.rs"
 
 [[bin]]
 name = "angrepa"
-path = "src/cli.rs"
+path = "src/cli/cli.rs"
