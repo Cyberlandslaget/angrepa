@@ -78,6 +78,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         }
     });
 
+    let mut seen_flagids: HashSet<(String, String, i32)> = HashSet::new();
+
     loop {
         // wait for new tick
         tick_interval.tick().await;
@@ -99,37 +101,37 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         for (service_name, service) in &services {
             for (team_ip, ticks) in &service.0 {
-                #[allow(clippy::for_kv_map)]
                 for (tick, flag_id) in &ticks.0 {
-                    // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
+                    // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
+                    let seen = seen_flagids.insert((service_name.clone(), team_ip.clone(), *tick));
 
-                    let exists = false;
+                    if seen {
+                        continue;
+                    }
 
-                    if !exists {
-                        let inserter = TargetInserter {
-                            flag_id: flag_id.to_string(),
-                            service: service_name.to_owned(),
-                            team: team_ip.to_owned(),
-                            created_at: chrono::Utc::now().naive_utc(),
-                            target_tick: *tick,
-                        };
+                    let inserter = TargetInserter {
+                        flag_id: flag_id.to_string(),
+                        service: service_name.to_owned(),
+                        team: team_ip.to_owned(),
+                        created_at: chrono::Utc::now().naive_utc(),
+                        target_tick: *tick,
+                    };
 
-                        let conn = &mut match db_pool.get() {
-                            Ok(conn) => conn,
-                            Err(e) => {
-                                error!("Could not acquire a database connection: {}", e);
-                                continue;
-                            }
-                        };
+                    let conn = &mut match db_pool.get() {
+                        Ok(conn) => conn,
+                        Err(e) => {
+                            error!("Could not acquire a database connection: {}", e);
+                            continue;
+                        }
+                    };
 
-                        let mut db = Db::new(conn);
+                    let mut db = Db::new(conn);
 
-                        match db.add_target(&inserter) {
-                            Ok(_) => (),
-                            Err(e) => {
-                                error!("Could not add target: {}", e);
-                                continue;
-                            }
+                    match db.add_target(&inserter) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            error!("Could not add target: {}", e);
+                            continue;
                         }
                     }
                 }
