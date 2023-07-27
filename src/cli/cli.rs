@@ -138,7 +138,7 @@ struct GenericResponse {
 }
 
 impl GenericResponse {
-    fn is_ok(&self) -> bool {
+    fn success(&self) -> bool {
         self.status == "ok"
     }
 }

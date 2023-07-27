@@ -41,7 +41,7 @@ impl Ls {
         let resp = client.get(url).send().await.unwrap().text().await.unwrap();
 
         let generic: GenericResponse = serde_json::from_str(&resp).unwrap();
-        if generic.status != "ok" {
+        if !generic.success() {
             println!("Failed with error {:?}", generic.message);
             exit(1)
         }
