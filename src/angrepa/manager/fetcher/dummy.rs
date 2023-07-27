@@ -21,8 +21,8 @@ impl Fetcher for DummyFetcher {
             let mut rng = rand::thread_rng();
             let test_tick = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
 
-            let mut ticks = HashMap::new();
             let cur_tick = self.config.common.current_tick(chrono::Utc::now()) as i32;
+            let mut ticks = HashMap::new();
             ticks.insert(cur_tick, test_tick);
 
             let ticks = Ticks(ticks);
