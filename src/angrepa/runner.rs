@@ -141,7 +141,8 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
 
     let server_addr = config.runner.http_server.parse()?;
     let db_url = config.database.url();
-    let server_handle = spawn(async move { server::run(server_addr, &db_url).await });
+    let config2 = config.clone();
+    let server_handle = spawn(async move { server::run(server_addr, config2, &db_url).await });
 
     let runner_handle = spawn(async move { Runner::run(&config).await });
 
