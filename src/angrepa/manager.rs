@@ -12,7 +12,7 @@ mod handler;
 
 pub async fn main(config: config::Root) -> Result<(), Report> {
     let sub = Submitters::from_conf(&config.manager)?;
-    let fetch = fetcher::Fetchers::from_conf(&config.manager)?;
+    let fetch = fetcher::Fetchers::from_conf(&config)?;
 
     // first insert service names
     let mut conn = db_connect(&config.database.url()).unwrap();

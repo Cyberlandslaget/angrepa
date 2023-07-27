@@ -53,8 +53,11 @@ impl<'a> Db<'a> {
 
         Ok(flags)
     }
-    
-    pub fn flags_since_extended(&mut self, since: NaiveDateTime) -> Result<Vec<(FlagModel, ExecutionModel, TargetModel)>, Report> {
+
+    pub fn flags_since_extended(
+        &mut self,
+        since: NaiveDateTime,
+    ) -> Result<Vec<(FlagModel, ExecutionModel, TargetModel)>, Report> {
         use crate::schema::*;
 
         let flags = flag::table

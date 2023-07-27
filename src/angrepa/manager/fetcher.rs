@@ -140,11 +140,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
 // Deserialize
 impl Fetchers {
-    pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
-        match manager.fetcher_name.as_str() {
-            "dummy" => Ok(Self::Dummy(DummyFetcher {})),
+    pub fn from_conf(config: &config::Root) -> Result<Self, Report> {
+        match config.manager.fetcher_name.as_str() {
+            "dummy" => Ok(Self::Dummy(DummyFetcher {
+                config: config.clone(),
+            })),
             "enowars" => {
-                let endpoint = manager
+                let endpoint = config
+                    .manager
                     .fetcher
                     .get("endpoint")
                     .ok_or(eyre!("Enowars fetcher requires endpoint"))?
@@ -152,7 +155,8 @@ impl Fetchers {
                     .ok_or(eyre!("Enowars fetcher endpoint must be a string"))?
                     .to_owned();
 
-                let ips_endpoint = manager
+                let ips_endpoint = config
+                    .manager
                     .fetcher
                     .get("ips")
                     .ok_or(eyre!("Enowars fetcher requires ip endpoint"))?
@@ -162,7 +166,7 @@ impl Fetchers {
 
                 Ok(Self::Enowars(EnowarsFetcher::new(endpoint, ips_endpoint)))
             }
-            _ => Err(eyre!("Unknown fetcher {}", manager.fetcher_name)),
+            _ => Err(eyre!("Unknown fetcher {}", config.manager.fetcher_name)),
         }
     }
 }

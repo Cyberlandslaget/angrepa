@@ -1,3 +1,4 @@
+use angrepa::config;
 use async_trait::async_trait;
 use rand::Rng;
 use serde_json::json;
@@ -6,7 +7,9 @@ use std::collections::HashMap;
 use super::{Fetcher, Service, Ticks};
 
 #[derive(Debug)]
-pub struct DummyFetcher {}
+pub struct DummyFetcher {
+    pub config: config::Root,
+}
 
 #[async_trait]
 impl Fetcher for DummyFetcher {
@@ -19,7 +22,8 @@ impl Fetcher for DummyFetcher {
             let test_tick = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
 
             let mut ticks = HashMap::new();
-            ticks.insert(5, test_tick);
+            let cur_tick = self.config.common.current_tick(chrono::Utc::now()) as i32;
+            ticks.insert(cur_tick, test_tick);
 
             let ticks = Ticks(ticks);
 
