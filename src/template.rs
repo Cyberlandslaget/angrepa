@@ -81,7 +81,7 @@ impl Download {
         let resp = client.get(url).send().await.unwrap().bytes().await.unwrap();
 
         let templ_path = format!("templ_{}", self.name);
-        let path = self.path.clone().join(&templ_path);
+        let path = self.path.clone().join(templ_path);
 
         let untarrer = Untarrer { data: resp.into() };
         untarrer.untar(&path).unwrap();
