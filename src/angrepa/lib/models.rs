@@ -65,6 +65,7 @@ pub struct ExecutionModel {
     pub id: i32,
     pub exploit_id: i32,
     pub output: String,
+    pub exit_code: i32,
     pub started_at: chrono::NaiveDateTime,
     pub finished_at: chrono::NaiveDateTime,
     pub target_id: i32,
@@ -76,6 +77,7 @@ pub struct ExecutionModel {
 pub struct ExecutionInserter {
     pub exploit_id: i32,
     pub output: String,
+    pub exit_code: i32,
     pub started_at: chrono::NaiveDateTime,
     pub finished_at: chrono::NaiveDateTime,
     pub target_id: i32,
@@ -123,6 +125,7 @@ pub struct TargetModel {
     pub service: String,
     pub team: String,
     pub created_at: chrono::NaiveDateTime,
+    pub target_tick: i32,
 }
 
 #[derive(Debug, Clone, Insertable)]
@@ -130,9 +133,10 @@ pub struct TargetModel {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct TargetInserter {
     pub flag_id: String,
-    /// FOREIGN KEY
     pub service: String,
     /// FOREIGN KEY
     pub team: String,
+    /// FOREIGN KEY
     pub created_at: chrono::NaiveDateTime,
+    pub target_tick: i32,
 }

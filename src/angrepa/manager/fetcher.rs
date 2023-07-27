@@ -100,7 +100,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         for (service_name, service) in &services {
             for (team_ip, ticks) in &service.0 {
                 #[allow(clippy::for_kv_map)]
-                for (_tick, flag_id) in &ticks.0 {
+                for (tick, flag_id) in &ticks.0 {
                     // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
 
                     let exists = false;
@@ -111,6 +111,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                             service: service_name.to_owned(),
                             team: team_ip.to_owned(),
                             created_at: chrono::Utc::now().naive_utc(),
+                            target_tick: *tick,
                         };
 
                         let conn = &mut match db_pool.get() {

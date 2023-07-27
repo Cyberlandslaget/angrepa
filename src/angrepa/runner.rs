@@ -71,6 +71,7 @@ impl Runner {
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id,
                             output: log.output.clone(),
+                            exit_code: log.exit_code as i32,
                             started_at,
                             finished_at,
                             target_id: target.id,
