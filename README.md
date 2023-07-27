@@ -81,6 +81,24 @@ $ RUST_LOG=trace cargo r config/enowars7.toml
 The default host is `http://angrepa.cybl`. http is assumed if no prefix is
 specified.
 
+For any command you can supply `--help` to show additonal information.
+```sh
+$ angrepa exploit --help
+Usage: angrepa exploit <command> [<args>]
+
+manage exploits
+
+Options:
+  --help            display usage information
+
+Commands:
+  upload            upload an exploit
+  download          download an exploit
+  start             start an exploit
+  stop              stop an exploit
+  ls                list exploits
+```
+
 ## Custom host
 ```sh
 $ angrepa -h localhost:8000 ping
@@ -90,34 +108,70 @@ got pong in 34.777167ms
 ## Download template
 ```
 $ angrepa template ls
-- python
 - py_java
-$ angrepa template download python
+- python
+$ angrepa template download python 
 ./templ_python/exploit.py
-./templ_python/Dockerfile
 ./templ_python/requirements.txt
+./templ_python/Dockerfile
 ```
 
-## Upload
+## Upload exploit
 ```sh
-$ angrepa upload templ_python --name 'my exploit' --service 'testservice'
+$ angrepa exploit upload templ_python --name 'template exploit' --service testservice 
 Uploading 4096B file
-Sucessfully built exploit 2
+Step 1/8 : FROM python:3.10
+ ---> d9122363988f
+// ... SNIP ...
+Step 8/8 : CMD [ "python3", "exploit.py" ]
+ ---> Running in 48596632e417
+ ---> 38ce794992de
+Successfully built 38ce794992de
+Successfully tagged exploit_91721487919a73c2:latest
+Successfully built exploit 5
 ```
 
 ## Start & stop
 ```sh
-$ angrepa start 2
-Started exploit 2
-$ angrepa stop 2
-Stopped exploit 2
+$ angrepa exploit start 5     
+Started exploit 5
+
+$ angrepa exploit ls --enabled
++----+------------------+-------------+---------+-----------+-----------+
+| id | name             | service     | enabled | blacklist | pool_size |
++----+------------------+-------------+---------+-----------+-----------+
+| 3  | blah             | testservice | true    |           | 1         |
++----+------------------+-------------+---------+-----------+-----------+
+| 5  | template exploit | testservice | true    |           | 1         |
++----+------------------+-------------+---------+-----------+-----------+
+
+$ angrepa exploit stop 5      
+Stopped exploit 5
+
+$ angrepa exploit ls --enabled 
++----+------------------+-------------+---------+-----------+-----------+
+| id | name             | service     | enabled | blacklist | pool_size |
++----+------------------+-------------+---------+-----------+-----------+
+| 3  | blah             | testservice | true    |           | 1         |
++----+------------------+-------------+---------+-----------+-----------+
 ```
 
 ## Download
-```
-$ angrepa download 2 --path .
-./download_2
-./download_2/exploit.py
-./download_2/Dockerfile
-./download_2/requirements.txt
+```sh
+$ angrepa exploit download 5 --path .
+./download_5/exploit.py
+./download_5/Dockerfile
+./download_5/requirements.txt
+
+$ angrepa exploit download 5 --path exploit_folder
+exploit_folder/download_5/exploit.py
+exploit_folder/download_5/Dockerfile
+exploit_folder/download_5/requirements.txt
+
+$ ls download_5 exploit_folder/download_5
+download_5:
+Dockerfile              exploit.py              requirements.txt
+
+exploit_folder/download_5:
+Dockerfile              exploit.py              requirements.txt
 ```
