@@ -74,25 +74,24 @@ impl<'a> Db<'a> {
         use crate::schema::*;
 
         let executions = execution::table
-            .inner_join(target::table)
+            .inner_join(target::table.on(execution::target_id.eq(target::id)))
             .filter(execution::started_at.ge(since))
-            .select((ExecutionModel::as_select(), TargetModel::as_select()))
             .load::<(ExecutionModel, TargetModel)>(self.conn)?;
 
-        let just_executions = executions
+        let execution_ids = executions
             .iter()
             .map(|(e, _)| e.clone())
             .collect::<Vec<_>>();
 
-        // also get separate flags for each single execution
-        let flag_src: Vec<_> = FlagModel::belonging_to(&just_executions)
-            .inner_join(execution::table)
-            .select((FlagModel::as_select(), ExecutionModel::as_select()))
-            .load::<(FlagModel, ExecutionModel)>(self.conn)?;
+        let relevant_flags: Vec<_> =
+            FlagModel::belonging_to(&execution_ids).load::<FlagModel>(self.conn)?;
 
         let mut flags = HashMap::new();
-        for (flag, exec) in flag_src {
-            flags.entry(exec.id).or_insert_with(Vec::new).push(flag);
+        for flag in relevant_flags {
+            flags
+                .entry(flag.execution_id)
+                .or_insert_with(Vec::new)
+                .push(flag);
         }
 
         let mut output = vec![];
