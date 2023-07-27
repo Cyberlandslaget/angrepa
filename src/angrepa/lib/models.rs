@@ -1,8 +1,16 @@
 use diesel::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(
-    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Queryable,
+    Selectable,
+    Insertable,
+    Identifiable,
+    Associations,
 )]
 #[diesel(table_name = super::schema::exploit)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
