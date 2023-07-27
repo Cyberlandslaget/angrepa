@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use angrepa::{
-    db::Db,
-    models::{ExecutionModel, FlagModel, TargetModel},
-};
+use angrepa::db::Db;
 
 use super::AppState;
 
@@ -115,18 +112,33 @@ async fn executions(
     };
 
     #[derive(Serialize)]
-    struct Extended {
-        execution: ExecutionModel,
-        target: TargetModel,
-        flags: Vec<FlagModel>,
+    // jhonnny boy provided this
+    struct ExecutionData {
+        exit_code: i32, // whatver no point in panicing here cus its not u8
+        exploit_id: i32,
+        finished_at: NaiveDateTime,
+        id: i32,
+        output: String,
+        started_at: NaiveDateTime,
+        target_id: i32,
+        service: String,
+        target_tick: i32,
+        team: String,
     }
 
-    let executions: Vec<Extended> = executions
+    let executions: Vec<ExecutionData> = executions
         .into_iter()
-        .map(|(e, t, fs)| Extended {
-            execution: e,
-            target: t,
-            flags: fs,
+        .map(|(exec, target, _flag)| ExecutionData {
+            exit_code: exec.exit_code,
+            exploit_id: exec.exploit_id,
+            finished_at: exec.finished_at,
+            id: exec.id,
+            output: exec.output,
+            started_at: exec.started_at,
+            target_id: exec.target_id,
+            service: target.service,
+            target_tick: target.target_tick,
+            team: target.team,
         })
         .collect();
 
