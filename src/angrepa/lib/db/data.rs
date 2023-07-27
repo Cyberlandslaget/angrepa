@@ -1,9 +1,9 @@
+use crate::models::{ExecutionModel, ExploitModel, FlagModel, TargetModel};
 use chrono::NaiveDateTime;
 use color_eyre::Report;
 use diesel::prelude::*;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
-
-use crate::models::{ExecutionModel, ExploitModel, FlagModel};
+use std::collections::HashMap;
 
 use super::Db;
 
@@ -65,6 +65,43 @@ impl<'a> Db<'a> {
             .load::<ExecutionModel>(self.conn)?;
 
         Ok(executions)
+    }
+
+    pub fn executions_since_extended(
+        &mut self,
+        since: NaiveDateTime,
+    ) -> Result<Vec<(ExecutionModel, TargetModel, Vec<FlagModel>)>, Report> {
+        use crate::schema::*;
+
+        let executions = execution::table
+            .inner_join(target::table)
+            .filter(execution::started_at.ge(since))
+            .select((ExecutionModel::as_select(), TargetModel::as_select()))
+            .load::<(ExecutionModel, TargetModel)>(self.conn)?;
+
+        let just_executions = executions
+            .iter()
+            .map(|(e, _)| e.clone())
+            .collect::<Vec<_>>();
+
+        // also get separate flags for each single execution
+        let flag_src: Vec<_> = FlagModel::belonging_to(&just_executions)
+            .inner_join(execution::table)
+            .select((FlagModel::as_select(), ExecutionModel::as_select()))
+            .load::<(FlagModel, ExecutionModel)>(self.conn)?;
+
+        let mut flags = HashMap::new();
+        for (flag, exec) in flag_src {
+            flags.entry(exec.id).or_insert_with(Vec::new).push(flag);
+        }
+
+        let mut output = vec![];
+        for (exec, target) in executions {
+            let flags = flags.get(&exec.id).unwrap_or(&vec![]).clone();
+            output.push((exec, target, flags));
+        }
+
+        Ok(output)
     }
 
     pub fn service_exploits(&mut self, service_name: &String) -> Result<Vec<ExploitModel>, Report> {

@@ -5,11 +5,14 @@ use axum::{
     Json, Router,
 };
 use chrono::NaiveDateTime;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use angrepa::db::Db;
+use angrepa::{
+    db::Db,
+    models::{ExecutionModel, FlagModel, TargetModel},
+};
 
 use super::AppState;
 
@@ -102,14 +105,35 @@ async fn executions(
 
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.executions_since(since) {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-        Err(e) => (
+    let executions = match db.executions_since_extended(since) {
+        Ok(executions) => executions,
+        Err(e) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
             json!({ "status": "error", "message": format!("Failed to get executions: {:?}", e) })
                 .into(),
         ),
+    };
+
+    #[derive(Serialize)]
+    struct Extended {
+        execution: ExecutionModel,
+        target: TargetModel,
+        flags: Vec<FlagModel>,
     }
+
+    let executions: Vec<Extended> = executions
+        .into_iter()
+        .map(|(e, t, fs)| Extended {
+            execution: e,
+            target: t,
+            flags: fs,
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        json!({ "status": "ok", "data": executions}).into(),
+    )
 }
 
 // GET /logs/service/:service/exploits
