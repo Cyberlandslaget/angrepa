@@ -40,7 +40,7 @@ async fn list() -> (StatusCode, Json<Value>) {
 // GET /templates/:template
 async fn download(Path(template): Path<String>) -> impl IntoResponse {
     let mut tar = tar::Builder::new(Vec::new());
-    tar.append_dir_all(template.as_str(), format!("./data/templates/{template}"))
+    tar.append_dir_all(".", format!("./data/templates/{template}"))
         .unwrap();
 
     let bytes = Bytes::from(tar.into_inner().unwrap());
