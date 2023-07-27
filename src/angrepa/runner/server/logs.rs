@@ -83,13 +83,50 @@ async fn flags(
 
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.flags_since(since) {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) }).into(),
-        ),
+    #[derive(Serialize)]
+    struct FlagData {
+        execution_id: i32,
+        exploit_id: i32,
+        id: i32,
+        status: String,
+        submitted: bool,
+        text: String,
+        timestamp: NaiveDateTime,
+        service: String,
+        target_tick: i32,
+        team: String,
     }
+
+    let flags =
+        match db.flags_since_extended(since) {
+            Ok(flags) => flags,
+            Err(e) => return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "status": "error", "message": format!("Failed to get flags: {:?}", e) })
+                    .into(),
+            ),
+        };
+
+    let flags: Vec<FlagData> = flags
+        .into_iter()
+        .map(|(flag, _exec, target)| FlagData {
+            execution_id: flag.execution_id,
+            exploit_id: flag.exploit_id,
+            id: flag.id,
+            status: flag.status,
+            submitted: flag.submitted,
+            text: flag.text,
+            timestamp: flag.timestamp,
+            service: target.service,
+            target_tick: target.target_tick,
+            team: target.team,
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        json!({ "status": "ok", "data": flags}).into(),
+    )
 }
 
 // GET /logs/executions?since=OPTIONAL_TIMESTAMP

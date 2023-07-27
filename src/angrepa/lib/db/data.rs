@@ -53,6 +53,18 @@ impl<'a> Db<'a> {
 
         Ok(flags)
     }
+    
+    pub fn flags_since_extended(&mut self, since: NaiveDateTime) -> Result<Vec<(FlagModel, ExecutionModel, TargetModel)>, Report> {
+        use crate::schema::*;
+
+        let flags = flag::table
+            .inner_join(execution::table.on(flag::execution_id.eq(execution::id)))
+            .inner_join(target::table.on(execution::target_id.eq(target::id)))
+            .filter(flag::timestamp.ge(since))
+            .load::<(FlagModel, ExecutionModel, TargetModel)>(self.conn)?;
+
+        Ok(flags)
+    }
 
     pub fn executions_since(
         &mut self,
