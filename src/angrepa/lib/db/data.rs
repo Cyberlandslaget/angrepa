@@ -69,6 +69,21 @@ impl<'a> Db<'a> {
         Ok(flags)
     }
 
+    pub fn flags_by_id_extended(
+        &mut self,
+        ids: Vec<i32>,
+    ) -> Result<Vec<(FlagModel, ExecutionModel, TargetModel)>, Report> {
+        use crate::schema::*;
+
+        let flags = flag::table
+            .inner_join(execution::table.on(flag::execution_id.eq(execution::id)))
+            .inner_join(target::table.on(execution::target_id.eq(target::id)))
+            .filter(flag::id.eq_any(ids))
+            .load::<(FlagModel, ExecutionModel, TargetModel)>(self.conn)?;
+
+        Ok(flags)
+    }
+
     pub fn executions_since(
         &mut self,
         since: NaiveDateTime,
