@@ -1,4 +1,6 @@
-use crate::models::{ExecutionModel, ExploitModel, FlagModel, TargetModel};
+use crate::models::{
+    ExecutionModel, ExploitModel, FlagModel, ServiceModel, TargetModel, TeamModel,
+};
 use chrono::NaiveDateTime;
 use color_eyre::Report;
 use diesel::prelude::*;
@@ -42,6 +44,22 @@ impl<'a> Db<'a> {
             .load::<FlagModel>(self.conn)?;
 
         Ok(flags)
+    }
+
+    pub fn teams(&mut self) -> Result<Vec<TeamModel>, Report> {
+        use crate::schema::team::dsl::*;
+
+        let teams = team.load::<TeamModel>(self.conn)?;
+
+        Ok(teams)
+    }
+
+    pub fn services(&mut self) -> Result<Vec<ServiceModel>, Report> {
+        use crate::schema::service::dsl::*;
+
+        let services = service.load::<ServiceModel>(self.conn)?;
+
+        Ok(services)
     }
 
     pub fn flags_since(&mut self, since: NaiveDateTime) -> Result<Vec<FlagModel>, Report> {
