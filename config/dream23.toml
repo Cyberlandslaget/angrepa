@@ -1,0 +1,27 @@
+[common]
+start = "2023-08-02T10:45:00Z"
+# lol
+format = 'DREAM_[^\s]+'
+tick = 180
+flag_validity = 5
+#services = ["notes", "dogcoin", "aquaeductus", "signed-clock"]
+services = ["Service 1 Checker", "Service 3 Checker 1", "Service 3 Checker 2"]
+
+[manager]
+submitter_name = 'faust'
+fetcher_name = 'faust'
+[manager.submitter]
+host = '172.16.1.255:31337'
+[manager.fetcher]
+teams = 'http://172.16.1.255:5000/competition/teams.json'
+scoreboard = "http://172.16.1.255:8000/competition/scoreboard-v2/scoreboard_current.json"
+format = "172.16.{x}.1"
+
+[runner]
+http_server = "0.0.0.0:8000"
+
+[database]
+username = "angrepa"
+password = "a"
+host = "localhost"
+db = "angrepa"
