@@ -12,10 +12,13 @@ pub use enowars::EnowarsFetcher;
 mod dummy;
 pub use dummy::DummyFetcher;
 use tracing::{error, info, warn};
+mod faust;
+pub use faust::FaustFetcher;
 
 #[derive(Debug)]
 pub enum Fetchers {
     Enowars(EnowarsFetcher),
+    Faust(FaustFetcher),
     Dummy(DummyFetcher),
 }
 
@@ -147,6 +150,27 @@ impl Fetchers {
             "dummy" => Ok(Self::Dummy(DummyFetcher {
                 config: config.clone(),
             })),
+            "faust" => {
+                let teams = config
+                    .manager
+                    .fetcher
+                    .get("teams")
+                    .ok_or(eyre!("Faust fetcher requires teams"))?
+                    .as_str()
+                    .ok_or(eyre!("Faust fetcher teams must be a string"))?
+                    .to_owned();
+
+                let format = config
+                    .manager
+                    .fetcher
+                    .get("format")
+                    .ok_or(eyre!("Faust fetcher requires format"))?
+                    .as_str()
+                    .ok_or(eyre!("Faust fetcher format must be a string"))?
+                    .to_owned();
+
+                Ok(Self::Faust(FaustFetcher::new(teams, format)))
+            }
             "enowars" => {
                 let endpoint = config
                     .manager

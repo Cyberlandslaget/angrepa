@@ -46,6 +46,7 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
 
         match fetch {
             fetcher::Fetchers::Enowars(fetcher) => fetcher::run(fetcher, &config).await,
+            fetcher::Fetchers::Faust(fetcher) => fetcher::run(fetcher, &config).await,
             fetcher::Fetchers::Dummy(fetcher) => fetcher::run(fetcher, &config).await,
         };
     });
