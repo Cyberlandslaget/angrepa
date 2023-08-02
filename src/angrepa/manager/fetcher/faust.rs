@@ -6,7 +6,7 @@ use super::{Fetcher, Service};
 
 #[derive(Deserialize, Debug)]
 pub struct AttackInfo {
-    pub teams: Vec<String>,
+    pub teams: Vec<i32>,
     pub flag_ids: HashMap<String, Service>,
 }
 
@@ -43,7 +43,7 @@ impl Fetcher for FaustFetcher {
         let ips = resp
             .teams
             .into_iter()
-            .map(|team_nr| self.format.replace("{x}", &team_nr))
+            .map(|team_nr| self.format.replace("{x}", &format!("{}", team_nr)))
             .collect();
 
         Ok(ips)
