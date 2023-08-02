@@ -1,7 +1,7 @@
 [common]
 start = "2023-08-02T10:45:00Z"
 # lol
-format = 'DREAM_[^\s]+'
+format = 'DREAM_[A-Za-z0-9/+]{32}'
 tick = 180
 flag_validity = 5
 #services = ["notes", "dogcoin", "aquaeductus", "signed-clock"]
