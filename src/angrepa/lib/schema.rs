@@ -5,6 +5,7 @@ diesel::table! {
         id -> Int4,
         exploit_id -> Int4,
         output -> Text,
+        exit_code -> Int4,
         started_at -> Timestamp,
         finished_at -> Timestamp,
         target_id -> Int4,
@@ -49,6 +50,7 @@ diesel::table! {
         service -> Text,
         team -> Text,
         created_at -> Timestamp,
+        target_tick -> Int4,
     }
 }
 

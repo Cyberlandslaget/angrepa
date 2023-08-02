@@ -44,6 +44,8 @@ struct Ping {}
 
 #[tokio::main]
 async fn main() {
+    color_eyre::install().unwrap();
+
     let mut args = argh::from_env::<Args>();
 
     // add http:// if no prefix

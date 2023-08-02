@@ -78,6 +78,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         }
     });
 
+    let mut seen_flagids: HashSet<(String, String, i32)> = HashSet::new();
+
     loop {
         // wait for new tick
         tick_interval.tick().await;
@@ -99,36 +101,37 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         for (service_name, service) in &services {
             for (team_ip, ticks) in &service.0 {
-                #[allow(clippy::for_kv_map)]
-                for (_tick, flag_id) in &ticks.0 {
-                    // TODO check if (service_name, team_ip, tick) exists, otherwise add new flagid
+                for (tick, flag_id) in &ticks.0 {
+                    // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
+                    let new = seen_flagids.insert((service_name.clone(), team_ip.clone(), *tick));
 
-                    let exists = false;
+                    if !new {
+                        continue;
+                    }
 
-                    if !exists {
-                        let inserter = TargetInserter {
-                            flag_id: flag_id.to_string(),
-                            service: service_name.to_owned(),
-                            team: team_ip.to_owned(),
-                            created_at: chrono::Utc::now().naive_utc(),
-                        };
+                    let inserter = TargetInserter {
+                        flag_id: flag_id.to_string(),
+                        service: service_name.to_owned(),
+                        team: team_ip.to_owned(),
+                        created_at: chrono::Utc::now().naive_utc(),
+                        target_tick: *tick,
+                    };
 
-                        let conn = &mut match db_pool.get() {
-                            Ok(conn) => conn,
-                            Err(e) => {
-                                error!("Could not acquire a database connection: {}", e);
-                                continue;
-                            }
-                        };
+                    let conn = &mut match db_pool.get() {
+                        Ok(conn) => conn,
+                        Err(e) => {
+                            error!("Could not acquire a database connection: {}", e);
+                            continue;
+                        }
+                    };
 
-                        let mut db = Db::new(conn);
+                    let mut db = Db::new(conn);
 
-                        match db.add_target(&inserter) {
-                            Ok(_) => (),
-                            Err(e) => {
-                                error!("Could not add target: {}", e);
-                                continue;
-                            }
+                    match db.add_target(&inserter) {
+                        Ok(_) => (),
+                        Err(e) => {
+                            error!("Could not add target: {}", e);
+                            continue;
                         }
                     }
                 }
@@ -139,11 +142,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
 // Deserialize
 impl Fetchers {
-    pub fn from_conf(manager: &config::Manager) -> Result<Self, Report> {
-        match manager.fetcher_name.as_str() {
-            "dummy" => Ok(Self::Dummy(DummyFetcher {})),
+    pub fn from_conf(config: &config::Root) -> Result<Self, Report> {
+        match config.manager.fetcher_name.as_str() {
+            "dummy" => Ok(Self::Dummy(DummyFetcher {
+                config: config.clone(),
+            })),
             "enowars" => {
-                let endpoint = manager
+                let endpoint = config
+                    .manager
                     .fetcher
                     .get("endpoint")
                     .ok_or(eyre!("Enowars fetcher requires endpoint"))?
@@ -151,7 +157,8 @@ impl Fetchers {
                     .ok_or(eyre!("Enowars fetcher endpoint must be a string"))?
                     .to_owned();
 
-                let ips_endpoint = manager
+                let ips_endpoint = config
+                    .manager
                     .fetcher
                     .get("ips")
                     .ok_or(eyre!("Enowars fetcher requires ip endpoint"))?
@@ -161,7 +168,7 @@ impl Fetchers {
 
                 Ok(Self::Enowars(EnowarsFetcher::new(endpoint, ips_endpoint)))
             }
-            _ => Err(eyre!("Unknown fetcher {}", manager.fetcher_name)),
+            _ => Err(eyre!("Unknown fetcher {}", config.manager.fetcher_name)),
         }
     }
 }
