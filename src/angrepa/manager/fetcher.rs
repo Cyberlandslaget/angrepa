@@ -160,6 +160,15 @@ impl Fetchers {
                     .ok_or(eyre!("Faust fetcher teams must be a string"))?
                     .to_owned();
 
+                let scoreboard = config
+                    .manager
+                    .fetcher
+                    .get("scoreboard")
+                    .ok_or(eyre!("Faust fetcher requires scoreboard"))?
+                    .as_str()
+                    .ok_or(eyre!("Faust fetcher scoreboard must be a string"))?
+                    .to_owned();
+
                 let format = config
                     .manager
                     .fetcher
@@ -169,7 +178,7 @@ impl Fetchers {
                     .ok_or(eyre!("Faust fetcher format must be a string"))?
                     .to_owned();
 
-                Ok(Self::Faust(FaustFetcher::new(teams, format)))
+                Ok(Self::Faust(FaustFetcher::new(teams, scoreboard, format)))
             }
             "enowars" => {
                 let endpoint = config
