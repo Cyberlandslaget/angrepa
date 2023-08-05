@@ -162,6 +162,20 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
+    pub fn get_latest_nop_target(&mut self, nop_ip: &str) -> Result<Option<TargetModel>, DbError> {
+        use crate::schema::target;
+
+        let out: Vec<_> = target::table
+            .filter(target::team.eq(nop_ip))
+            .order(target::created_at.asc())
+            .limit(1)
+            .load::<TargetModel>(self.conn)?;
+
+        let out = out.get(0).cloned();
+
+        Ok(out)
+    }
+
     pub fn get_exploitable_targets_updating(
         &mut self,
         oldest: chrono::NaiveDateTime,

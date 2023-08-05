@@ -18,6 +18,7 @@ pub struct Common {
     pub services: HashSet<String>,
     pub flag_validity: u32,
     pub rename: Option<HashMap<String, String>>,
+    pub nop: Option<String>,
 }
 
 impl Common {
@@ -215,6 +216,7 @@ mod tests {
             services: HashSet::new(),
             flag_validity: 10,
             rename: None,
+            nop: None,
         };
 
         // exactly at start

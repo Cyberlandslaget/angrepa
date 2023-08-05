@@ -5,6 +5,8 @@ tick = 10
 flag_validity = 10
 # service names, if renamed, then the name they are renamed to
 services = ["testservice"]
+# optional
+nop = "10.0.1.1"
 
 #[common.rename]
 #"testservice" = "a_better_name"
