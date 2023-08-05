@@ -8,6 +8,7 @@ use super::{Fetcher, Service, ServiceMap, TeamService};
 #[derive(Deserialize, Debug)]
 pub struct AttackInfo {
     pub teams: Vec<i32>,
+    // TODO! should also accept <i32, _> and convert the i32 to String...
     pub flag_ids: HashMap<String, ServiceContent>,
 }
 
@@ -107,5 +108,61 @@ impl Fetcher for FaustFetcher {
             .collect();
 
         Ok(ips)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use warp::Filter;
+
+    const TEAMS_JSON: &str = r#"
+            {
+                "teams": [
+                    2
+                ],
+                "flag_ids": {
+                    "service_1": {
+                        "2": [
+                                [
+                                    [ "user73" ],
+                                    [ "user5" ]
+                                ],
+                                [
+                                    [ "user96" ],
+                                    [ "user314" ]
+                                ]
+                        ]
+                    }
+                }
+            }"#;
+
+    const SCOREBOARD_JSON: &str = r#"
+            {
+                "current_tick": 271
+            }
+    "#;
+
+    #[tokio::test]
+    async fn faust_local_test() {
+        let gameserver = tokio::spawn(async move {
+            let teams = warp::path!("teams").map(|| TEAMS_JSON);
+            let scoreboard = warp::path!("scoreboard").map(|| SCOREBOARD_JSON);
+            warp::serve(teams.or(scoreboard))
+                .run(([127, 0, 0, 1], 8888))
+                .await
+        });
+
+        let fetcher = FaustFetcher::new(
+            "http://localhost:8888/teams".to_string(),
+            "http://localhost:8888/scoreboard".to_string(),
+            "1.20.{x}.1".to_string(),
+        );
+
+        let services = fetcher.services().await.unwrap();
+
+        dbg!(&services);
+
+        gameserver.abort();
     }
 }
