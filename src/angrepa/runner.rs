@@ -46,7 +46,13 @@ impl Runner {
                     .await
                     .unwrap();
 
+            let blacklist: HashSet<_> = exploit.blacklist.iter().flatten().cloned().collect();
+
             for target in targets {
+                if blacklist.contains(&target.team) {
+                    continue;
+                }
+
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
