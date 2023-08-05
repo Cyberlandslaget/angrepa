@@ -50,6 +50,23 @@ pub struct TicksOld(pub HashMap<i32, serde_json::Value>);
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ServiceMap(HashMap<String, Service>);
 
+impl ServiceMap {
+    /// renames services
+    pub fn apply_name_mapping(self, mapping: &HashMap<String, String>) -> ServiceMap {
+        ServiceMap(
+            self.0
+                .into_iter()
+                .map(|(old_name, service)| {
+                    (
+                        mapping.get(&old_name).unwrap_or(&old_name).to_owned(),
+                        service,
+                    )
+                })
+                .collect(),
+        )
+    }
+}
+
 /// A service' teams
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Service {
@@ -112,6 +129,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         // get updated info
         let services = fetcher.services().await.unwrap();
+
+        // rename?
+        let services = if let Some(ref rename) = config.common.rename {
+            services.apply_name_mapping(rename)
+        } else {
+            services
+        };
+
         let service_names = services.0.keys().cloned().collect::<HashSet<_>>();
 
         if service_names != common.services {

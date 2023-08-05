@@ -3,7 +3,11 @@ start = "2023-07-18T12:00:00Z"
 format = "ECSC_[A-Za-z0-9\\+/]{32}"
 tick = 10
 flag_validity = 10
+# service names, if renamed, then the name they are renamed to
 services = ["testservice"]
+
+#[common.rename]
+#"testservice" = "a_better_name"
 
 [manager]
 submitter_name = 'dummy'

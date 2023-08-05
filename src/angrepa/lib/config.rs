@@ -2,7 +2,7 @@ use argh::FromArgs;
 use chrono::DateTime;
 use color_eyre::{eyre::eyre, Report};
 use serde::Deserialize;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tokio::time::{interval_at, MissedTickBehavior};
 use tracing::{debug, info};
 use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter};
@@ -17,6 +17,7 @@ pub struct Common {
     pub start: DateTime<chrono::Utc>,
     pub services: HashSet<String>,
     pub flag_validity: u32,
+    pub rename: Option<HashMap<String, String>>,
 }
 
 impl Common {
@@ -213,6 +214,7 @@ mod tests {
             ),
             services: HashSet::new(),
             flag_validity: 10,
+            rename: None,
         };
 
         // exactly at start
