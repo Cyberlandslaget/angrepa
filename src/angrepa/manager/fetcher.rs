@@ -141,7 +141,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         if service_names != common.services {
             error!(
-                "Fetcher and config disagree on service names! {:?} != {:?}",
+                "Fetcher and config disagree on service names! (after applying renames) got:{:?} != fetched:{:?}",
                 service_names, common.services
             );
             continue;
