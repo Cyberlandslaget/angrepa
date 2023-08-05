@@ -1,15 +1,48 @@
+use super::{Fetcher, Service, ServiceMap, ServiceOld, TeamService};
 use async_trait::async_trait;
 use serde::{self, Deserialize};
 use std::collections::HashMap;
-
-use super::{Fetcher, Service};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct AttackInfo {
     #[allow(dead_code)]
     pub available_teams: Vec<String>,
-    pub services: HashMap<String, Service>,
+    pub services: HashMap<String, ServiceOld>,
+}
+
+// the only real thing it does is take the single flagid and make it into a vector with one element
+impl From<HashMap<String, ServiceOld>> for ServiceMap {
+    fn from(value: HashMap<String, ServiceOld>) -> Self {
+        ServiceMap(
+            value
+                .into_iter()
+                .map(|(service_name, teams)| {
+                    (
+                        service_name,
+                        Service {
+                            teams: teams
+                                .0
+                                .into_iter()
+                                .map(|(team_ip, ticks)| {
+                                    (
+                                        team_ip,
+                                        TeamService {
+                                            ticks: ticks
+                                                .0
+                                                .into_iter()
+                                                .map(|(tick_nr, value)| (tick_nr, vec![value])) // val -> vec![val]
+                                                .collect(),
+                                        },
+                                    )
+                                })
+                                .collect(),
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -33,11 +66,11 @@ impl EnowarsFetcher {
 
 #[async_trait]
 impl Fetcher for EnowarsFetcher {
-    async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
+    async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
         // TODO handle failures more gracefully (retry?)
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
-        Ok(resp.services)
+        Ok(resp.services.into())
     }
 
     async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
@@ -82,10 +115,10 @@ mod tests {
                 }
             }"#;
 
-    fn eno_deser() -> HashMap<String, Service> {
+    fn eno_deser() -> ServiceMap {
         let attack_info: AttackInfo = serde_json::from_str(JSON).unwrap();
 
-        attack_info.services
+        attack_info.services.into()
     }
 
     #[tokio::test]
@@ -105,10 +138,12 @@ mod tests {
 
         dbg!(&services);
 
-        for (service, service_info) in services.iter() {
-            for (ip, ticks) in service_info.0.iter() {
-                for (tick, flagids) in ticks.0.iter() {
-                    println!("{} {} {} {}", service, ip, tick, flagids);
+        for (service, service_info) in services.0.iter() {
+            for (ip, ticks) in service_info.teams.iter() {
+                for (tick, flagids) in ticks.ticks.iter() {
+                    for flagid in flagids {
+                        println!("{} {} {} {}", service, ip, tick, flagid);
+                    }
                 }
             }
         }
