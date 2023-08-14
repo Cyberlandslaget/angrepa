@@ -26,7 +26,7 @@ impl Fetcher for DummyFetcher {
             let mut ticks = HashMap::new();
             ticks.insert(cur_tick_nr, vec![tick_content]);
 
-            let ticks = TeamService{ticks: ticks};
+            let ticks = TeamService{ticks};
 
             test_service.insert(ip, ticks);
         });
