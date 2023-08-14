@@ -14,26 +14,26 @@ pub struct DummyFetcher {
 #[async_trait]
 impl Fetcher for DummyFetcher {
     async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
-        let mut map = HashMap::new();
+        let mut all_services = HashMap::new();
         let mut test_service = HashMap::new();
+
+        let cur_tick_nr = self.config.common.current_tick(chrono::Utc::now()) as i32;
 
         self.ips().await?.into_iter().for_each(|ip| {
             let mut rng = rand::thread_rng();
-            let test_tick = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
+            let tick_content = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
 
-            let cur_tick = self.config.common.current_tick(chrono::Utc::now()) as i32;
             let mut ticks = HashMap::new();
-            ticks.insert(cur_tick, test_tick);
+            ticks.insert(cur_tick_nr, tick_content);
 
             let ticks = Ticks(ticks);
 
             test_service.insert(ip, ticks);
-
         });
 
-        map.insert("testservice".to_string(), Service(test_service));
+        all_services.insert("testservice".to_string(), Service(test_service));
 
-        Ok(map)
+        Ok(all_services)
     }
 
     async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {

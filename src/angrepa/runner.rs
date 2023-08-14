@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use bollard::Docker;
 use chrono::NaiveDateTime;
 use regex::Regex;
@@ -78,10 +80,11 @@ impl Runner {
                         })
                         .unwrap();
 
-                    // find flags in the string
-                    let flags = flag_regex
+                    // only unique flags
+                    let flags: HashSet<String> = flag_regex
                         .captures_iter(&log.output)
-                        .map(|cap| cap[0].to_string());
+                        .map(|cap| cap[0].to_string())
+                        .collect();
 
                     for flag in flags {
                         db.add_flag(&FlagInserter {
