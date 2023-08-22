@@ -1,5 +1,5 @@
 [common]
-start = "2023-07-18T12:00:00Z"
+start = "2023-08-22T12:20:00Z"
 format = "ECSC_[A-Za-z0-9\\+/]{32}"
 tick = 10
 flag_validity = 10
