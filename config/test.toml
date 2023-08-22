@@ -4,12 +4,12 @@ format = "ECSC_[A-Za-z0-9\\+/]{32}"
 tick = 10
 flag_validity = 10
 # service names, if renamed, then the name they are renamed to
-services = ["testservice"]
+services = ["testservice", "a really stupid name"]
 # optional
 nop = "10.0.1.1"
 
 #[common.rename]
-#"testservice" = "a_better_name"
+"a really stupid name" = "epicname"
 
 [manager]
 submitter_name = 'dummy'
