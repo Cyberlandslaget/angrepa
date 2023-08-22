@@ -7,6 +7,7 @@ flag_validity = 10
 services = ["testservice", "a really stupid name"]
 # optional
 nop = "10.0.1.1"
+own = "10.0.1.2"
 
 #[common.rename]
 "a really stupid name" = "epicname"
