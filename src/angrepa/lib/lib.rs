@@ -1,3 +1,4 @@
+#![allow(clippy::needless_raw_string_hashes)]
 pub mod config;
 pub mod db;
 pub mod models;
