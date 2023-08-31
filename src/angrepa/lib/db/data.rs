@@ -54,6 +54,12 @@ impl<'a> Db<'a> {
         Ok(teams)
     }
 
+    pub fn team_by_ip(&mut self, t_ip: String) -> Result<TeamModel, Report> {
+        use crate::schema::team::dsl::*;
+
+        Ok(team.filter(ip.eq(t_ip)).first::<TeamModel>(self.conn)?)
+    }
+
     pub fn services(&mut self) -> Result<Vec<ServiceModel>, Report> {
         use crate::schema::service::dsl::*;
 
