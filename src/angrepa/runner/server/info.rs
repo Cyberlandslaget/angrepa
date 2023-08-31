@@ -1,7 +1,8 @@
 use axum::{
+    extract,
     extract::{Path, State},
     http::StatusCode,
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use serde_json::{json, Value};
@@ -61,6 +62,30 @@ async fn team(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct JsonConfig {
+    ip: String,
+    name: String,
+}
+
+// POST /info/team/name
+async fn team_set_name(
+    State(state): State<Arc<AppState>>,
+    extract::Json(ipname): extract::Json<JsonConfig>,
+) -> (StatusCode, Json<Value>) {
+    let mut conn = state.db.get().unwrap();
+    let mut db = Db::new(&mut conn);
+
+    match db.team_set_name(ipname.ip, ipname.name) {
+        Ok(()) => (StatusCode::OK, json!({ "status": "ok"}).into()),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({ "status": "error", "message": format!("Failed to set team name: {:?}", e) })
+                .into(),
+        ),
+    }
+}
+
 // GET /info/services
 async fn services(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
     let mut conn = state.db.get().unwrap();
@@ -84,7 +109,8 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/internal_tick", get(internal_tick))
         .route("/teams", get(teams))
-        .route("/team/:team", get(team))
+        .route("/team/:ip", get(team))
+        .route("/team/name", post(team_set_name))
         .route("/services", get(services))
         .with_state(state)
 }

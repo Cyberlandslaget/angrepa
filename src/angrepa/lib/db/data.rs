@@ -60,6 +60,16 @@ impl<'a> Db<'a> {
         Ok(team.filter(ip.eq(t_ip)).first::<TeamModel>(self.conn)?)
     }
 
+    pub fn team_set_name(&mut self, team_ip: String, team_name: String) -> Result<(), Report> {
+        use crate::schema::team::dsl::*;
+
+        diesel::update(team.filter(ip.eq(team_ip)))
+            .set(name.eq(team_name))
+            .execute(self.conn)?;
+
+        Ok(())
+    }
+
     pub fn services(&mut self) -> Result<Vec<ServiceModel>, Report> {
         use crate::schema::service::dsl::*;
 
