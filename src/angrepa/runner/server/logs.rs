@@ -98,18 +98,7 @@ async fn flags(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData {
-            execution_id: flag.execution_id,
-            exploit_id: flag.exploit_id,
-            id: flag.id,
-            status: flag.status,
-            submitted: flag.submitted,
-            text: flag.text,
-            timestamp: flag.timestamp,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
         .collect();
 
     (
@@ -143,18 +132,7 @@ async fn flags_by_id(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData {
-            execution_id: flag.execution_id,
-            exploit_id: flag.exploit_id,
-            id: flag.id,
-            status: flag.status,
-            submitted: flag.submitted,
-            text: flag.text,
-            timestamp: flag.timestamp,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
         .collect();
 
     (
