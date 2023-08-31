@@ -1,3 +1,4 @@
+use super::data_types::{ExecutionData, FlagData};
 use angrepa::{config, db::Db, db_connect};
 use chrono::{NaiveDateTime, Utc};
 use serde_json::json;
@@ -34,20 +35,6 @@ pub async fn listener(addr: std::net::SocketAddr, chan: flume::Sender<flume::Sen
     }
 }
 
-#[derive(serde::Serialize, PartialEq, Clone)]
-struct FlagData {
-    execution_id: i32,
-    exploit_id: i32,
-    id: i32,
-    status: String,
-    submitted: bool,
-    text: String,
-    timestamp: NaiveDateTime,
-    service: String,
-    target_tick: i32,
-    team: String,
-}
-
 struct FlagGetter {
     last_response: HashMap<i32, FlagData>,
 }
@@ -70,18 +57,7 @@ impl FlagGetter {
 
         let flags: Vec<_> = flags
             .into_iter()
-            .map(|(flag, _exec, target)| FlagData {
-                execution_id: flag.execution_id,
-                exploit_id: flag.exploit_id,
-                id: flag.id,
-                status: flag.status,
-                submitted: flag.submitted,
-                text: flag.text,
-                timestamp: flag.timestamp,
-                service: target.service,
-                target_tick: target.target_tick,
-                team: target.team,
-            })
+            .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
             .filter(|flag| self.last_response.get(&flag.id) != Some(flag))
             .collect();
 
@@ -93,20 +69,6 @@ impl FlagGetter {
     }
 }
 
-#[derive(serde::Serialize, PartialEq, Clone)]
-// jhonnny boy provided this
-struct ExecutionData {
-    exit_code: i32, // whatver no point in panicing here cus its not u8
-    exploit_id: i32,
-    finished_at: NaiveDateTime,
-    id: i32,
-    output: String,
-    started_at: NaiveDateTime,
-    target_id: i32,
-    service: String,
-    target_tick: i32,
-    team: String,
-}
 struct ExecutionGetter {
     last_response: HashMap<i32, ExecutionData>,
 }
@@ -129,18 +91,7 @@ impl ExecutionGetter {
 
         let executions: Vec<ExecutionData> = executions
             .into_iter()
-            .map(|(exec, target, _flag)| ExecutionData {
-                exit_code: exec.exit_code,
-                exploit_id: exec.exploit_id,
-                finished_at: exec.finished_at,
-                id: exec.id,
-                output: exec.output,
-                started_at: exec.started_at,
-                target_id: exec.target_id,
-                service: target.service,
-                target_tick: target.target_tick,
-                team: target.team,
-            })
+            .map(|(exec, target, _flag)| ExecutionData::from_models(exec, target))
             .filter(|exec| self.last_response.get(&exec.id) != Some(exec))
             .collect();
 

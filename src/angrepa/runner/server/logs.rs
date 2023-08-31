@@ -5,12 +5,15 @@ use axum::{
     Json, Router,
 };
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 use angrepa::db::Db;
 
+use crate::runner::data_types::FlagData;
+
+use super::super::data_types::ExecutionData;
 use super::AppState;
 
 #[derive(Deserialize)]
@@ -83,20 +86,6 @@ async fn flags(
 
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    #[derive(Serialize)]
-    struct FlagData {
-        execution_id: i32,
-        exploit_id: i32,
-        id: i32,
-        status: String,
-        submitted: bool,
-        text: String,
-        timestamp: NaiveDateTime,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
-
     let flags =
         match db.flags_since_extended(since) {
             Ok(flags) => flags,
@@ -141,20 +130,6 @@ async fn flags_by_id(
 ) -> (StatusCode, Json<Value>) {
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
-
-    #[derive(Serialize)]
-    struct FlagData {
-        execution_id: i32,
-        exploit_id: i32,
-        id: i32,
-        status: String,
-        submitted: bool,
-        text: String,
-        timestamp: NaiveDateTime,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
 
     let flags =
         match db.flags_by_id_extended(payload.ids) {
@@ -207,35 +182,9 @@ async fn executions(
         ),
     };
 
-    #[derive(Serialize)]
-    // jhonnny boy provided this
-    struct ExecutionData {
-        exit_code: i32, // whatver no point in panicing here cus its not u8
-        exploit_id: i32,
-        finished_at: NaiveDateTime,
-        id: i32,
-        output: String,
-        started_at: NaiveDateTime,
-        target_id: i32,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
-
     let executions: Vec<ExecutionData> = executions
         .into_iter()
-        .map(|(exec, target, _flag)| ExecutionData {
-            exit_code: exec.exit_code,
-            exploit_id: exec.exploit_id,
-            finished_at: exec.finished_at,
-            id: exec.id,
-            output: exec.output,
-            started_at: exec.started_at,
-            target_id: exec.target_id,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(exec, target, _flag)| ExecutionData::from_models(exec, target))
         .collect();
 
     (

@@ -19,6 +19,7 @@ use angrepa::{
 mod exploit;
 use exploit::{docker::InitalizedExploit, Exploit};
 
+pub mod data_types;
 mod server;
 mod ws_server;
 
