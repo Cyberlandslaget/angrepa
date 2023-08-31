@@ -1,5 +1,6 @@
 use angrepa::{config, db::Db, db_connect};
 use chrono::{NaiveDateTime, Utc};
+use serde_json::json;
 use std::{collections::HashMap, net::TcpListener};
 use tracing::{info, warn};
 use tungstenite::{accept, Message};
@@ -110,7 +111,11 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         let since = (Utc::now() - chrono::Duration::seconds(60)).naive_utc();
 
         let flags = flag_getter.get(&mut db, since);
-        let flags = serde_json::to_string(&flags).unwrap();
+
+        let txt = serde_json::to_string(&json!({
+            "flags": flags
+        }))
+        .unwrap();
 
         // add any new listeners
         while let Ok(exec) = rx.try_recv() {
@@ -121,7 +126,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         let mut new_listeners = vec![];
 
         for l in listeners {
-            if l.send_async(flags.clone()).await.is_ok() {
+            if l.send_async(txt.clone()).await.is_ok() {
                 new_listeners.push(l);
             }
         }
