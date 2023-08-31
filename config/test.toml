@@ -20,6 +20,7 @@ fetcher_name = 'dummy'
 
 [runner]
 http_server = "0.0.0.0:8000"
+ws_server = "0.0.0.0:8001"
 
 [database]
 username = "angrepa"

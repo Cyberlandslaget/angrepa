@@ -84,7 +84,7 @@ pub struct ExecutionInserter {
 }
 
 #[derive(
-    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations,
+    Serialize, Debug, Clone, Queryable, Selectable, Insertable, Identifiable, Associations, Hash,
 )]
 #[diesel(table_name = super::schema::flag)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
