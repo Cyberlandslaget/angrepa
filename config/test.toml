@@ -1,7 +1,7 @@
 [common]
-start = "2023-08-22T12:20:00Z"
+start = "2023-08-31T13:40:00Z"
 format = "ECSC_[A-Za-z0-9\\+/]{32}"
-tick = 10
+tick = 30
 flag_validity = 10
 # service names, if renamed, then the name they are renamed to
 services = ["testservice"]
