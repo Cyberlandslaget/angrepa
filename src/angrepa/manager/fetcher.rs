@@ -150,6 +150,10 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         info!("tick {}", tick_number);
 
         for (service_name, service) in &services.0 {
+            // sort by team_ip
+            let mut teams = service.teams.iter().collect::<Vec<_>>();
+            teams.sort_by_key(|(team_ip, _)| *team_ip);
+
             for (team_ip, service) in &service.teams {
                 for (tick, flag_ids) in &service.ticks {
                     for flag_id in flag_ids {

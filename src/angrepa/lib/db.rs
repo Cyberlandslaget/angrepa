@@ -202,12 +202,15 @@ impl<'a> Db<'a> {
         let mut target_exploits = Vec::new();
 
         for exploit in active_exploits {
-            let targets: Vec<TargetModel> = target::table
+            let mut targets: Vec<TargetModel> = target::table
                 .filter(target::id.ne_all(&relevant_executions)) // 1.
                 .filter(target::service.eq(&exploit.service)) // 2.
                 .filter(target::created_at.gt(oldest)) // 3.
                 .order(target::created_at.asc())
                 .load::<TargetModel>(self.conn)?;
+
+            // sort by ip to make viewing an adminer easier
+            targets.sort_by_key(|t| t.team.clone());
 
             target_exploits.push((targets, exploit));
         }
