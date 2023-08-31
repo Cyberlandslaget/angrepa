@@ -162,6 +162,20 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
+    pub fn get_latest_nop_target(&mut self, nop_ip: &str) -> Result<Option<TargetModel>, DbError> {
+        use crate::schema::target;
+
+        let out: Vec<_> = target::table
+            .filter(target::team.eq(nop_ip))
+            .order(target::created_at.asc())
+            .limit(1)
+            .load::<TargetModel>(self.conn)?;
+
+        let out = out.get(0).cloned();
+
+        Ok(out)
+    }
+
     pub fn get_exploitable_targets_updating(
         &mut self,
         oldest: chrono::NaiveDateTime,
@@ -188,12 +202,15 @@ impl<'a> Db<'a> {
         let mut target_exploits = Vec::new();
 
         for exploit in active_exploits {
-            let targets: Vec<TargetModel> = target::table
+            let mut targets: Vec<TargetModel> = target::table
                 .filter(target::id.ne_all(&relevant_executions)) // 1.
                 .filter(target::service.eq(&exploit.service)) // 2.
                 .filter(target::created_at.gt(oldest)) // 3.
                 .order(target::created_at.asc())
                 .load::<TargetModel>(self.conn)?;
+
+            // sort by ip to make viewing an adminer easier
+            targets.sort_by_key(|t| t.team.clone());
 
             target_exploits.push((targets, exploit));
         }

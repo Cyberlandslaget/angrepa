@@ -1,9 +1,16 @@
 [common]
-start = "2023-07-18T12:00:00Z"
+start = "2023-08-22T12:20:00Z"
 format = "ECSC_[A-Za-z0-9\\+/]{32}"
 tick = 10
 flag_validity = 10
+# service names, if renamed, then the name they are renamed to
 services = ["testservice"]
+# optional
+nop = "10.0.1.1"
+own = "10.0.1.2"
+
+#[common.rename]
+#"a really stupid name" = "epicname"
 
 [manager]
 submitter_name = 'dummy'

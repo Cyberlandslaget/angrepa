@@ -4,7 +4,7 @@ use rand::Rng;
 use serde_json::json;
 use std::collections::HashMap;
 
-use super::{Fetcher, Service, Ticks};
+use super::{Fetcher, Service, ServiceMap, TeamService};
 
 #[derive(Debug)]
 pub struct DummyFetcher {
@@ -13,7 +13,7 @@ pub struct DummyFetcher {
 
 #[async_trait]
 impl Fetcher for DummyFetcher {
-    async fn services(&self) -> Result<HashMap<String, Service>, color_eyre::Report> {
+    async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
         let mut all_services = HashMap::new();
         let mut test_service = HashMap::new();
 
@@ -24,16 +24,21 @@ impl Fetcher for DummyFetcher {
             let tick_content = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
 
             let mut ticks = HashMap::new();
-            ticks.insert(cur_tick_nr, tick_content);
+            ticks.insert(cur_tick_nr, vec![tick_content]);
 
-            let ticks = Ticks(ticks);
+            let ticks = TeamService{ticks};
 
             test_service.insert(ip, ticks);
         });
 
-        all_services.insert("testservice".to_string(), Service(test_service));
+        all_services.insert(
+            "testservice".to_string(),
+            Service {
+                teams: test_service,
+            },
+        );
 
-        Ok(all_services)
+        Ok(ServiceMap(all_services))
     }
 
     async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {

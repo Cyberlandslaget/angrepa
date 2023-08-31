@@ -1,19 +1,36 @@
-use std::collections::{HashMap, HashSet};
-
 use angrepa::db::Db;
 use angrepa::get_connection_pool;
 use angrepa::{config, models::TargetInserter};
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use tracing::{error, info, warn};
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
 mod dummy;
 pub use dummy::DummyFetcher;
-use tracing::{error, info, warn};
 mod faust;
 pub use faust::FaustFetcher;
+
+// we have two types of APIs we need to support
+//
+// 1. enowars-like
+// Here, the flagids of a teams' service is given as a map of (tick:int) ->
+// (value), usually only giving flagids which correspond to valid flagds (not
+// OLD yet)
+// TLDR; GOOD: we easily know what the new flagids are
+//
+// 2. faust-like
+// Here, the flagids of a team' service is given as an array of values. There
+// is no clean & easy way to know which flagid is for what tick! The way to do
+// it then, is to save previously used flagids and assume the new ones are from
+// the current/new tick.
+// TLDR; BAD: we dont easily know what the old flagids are
+
+// in practice, both will return all flagids, and then our fetcher routine will
+// manually remove any flagids which have been seen before
 
 #[derive(Debug)]
 pub enum Fetchers {
@@ -23,32 +40,54 @@ pub enum Fetchers {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Service(pub HashMap<String, Ticks>);
+pub struct ServiceOld(pub HashMap<String, TicksOld>);
 
-impl Service {
-    #[allow(dead_code)]
-    pub fn get_ticks_from_host(&self, host: &str) -> Option<&Ticks> {
-        self.0.get(host)
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct TicksOld(pub HashMap<i32, serde_json::Value>);
+
+/// All services
+// /// {service_name: {"10.0.0.1": ["a", "b"], "10.0.0.2"}}
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ServiceMap(HashMap<String, Service>);
+
+impl ServiceMap {
+    /// renames services
+    pub fn apply_name_mapping(self, mapping: &HashMap<String, String>) -> ServiceMap {
+        ServiceMap(
+            self.0
+                .into_iter()
+                .map(|(old_name, service)| {
+                    (
+                        mapping.get(&old_name).unwrap_or(&old_name).to_owned(),
+                        service,
+                    )
+                })
+                .collect(),
+        )
     }
 }
 
+/// A service' teams
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct Ticks(pub HashMap<i32, serde_json::Value>);
+pub struct Service {
+    teams: HashMap<String, TeamService>,
+}
 
-impl Ticks {
-    /// Gets the highest tick
-    #[allow(dead_code)]
-    pub fn get_latest(&self) -> Option<(i32, &serde_json::Value)> {
-        // gets the value of the highest key
-        self.0.iter().max_by_key(|(k, _)| **k).map(|(k, v)| (*k, v))
-    }
+/// A teams' instance of a service
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct TeamService {
+    // in most cases there is just one flagid per tick (we always just read the
+    // raw json value), but in the case of faust-like ctfs we may have multiple
+    // flagids and we dont know which they belong to, so we have to put
+    // multiple for the current tick
+    ticks: HashMap<i32, Vec<serde_json::Value>>,
 }
 
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
     /// services (with flagids)
-    async fn services(&self) -> Result<HashMap<String, Service>, Report>;
+    async fn services(&self) -> Result<ServiceMap, Report>;
     /// "backup" raw get all ips
     async fn ips(&self) -> Result<Vec<String>, Report>;
 }
@@ -81,7 +120,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         }
     });
 
-    let mut seen_flagids: HashSet<(String, String, i32)> = HashSet::new();
+    let mut seen_flagids: HashSet<(String, String, String)> = HashSet::new();
 
     loop {
         // wait for new tick
@@ -90,11 +129,19 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         // get updated info
         let services = fetcher.services().await.unwrap();
-        let service_names = services.keys().cloned().collect::<HashSet<_>>();
+
+        // rename?
+        let services = if let Some(ref rename) = config.common.rename {
+            services.apply_name_mapping(rename)
+        } else {
+            services
+        };
+
+        let service_names = services.0.keys().cloned().collect::<HashSet<_>>();
 
         if service_names != common.services {
             error!(
-                "Fetcher and config disagree on service names! {:?} != {:?}",
+                "Fetcher and config disagree on service names! (after applying renames) got:{:?} != fetched:{:?}",
                 service_names, common.services
             );
             continue;
@@ -102,39 +149,57 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         info!("tick {}", tick_number);
 
-        for (service_name, service) in &services {
-            for (team_ip, ticks) in &service.0 {
-                for (tick, flag_id) in &ticks.0 {
-                    // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
-                    let new = seen_flagids.insert((service_name.clone(), team_ip.clone(), *tick));
+        for (service_name, service) in &services.0 {
+            // sort by team_ip
+            let mut teams = service.teams.iter().collect::<Vec<_>>();
+            teams.sort_by_key(|(team_ip, _)| *team_ip);
 
-                    if !new {
-                        continue;
-                    }
+            for (team_ip, service) in &service.teams {
+                for (tick, flag_ids) in &service.ticks {
+                    for flag_id in flag_ids {
+                        let flag_id_str = match serde_json::to_string(flag_id) {
+                            Ok(s) => s,
+                            Err(err) => {
+                                warn!("Failed to serialize flagid: {:?}", err);
+                                continue;
+                            }
+                        };
 
-                    let inserter = TargetInserter {
-                        flag_id: flag_id.to_string(),
-                        service: service_name.to_owned(),
-                        team: team_ip.to_owned(),
-                        created_at: chrono::Utc::now().naive_utc(),
-                        target_tick: *tick,
-                    };
+                        // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
+                        let new = seen_flagids.insert((
+                            service_name.clone(),
+                            team_ip.clone(),
+                            flag_id_str,
+                        ));
 
-                    let conn = &mut match db_pool.get() {
-                        Ok(conn) => conn,
-                        Err(e) => {
-                            error!("Could not acquire a database connection: {}", e);
+                        if !new {
                             continue;
                         }
-                    };
 
-                    let mut db = Db::new(conn);
+                        let inserter = TargetInserter {
+                            flag_id: flag_id.to_string(),
+                            service: service_name.to_owned(),
+                            team: team_ip.to_owned(),
+                            created_at: chrono::Utc::now().naive_utc(),
+                            target_tick: *tick,
+                        };
 
-                    match db.add_target(&inserter) {
-                        Ok(_) => (),
-                        Err(e) => {
-                            error!("Could not add target: {}", e);
-                            continue;
+                        let conn = &mut match db_pool.get() {
+                            Ok(conn) => conn,
+                            Err(e) => {
+                                error!("Could not acquire a database connection: {}", e);
+                                continue;
+                            }
+                        };
+
+                        let mut db = Db::new(conn);
+
+                        match db.add_target(&inserter) {
+                            Ok(_) => (),
+                            Err(e) => {
+                                error!("Could not add target: {}", e);
+                                continue;
+                            }
                         }
                     }
                 }
