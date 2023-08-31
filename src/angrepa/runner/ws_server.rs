@@ -7,7 +7,7 @@ use tungstenite::{accept, Message};
 
 // TODO list
 // [x] flag
-// [ ] execution
+// [x] execution
 // [ ] exploits (uploaded / endret)
 // [ ] tick
 
@@ -93,6 +93,65 @@ impl FlagGetter {
     }
 }
 
+#[derive(serde::Serialize, PartialEq, Clone)]
+// jhonnny boy provided this
+struct ExecutionData {
+    exit_code: i32, // whatver no point in panicing here cus its not u8
+    exploit_id: i32,
+    finished_at: NaiveDateTime,
+    id: i32,
+    output: String,
+    started_at: NaiveDateTime,
+    target_id: i32,
+    service: String,
+    target_tick: i32,
+    team: String,
+}
+struct ExecutionGetter {
+    last_response: HashMap<i32, ExecutionData>,
+}
+
+impl ExecutionGetter {
+    pub fn new() -> Self {
+        Self {
+            last_response: HashMap::new(),
+        }
+    }
+
+    pub fn get(&mut self, db: &mut Db, since: NaiveDateTime) -> Vec<ExecutionData> {
+        let executions = match db.executions_since_extended(since) {
+            Ok(exs) => exs,
+            Err(e) => {
+                warn!("Failed to get executions {:?}", e);
+                return vec![];
+            }
+        };
+
+        let executions: Vec<ExecutionData> = executions
+            .into_iter()
+            .map(|(exec, target, _flag)| ExecutionData {
+                exit_code: exec.exit_code,
+                exploit_id: exec.exploit_id,
+                finished_at: exec.finished_at,
+                id: exec.id,
+                output: exec.output,
+                started_at: exec.started_at,
+                target_id: exec.target_id,
+                service: target.service,
+                target_tick: target.target_tick,
+                team: target.team,
+            })
+            .filter(|exec| self.last_response.get(&exec.id) != Some(exec))
+            .collect();
+
+        for exec in &executions {
+            self.last_response.insert(exec.id, exec.to_owned());
+        }
+
+        executions
+    }
+}
+
 pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
     let mut conn = db_connect(&config.database.url()).unwrap();
     let mut db = Db::new(&mut conn);
@@ -103,6 +162,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
     tokio::spawn(async move { listener(addr, tx).await });
 
     let mut flag_getter = FlagGetter::new();
+    let mut exec_getter = ExecutionGetter::new();
 
     loop {
         // without this the other func wont even run
@@ -111,9 +171,11 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         let since = (Utc::now() - chrono::Duration::seconds(60)).naive_utc();
 
         let flags = flag_getter.get(&mut db, since);
+        let execs = exec_getter.get(&mut db, since);
 
         let txt = serde_json::to_string(&json!({
-            "flags": flags
+            "flags": flags,
+            "executions": execs,
         }))
         .unwrap();
 
