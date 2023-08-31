@@ -46,6 +46,26 @@ impl<'a> Db<'a> {
         Ok(flags)
     }
 
+    pub fn exploit_edit_config(
+        &mut self,
+        exp_id: i32,
+        exp_name: String,
+        exp_blacklist: Vec<String>,
+        exp_pool_size: i32,
+    ) -> Result<(), Report> {
+        use crate::schema::exploit::dsl::*;
+
+        diesel::update(exploit.filter(id.eq(exp_id)))
+            .set((
+                name.eq(exp_name),
+                blacklist.eq(exp_blacklist),
+                pool_size.eq(exp_pool_size),
+            ))
+            .execute(self.conn)?;
+
+        Ok(())
+    }
+
     pub fn teams(&mut self) -> Result<Vec<TeamModel>, Report> {
         use crate::schema::team::dsl::*;
 
