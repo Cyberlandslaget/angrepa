@@ -19,6 +19,7 @@ pub struct Common {
     pub flag_validity: u32,
     pub rename: Option<HashMap<String, String>>,
     pub nop: Option<String>,
+    pub own: Option<String>,
 }
 
 impl Common {

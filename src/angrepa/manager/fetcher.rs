@@ -116,7 +116,16 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let mut db = Db::new(conn);
 
     fetcher.ips().await.unwrap().into_iter().for_each(|ip| {
-        if let Err(e) = db.add_team_checked(&ip) {
+        // set default names
+        let name = if Some(&ip) == config.common.nop.as_ref() {
+            Some("nop")
+        } else if Some(&ip) == config.common.own.as_ref() {
+            Some("own")
+        } else {
+            None
+        };
+
+        if let Err(e) = db.add_team_checked(&ip, name) {
             warn!("Failed to add team: '{ip}'. Error: {}", e);
         }
     });
