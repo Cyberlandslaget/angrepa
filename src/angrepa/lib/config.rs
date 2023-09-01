@@ -19,6 +19,7 @@ pub struct Common {
     pub flag_validity: u32,
     pub rename: Option<HashMap<String, String>>,
     pub nop: Option<String>,
+    pub own: Option<String>,
 }
 
 impl Common {
@@ -217,6 +218,7 @@ mod tests {
             flag_validity: 10,
             rename: None,
             nop: None,
+            own: None,
         };
 
         // exactly at start
