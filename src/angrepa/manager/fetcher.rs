@@ -3,6 +3,7 @@ use angrepa::get_connection_pool;
 use angrepa::{config, models::TargetInserter};
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
+use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use tracing::{error, info, warn};
@@ -152,7 +153,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         for (service_name, service) in &services.0 {
             // sort by team_ip
             let mut teams = service.teams.iter().collect::<Vec<_>>();
-            teams.sort_by_key(|(team_ip, _)| *team_ip);
+            teams.sort_by(|a, b| natural_lexical_cmp(a.0, b.0));
 
             for (team_ip, service) in teams {
                 for (tick, flag_ids) in &service.ticks {
