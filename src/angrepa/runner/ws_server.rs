@@ -125,7 +125,7 @@ impl ExploitGetter {
 
         let flags: Vec<_> = expls
             .into_iter()
-            .map(|exploit| ExploitData::from_model(exploit))
+            .map(ExploitData::from_model)
             .filter(|flag| self.last_response.get(&flag.id) != Some(flag))
             .collect();
 

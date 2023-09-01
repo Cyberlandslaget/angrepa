@@ -1,10 +1,10 @@
 #![allow(clippy::needless_raw_string_hashes)]
 pub mod config;
+pub mod data_types;
 pub mod db;
 pub mod models;
 pub mod schema;
 pub mod wh;
-pub mod data_types;
 
 use color_eyre::Report;
 use diesel::r2d2::ConnectionManager;
