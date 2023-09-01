@@ -15,11 +15,13 @@ pub struct DummyFetcher {
 impl Fetcher for DummyFetcher {
     async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
         let mut all_services = HashMap::new();
-        let mut test_service = HashMap::new();
 
-        let cur_tick_nr = self.config.common.current_tick(chrono::Utc::now()) as i32;
+        for name in ["testservice", "otherservice"] {
+            let mut test_service = HashMap::new();
 
-        self.ips().await?.into_iter().for_each(|ip| {
+            let cur_tick_nr = self.config.common.current_tick(chrono::Utc::now()) as i32;
+
+            self.ips().await?.into_iter().for_each(|ip| {
             let mut rng = rand::thread_rng();
             let tick_content = json! {[format!("user{}", rng.gen_range(0..=100)), format!("user{}", rng.gen_range(0..=100))]};
 
@@ -31,12 +33,13 @@ impl Fetcher for DummyFetcher {
             test_service.insert(ip, ticks);
         });
 
-        all_services.insert(
-            "testservice".to_string(),
-            Service {
-                teams: test_service,
-            },
-        );
+            all_services.insert(
+                name.to_string(),
+                Service {
+                    teams: test_service,
+                },
+            );
+        }
 
         Ok(ServiceMap(all_services))
     }
