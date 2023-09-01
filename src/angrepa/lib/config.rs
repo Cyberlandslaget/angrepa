@@ -218,6 +218,7 @@ mod tests {
             flag_validity: 10,
             rename: None,
             nop: None,
+            own: None,
         };
 
         // exactly at start
