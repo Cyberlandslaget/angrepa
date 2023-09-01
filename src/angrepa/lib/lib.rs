@@ -4,6 +4,7 @@ pub mod db;
 pub mod models;
 pub mod schema;
 pub mod wh;
+pub mod data_types;
 
 use color_eyre::Report;
 use diesel::r2d2::ConnectionManager;

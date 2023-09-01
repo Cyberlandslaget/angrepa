@@ -9,11 +9,11 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use angrepa::db::Db;
+use angrepa::{
+    data_types::{ExecutionData, FlagData},
+    db::Db,
+};
 
-use crate::runner::data_types::FlagData;
-
-use super::super::data_types::ExecutionData;
 use super::AppState;
 
 #[derive(Deserialize)]

@@ -1,5 +1,6 @@
-use angrepa::models::{ExecutionModel, FlagModel, TargetModel};
+use crate::models::{ExecutionModel, ExploitModel, FlagModel, TargetModel};
 use chrono::NaiveDateTime;
+use tabled::Tabled;
 
 #[derive(serde::Serialize, PartialEq, Clone)]
 // jhonnny boy provided this
@@ -60,6 +61,34 @@ impl FlagData {
             service: target.service,
             target_tick: target.target_tick,
             team: target.team,
+        }
+    }
+}
+
+#[derive(serde::Serialize, PartialEq, Debug, Clone, Tabled)]
+pub struct ExploitData {
+    pub id: i32,
+    pub name: String,
+    pub service: String,
+    pub enabled: bool,
+    pub blacklist: String,
+    pub pool_size: i32,
+}
+
+impl ExploitData {
+    pub fn from_model(exploit: ExploitModel) -> Self {
+        Self {
+            id: exploit.id,
+            name: exploit.name,
+            service: exploit.service,
+            enabled: exploit.enabled,
+            blacklist: exploit
+                .blacklist
+                .into_iter()
+                .flatten()
+                .collect::<Vec<String>>()
+                .join(", "),
+            pool_size: exploit.pool_size,
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::data_types::{ExecutionData, FlagData};
+use angrepa::data_types::{ExecutionData, ExploitData, FlagData};
 use angrepa::{config, db::Db, db_connect};
 use chrono::{NaiveDateTime, Utc};
 use serde_json::json;
@@ -103,6 +103,40 @@ impl ExecutionGetter {
     }
 }
 
+struct ExploitGetter {
+    last_response: HashMap<i32, ExploitData>,
+}
+
+impl ExploitGetter {
+    pub fn new() -> Self {
+        Self {
+            last_response: HashMap::new(),
+        }
+    }
+
+    pub fn get(&mut self, db: &mut Db) -> Vec<ExploitData> {
+        let expls = match db.exploits() {
+            Ok(expls) => expls,
+            Err(e) => {
+                warn!("Failed to get flags {:?}", e);
+                return vec![];
+            }
+        };
+
+        let flags: Vec<_> = expls
+            .into_iter()
+            .map(|exploit| ExploitData::from_model(exploit))
+            .filter(|flag| self.last_response.get(&flag.id) != Some(flag))
+            .collect();
+
+        for flag in &flags {
+            self.last_response.insert(flag.id, flag.to_owned());
+        }
+
+        flags
+    }
+}
+
 pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
     let mut conn = db_connect(&config.database.url()).unwrap();
     let mut db = Db::new(&mut conn);
@@ -114,6 +148,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
 
     let mut flag_getter = FlagGetter::new();
     let mut exec_getter = ExecutionGetter::new();
+    let mut expl_getter = ExploitGetter::new();
 
     loop {
         // without this the other func wont even run
@@ -123,10 +158,12 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
 
         let flags = flag_getter.get(&mut db, since);
         let execs = exec_getter.get(&mut db, since);
+        let expls = expl_getter.get(&mut db);
 
         let txt = serde_json::to_string(&json!({
             "flags": flags,
             "executions": execs,
+            "exploits": expls,
         }))
         .unwrap();
 
