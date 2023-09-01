@@ -4,6 +4,7 @@ use crate::models::{
 };
 use diesel::prelude::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
+use lexical_sort::natural_lexical_cmp;
 
 mod data;
 
@@ -210,7 +211,7 @@ impl<'a> Db<'a> {
                 .load::<TargetModel>(self.conn)?;
 
             // sort by ip to make viewing an adminer easier
-            targets.sort_by_key(|t| t.team.clone());
+            targets.sort_by(|a, b| natural_lexical_cmp(&a.team, &b.team));
 
             target_exploits.push((targets, exploit));
         }
