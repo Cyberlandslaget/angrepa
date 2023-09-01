@@ -20,7 +20,11 @@ pub async fn run(config: config::Root, _addr: std::net::SocketAddr) {
             while let Ok(notification) = listener.recv().await {
                 match from_str::<serde_json::Value>(&notification.payload()) {
                     Ok(data) => warn!("{:?}", data), // TODO: Push WS notification to clients
-                    Err(e) => error!("Failed to parse notification: {}", e),
+                    Err(e) => error!(
+                        "Failed to parse notification: {}.The payload was: '{:?}'",
+                        e,
+                        notification.payload()
+                    ),
                 }
             }
         }
