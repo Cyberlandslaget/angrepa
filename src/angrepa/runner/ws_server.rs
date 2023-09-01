@@ -12,7 +12,7 @@ pub async fn run(config: config::Root, _addr: std::net::SocketAddr) {
 
     tokio::spawn(async move {
         let mut listener = PgListener::connect_with(&pool).await.unwrap();
-        listener.listen("changes").await.unwrap();
+        listener.listen("db_notifications").await.unwrap();
 
         info!("Spawned DB listener");
 
