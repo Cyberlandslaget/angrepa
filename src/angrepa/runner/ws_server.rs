@@ -50,7 +50,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
 
         loop {
             while let Ok(notification) = listener.recv().await {
-                match from_str::<serde_json::Value>(&notification.payload()) {
+                match from_str::<serde_json::Value>(notification.payload()) {
                     Ok(data) => {
                         let mut bus = bus.lock().unwrap();
                         bus.broadcast(data);
