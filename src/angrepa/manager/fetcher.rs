@@ -154,7 +154,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             let mut teams = service.teams.iter().collect::<Vec<_>>();
             teams.sort_by_key(|(team_ip, _)| *team_ip);
 
-            for (team_ip, service) in &service.teams {
+            for (team_ip, service) in teams {
                 for (tick, flag_ids) in &service.ticks {
                     for flag_id in flag_ids {
                         let flag_id_str = match serde_json::to_string(flag_id) {
