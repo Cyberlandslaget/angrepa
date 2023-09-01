@@ -1,3 +1,4 @@
+use angrepa::data_types::{ExecutionData, ExploitData, FlagData};
 use angrepa::{config, db::Db, db_connect};
 use bus::Bus;
 use serde::{Deserialize, Serialize};
@@ -64,6 +65,9 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                         match data.table.as_str() {
                             "exploit" => {
                                 let exp = db.exploit(data.id).unwrap();
+                                let exp = exp.get(0).unwrap();
+                                let exp = ExploitData::from_model(exp.clone());
+
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(
                                     json!({"table": data.table, "data": exp}).to_string(),
@@ -71,6 +75,9 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                             }
                             "flag" => {
                                 let flag = db.flags_by_id_extended(vec![data.id]).unwrap();
+                                let flag = flag.get(0).unwrap();
+                                let flag = FlagData::from_models(flag.0.clone(), flag.2.clone());
+
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(
                                     json!({"table": data.table, "data": flag}).to_string(),
@@ -78,6 +85,10 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                             }
                             "execution" => {
                                 let exec = db.executions_by_id_extended(vec![data.id]).unwrap();
+                                let exec = exec.get(0).unwrap();
+                                let exec =
+                                    ExecutionData::from_models(exec.0.clone(), exec.1.clone());
+
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(
                                     json!({"table": data.table, "data": exec}).to_string(),
