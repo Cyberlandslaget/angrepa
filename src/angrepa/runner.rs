@@ -20,6 +20,7 @@ mod exploit;
 use exploit::{docker::InitalizedExploit, Exploit};
 
 mod server;
+mod ws_server;
 
 pub struct Runner {}
 
@@ -153,9 +154,13 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
     let config2 = config.clone();
     let server_handle = spawn(async move { server::run(server_addr, config2, &db_url).await });
 
+    let ws_addr = config.runner.ws_server.parse()?;
+    let config2 = config.clone();
+    let ws_handle = spawn(async move { ws_server::run(config2, ws_addr).await });
+
     let runner_handle = spawn(async move { Runner::run(&config).await });
 
-    join_all(vec![runner_handle, server_handle]).await;
+    join_all(vec![runner_handle, server_handle, ws_handle]).await;
 
     Ok(())
 }
