@@ -65,7 +65,6 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                         match data.table.as_str() {
                             "exploit" => {
                                 let exp = db.exploit(data.id).unwrap();
-                                let exp = exp.get(0).unwrap();
                                 let exp = ExploitData::from_model(exp.clone());
 
                                 let mut bus = bus.lock().unwrap();
@@ -74,9 +73,15 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                                 );
                             }
                             "flag" => {
-                                let flag = db.flags_by_id_extended(vec![data.id]).unwrap();
-                                let flag = flag.get(0).unwrap();
-                                let flag = FlagData::from_models(flag.0.clone(), flag.2.clone());
+                                let flag = db
+                                    .flags_by_id_extended(vec![data.id])
+                                    .unwrap()
+                                    .into_iter()
+                                    .map(|(flag, _exec, target)| {
+                                        FlagData::from_models(flag, target)
+                                    })
+                                    .next() // the first and only flag
+                                    .unwrap();
 
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(
@@ -84,10 +89,15 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                                 );
                             }
                             "execution" => {
-                                let exec = db.executions_by_id_extended(vec![data.id]).unwrap();
-                                let exec = exec.get(0).unwrap();
-                                let exec =
-                                    ExecutionData::from_models(exec.0.clone(), exec.1.clone());
+                                let exec = db
+                                    .executions_by_id_extended(vec![data.id])
+                                    .unwrap()
+                                    .into_iter()
+                                    .map(|(exec, target, _flag)| {
+                                        ExecutionData::from_models(exec, target)
+                                    })
+                                    .next()
+                                    .unwrap();
 
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(

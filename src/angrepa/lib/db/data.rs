@@ -18,14 +18,14 @@ impl<'a> Db<'a> {
         Ok(exploits)
     }
 
-    pub fn exploit(&mut self, exp_id: i32) -> Result<Vec<ExploitModel>, Report> {
+    pub fn exploit(&mut self, exp_id: i32) -> Result<ExploitModel, Report> {
         use crate::schema::exploit::dsl::*;
 
-        let exploits = exploit
+        let expl = exploit
             .filter(id.eq(exp_id))
-            .load::<ExploitModel>(self.conn)?;
+            .first::<ExploitModel>(self.conn)?;
 
-        Ok(exploits)
+        Ok(expl)
     }
 
     pub fn exploit_flags_since(
