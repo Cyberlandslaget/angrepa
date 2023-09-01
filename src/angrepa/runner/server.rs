@@ -30,7 +30,12 @@ pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &Stri
         .nest("/exploit", exploit::router(Arc::clone(&app_state)))
         .nest("/logs", logs::router(Arc::clone(&app_state)))
         .nest("/info", info::router(app_state))
-        .layer(CorsLayer::new().allow_methods(Any).allow_origin(Any).allow_headers(Any));
+        .layer(
+            CorsLayer::new()
+                .allow_methods(Any)
+                .allow_origin(Any)
+                .allow_headers(Any),
+        );
 
     tracing::info!("Webserver started on {addr}");
     axum::Server::bind(&addr)
