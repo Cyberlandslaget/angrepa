@@ -187,6 +187,42 @@ impl<'a> Db<'a> {
         Ok(output)
     }
 
+    pub fn executions_by_id_extended(
+        &mut self,
+        ids: Vec<i32>,
+    ) -> Result<Vec<(ExecutionModel, TargetModel, Vec<FlagModel>)>, Report> {
+        use crate::schema::*;
+
+        let executions = execution::table
+            .filter(execution::id.eq_any(ids))
+            .inner_join(target::table.on(execution::target_id.eq(target::id)))
+            .load::<(ExecutionModel, TargetModel)>(self.conn)?;
+
+        let execution_ids = executions
+            .iter()
+            .map(|(e, _)| e.clone())
+            .collect::<Vec<_>>();
+
+        let relevant_flags: Vec<_> =
+            FlagModel::belonging_to(&execution_ids).load::<FlagModel>(self.conn)?;
+
+        let mut flags = HashMap::new();
+        for flag in relevant_flags {
+            flags
+                .entry(flag.execution_id)
+                .or_insert_with(Vec::new)
+                .push(flag);
+        }
+
+        let mut output = vec![];
+        for (exec, target) in executions {
+            let flags = flags.get(&exec.id).unwrap_or(&vec![]).clone();
+            output.push((exec, target, flags));
+        }
+
+        Ok(output)
+    }
+
     pub fn service_exploits(&mut self, service_name: &String) -> Result<Vec<ExploitModel>, Report> {
         use crate::schema::exploit::dsl::*;
 
