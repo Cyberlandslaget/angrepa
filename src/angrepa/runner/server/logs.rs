@@ -5,11 +5,14 @@ use axum::{
     Json, Router,
 };
 use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use angrepa::db::Db;
+use angrepa::{
+    data_types::{ExecutionData, FlagData},
+    db::Db,
+};
 
 use super::AppState;
 
@@ -83,20 +86,6 @@ async fn flags(
 
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    #[derive(Serialize)]
-    struct FlagData {
-        execution_id: i32,
-        exploit_id: i32,
-        id: i32,
-        status: String,
-        submitted: bool,
-        text: String,
-        timestamp: NaiveDateTime,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
-
     let flags =
         match db.flags_since_extended(since) {
             Ok(flags) => flags,
@@ -109,18 +98,7 @@ async fn flags(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData {
-            execution_id: flag.execution_id,
-            exploit_id: flag.exploit_id,
-            id: flag.id,
-            status: flag.status,
-            submitted: flag.submitted,
-            text: flag.text,
-            timestamp: flag.timestamp,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
         .collect();
 
     (
@@ -142,20 +120,6 @@ async fn flags_by_id(
     let mut conn = state.db.get().unwrap();
     let mut db = Db::new(&mut conn);
 
-    #[derive(Serialize)]
-    struct FlagData {
-        execution_id: i32,
-        exploit_id: i32,
-        id: i32,
-        status: String,
-        submitted: bool,
-        text: String,
-        timestamp: NaiveDateTime,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
-
     let flags =
         match db.flags_by_id_extended(payload.ids) {
             Ok(flags) => flags,
@@ -168,18 +132,7 @@ async fn flags_by_id(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData {
-            execution_id: flag.execution_id,
-            exploit_id: flag.exploit_id,
-            id: flag.id,
-            status: flag.status,
-            submitted: flag.submitted,
-            text: flag.text,
-            timestamp: flag.timestamp,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
         .collect();
 
     (
@@ -207,35 +160,9 @@ async fn executions(
         ),
     };
 
-    #[derive(Serialize)]
-    // jhonnny boy provided this
-    struct ExecutionData {
-        exit_code: i32, // whatver no point in panicing here cus its not u8
-        exploit_id: i32,
-        finished_at: NaiveDateTime,
-        id: i32,
-        output: String,
-        started_at: NaiveDateTime,
-        target_id: i32,
-        service: String,
-        target_tick: i32,
-        team: String,
-    }
-
     let executions: Vec<ExecutionData> = executions
         .into_iter()
-        .map(|(exec, target, _flag)| ExecutionData {
-            exit_code: exec.exit_code,
-            exploit_id: exec.exploit_id,
-            finished_at: exec.finished_at,
-            id: exec.id,
-            output: exec.output,
-            started_at: exec.started_at,
-            target_id: exec.target_id,
-            service: target.service,
-            target_tick: target.target_tick,
-            team: target.team,
-        })
+        .map(|(exec, target, _flag)| ExecutionData::from_models(exec, target))
         .collect();
 
     (

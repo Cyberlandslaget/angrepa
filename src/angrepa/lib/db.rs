@@ -220,7 +220,11 @@ impl<'a> Db<'a> {
     }
 
     /// Ignores conflicts
-    pub fn add_team_checked(&mut self, ip_str: &str, name_str: Option<&str>) -> Result<(), DbError> {
+    pub fn add_team_checked(
+        &mut self,
+        ip_str: &str,
+        name_str: Option<&str>,
+    ) -> Result<(), DbError> {
         use crate::schema::team::dsl::*;
 
         diesel::insert_into(team)

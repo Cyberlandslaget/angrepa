@@ -89,6 +89,7 @@ pub struct Manager {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Runner {
     pub http_server: String,
+    pub ws_server: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
