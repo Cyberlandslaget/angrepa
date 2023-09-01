@@ -65,17 +65,23 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                             "exploit" => {
                                 let exp = db.exploit(data.id).unwrap();
                                 let mut bus = bus.lock().unwrap();
-                                bus.broadcast(json!(exp).to_string());
+                                bus.broadcast(
+                                    json!({"table": data.table, "data": exp}).to_string(),
+                                );
                             }
                             "flag" => {
                                 let flag = db.flags_by_id_extended(vec![data.id]).unwrap();
                                 let mut bus = bus.lock().unwrap();
-                                bus.broadcast(json!(flag).to_string());
+                                bus.broadcast(
+                                    json!({"table": data.table, "data": flag}).to_string(),
+                                );
                             }
                             "execution" => {
                                 let exec = db.executions_by_id_extended(vec![data.id]).unwrap();
                                 let mut bus = bus.lock().unwrap();
-                                bus.broadcast(json!(exec).to_string());
+                                bus.broadcast(
+                                    json!({"table": data.table, "data": exec}).to_string(),
+                                );
                             }
                             _ => (),
                         }
