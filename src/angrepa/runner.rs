@@ -6,7 +6,7 @@ use regex::Regex;
 
 use color_eyre::Report;
 use futures::{future::join_all, StreamExt};
-use tokio::spawn;
+use tokio::{spawn, time::timeout};
 use tracing::{info, warn};
 
 use angrepa::{
@@ -18,6 +18,8 @@ use angrepa::{
 
 mod exploit;
 use exploit::{docker::InitalizedExploit, Exploit};
+
+use self::exploit::RunLog;
 
 mod server;
 mod ws_server;
@@ -70,8 +72,18 @@ impl Runner {
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
-                    let exec = exec_future.await.unwrap();
-                    let logs: String = rx.stream().collect().await;
+                    let exec = timeout(tokio::time::Duration::from_secs(5), exec_future).await;
+                    let exec = exec.map(|inner| inner.unwrap());
+
+                    let mut logs: String = rx.stream().collect().await;
+
+                    let exec = match exec {
+                        Ok(exec) => exec,
+                        Err(_) => {
+                            logs += "angrepa: killed due to timeout.";
+                            RunLog { exit_code: 0 }
+                        }
+                    };
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
