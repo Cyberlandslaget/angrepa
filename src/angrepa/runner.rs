@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use regex::Regex;
 
 use color_eyre::Report;
-use futures::future::join_all;
+use futures::{future::join_all, StreamExt};
 use tokio::spawn;
 use tracing::{info, warn};
 
@@ -59,7 +59,7 @@ impl Runner {
 
                 let run = instance.run(target.team, target.flag_id).await;
 
-                let log_future = match run {
+                let (exec_future, rx) = match run {
                     Ok(run) => run,
                     Err(err) => {
                         warn!("Failed to run exploit: {:?}", err);
@@ -70,7 +70,8 @@ impl Runner {
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
-                    let log = log_future.await.unwrap();
+                    let exec = exec_future.await.unwrap();
+                    let logs: String = rx.stream().collect().await;
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
@@ -79,8 +80,8 @@ impl Runner {
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id,
-                            output: log.output.clone(),
-                            exit_code: log.exit_code as i32,
+                            output: logs.clone(),
+                            exit_code: exec.exit_code as i32,
                             started_at,
                             finished_at,
                             target_id: target.id,
@@ -89,7 +90,7 @@ impl Runner {
 
                     // only unique flags
                     let flags: HashSet<String> = flag_regex
-                        .captures_iter(&log.output)
+                        .captures_iter(&logs)
                         .map(|cap| cap[0].to_string())
                         .collect();
 
