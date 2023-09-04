@@ -140,12 +140,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         // get updated info
         let services = 'lp: loop {
             for _ in 0..5 {
+                let before = std::time::Instant::now();
                 match tokio::time::timeout(tokio::time::Duration::from_secs(5), fetcher.services())
                     .await
                 {
                     Ok(Ok(s)) => break 'lp s,
                     e => {
-                        info!("Failed fetching: {:?}", e);
+                        let delta = before.elapsed();
+                        info!("Failed fetching {:?}: after {:?}", e, delta);
                         // wait 1s before retrying
                         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     }
