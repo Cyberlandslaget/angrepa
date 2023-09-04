@@ -1,0 +1,35 @@
+[common]
+start = "2023-09-04T17:15:00Z"
+format = "ECSC_[A-Za-z0-9\\+/]{32}"
+tick = 60
+flag_validity = 3 # no clue
+services = [
+    "Service 2 Checker 1",
+    "Service 2 Checker 2",
+    "Service 3 Checker 1",
+    "Service 5 Checker 1",
+    "Service 5 Checker 2",
+]
+# optional
+own = "192.168.101.5"
+#nop = "10.0.1.1"
+
+[manager]
+submitter_name = 'faust'
+fetcher_name = 'faust'
+[manager.submitter]
+host = '192.168.100.50:31337'
+[manager.fetcher]
+teams = 'http://gameserver1.cybl:5000/competition/teams.json'
+scoreboard = 'http://gameserver1.cybl:5000/competition/scoreboard-v2/scoreboard_current.json'
+format = '192.168.10{x}.5'
+
+[runner]
+http_server = "0.0.0.0:8000"
+ws_server = "0.0.0.0:8001"
+
+[database]
+username = "angrepa"
+password = "a"
+host = "localhost"
+db = "angrepa"
