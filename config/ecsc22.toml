@@ -19,7 +19,8 @@ services = [
 
 # optional
 own = "192.168.101.5"
-#nop = "10.0.1.1"
+# test against ourselves
+nop = "192.168.101.5"
 
 [manager]
 submitter_name = 'faust'
