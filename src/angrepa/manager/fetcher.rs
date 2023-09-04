@@ -138,7 +138,18 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let tick_number = common.current_tick(chrono::Utc::now());
 
         // get updated info
-        let services = fetcher.services().await.unwrap();
+        let services = 'retry: loop {
+            for _ in 0..5 {
+                match tokio::time::timeout(tokio::time::Duration::from_secs(5), fetcher.services()).await {
+                    Ok(s) => break 'retry s.unwrap(),
+                    Err(e) => {
+                        info!("Failed to fetch services: {}", e);
+                        // wait 1s before retrying
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    }
+                }
+            }
+        };
 
         // rename?
         let services = if let Some(ref rename) = config.common.rename {
