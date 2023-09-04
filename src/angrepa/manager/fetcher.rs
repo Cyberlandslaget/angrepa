@@ -132,16 +132,18 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     let mut seen_flagids: HashSet<(i32, String, String, String)> = HashSet::new();
 
-    loop {
+    'outer: loop {
         // wait for new tick
         tick_interval.tick().await;
         let tick_number = common.current_tick(chrono::Utc::now());
 
         // get updated info
-        let services = 'retry: loop {
+        let services = 'lp: loop {
             for _ in 0..5 {
-                match tokio::time::timeout(tokio::time::Duration::from_secs(5), fetcher.services()).await {
-                    Ok(s) => break 'retry s.unwrap(),
+                match tokio::time::timeout(tokio::time::Duration::from_secs(5), fetcher.services())
+                    .await
+                {
+                    Ok(s) => break 'lp s.unwrap(),
                     Err(e) => {
                         info!("Failed to fetch services: {}", e);
                         // wait 1s before retrying
@@ -149,6 +151,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     }
                 }
             }
+            warn!("Failed to fetch services, giving up for this tick");
+            break 'outer;
         };
 
         // rename?
