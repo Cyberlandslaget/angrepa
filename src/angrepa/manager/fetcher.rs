@@ -143,9 +143,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                 match tokio::time::timeout(tokio::time::Duration::from_secs(5), fetcher.services())
                     .await
                 {
-                    Ok(s) => break 'lp s.unwrap(),
-                    Err(e) => {
-                        info!("Failed to fetch services: {}", e);
+                    Ok(Ok(s)) => break 'lp s,
+                    e => {
+                        info!("Failed fetching: {:?}", e);
                         // wait 1s before retrying
                         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     }
