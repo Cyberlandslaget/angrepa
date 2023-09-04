@@ -27,7 +27,12 @@ mod ws_server;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(config: config::Root, flag_regex: Regex, db_url: &String, earliest_valid_time: NaiveDateTime) {
+    async fn tick(
+        config: config::Root,
+        flag_regex: Regex,
+        db_url: &String,
+        earliest_valid_time: NaiveDateTime,
+    ) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
@@ -59,7 +64,9 @@ impl Runner {
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
-                let run = instance.run(&config, target.team, target.flag_id).await;
+                let run = instance
+                    .run(&config.common, target.team, target.flag_id)
+                    .await;
 
                 let (exec_future, rx) = match run {
                     Ok(run) => run,
@@ -73,7 +80,7 @@ impl Runner {
                     let started_at = chrono::Utc::now().naive_utc();
 
                     // a long ass time, should never happen that it doesnt quit before this due to other timeout mesaures, but we should be notified if it doesnt
-                    let exec = timeout(tokio::time::Duration::from_secs(600), exec_future).await; 
+                    let exec = timeout(tokio::time::Duration::from_secs(600), exec_future).await;
                     let exec = exec.map(|inner| inner.unwrap());
 
                     let mut logs: String = rx.stream().collect().await;
@@ -148,10 +155,12 @@ impl Runner {
 
             let earliest_valid_time = chrono::Utc::now().naive_utc()
                 - chrono::Duration::from_std(flag_validity_period).unwrap();
-            
+
             let config = config.clone();
 
-            spawn(async move { Runner::tick(config, flag_regex, &db_url, earliest_valid_time).await });
+            spawn(
+                async move { Runner::tick(config, flag_regex, &db_url, earliest_valid_time).await },
+            );
         }
     }
 }

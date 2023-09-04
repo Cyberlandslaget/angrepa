@@ -9,7 +9,7 @@ use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter}
 
 use super::wh::WebhookLayer;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct Common {
     /// round length
     pub tick: u64,
