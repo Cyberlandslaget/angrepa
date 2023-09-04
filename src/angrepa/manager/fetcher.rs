@@ -130,7 +130,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         }
     });
 
-    let mut seen_flagids: HashSet<(i32, String, String, String)> = HashSet::new();
+    let mut seen_flagids: HashSet<(String, String, String)> = HashSet::new();
 
     'outer: loop {
         // wait for new tick
@@ -196,7 +196,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
                         // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
                         let new = seen_flagids.insert((
-                            *tick,
+                            // no tick, because ecsc, faust, etc gives all flagids, and we just remove dups
                             service_name.clone(),
                             team_ip.clone(),
                             flag_id_str,
