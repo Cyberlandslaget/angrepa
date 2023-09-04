@@ -10,6 +10,13 @@ services = [
     "Service 5 Checker 1",
     "Service 5 Checker 2",
 ]
+[common.rename]
+"Service 2 Checker 1" = "service2_1"
+"Service 2 Checker 2" = "service2_2"
+"Service 3 Checker 1" = "service3"
+"Service 5 Checker 1" = "service5_1"
+"Service 5 Checker 2" = "service5_2"
+
 # optional
 own = "192.168.101.5"
 #nop = "10.0.1.1"
