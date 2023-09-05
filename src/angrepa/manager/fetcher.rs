@@ -105,10 +105,9 @@ pub trait Fetcher {
 pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let common = &config.common;
 
-    let mut tick_interval = common
-        .get_tick_interval(tokio::time::Duration::from_secs(1))
-        .await
-        .unwrap();
+    // 10% of 60s = 6s, a reasonable amount
+    let offset = tokio::time::Duration::from_secs(common.tick) / 10;
+    let mut tick_interval = common.get_tick_interval(offset).await.unwrap();
 
     let db_url = config.database.url();
     let db_pool = match get_connection_pool(&db_url) {
