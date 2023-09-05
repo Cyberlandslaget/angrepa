@@ -6,6 +6,7 @@ use color_eyre::{eyre::eyre, Report};
 use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use tracing::{error, info, warn};
 
 mod enowars;
@@ -84,13 +85,20 @@ pub struct TeamService {
     ticks: HashMap<i32, Vec<serde_json::Value>>,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum FetcherError {
+    #[error("reqwest failed")]
+    Reqwest(#[from] reqwest::Error),
+}
+
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
+    type Error: std::error::Error + Send + Sync + Debug + 'static;
     /// services (with flagids)
-    async fn services(&self) -> Result<ServiceMap, Report>;
+    async fn services(&self) -> Result<ServiceMap, Self::Error>;
     /// "backup" raw get all ips
-    async fn ips(&self) -> Result<Vec<String>, Report>;
+    async fn ips(&self) -> Result<Vec<String>, Self::Error>;
 }
 
 // routine

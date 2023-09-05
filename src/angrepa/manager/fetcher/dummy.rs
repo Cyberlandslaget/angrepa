@@ -4,7 +4,7 @@ use rand::Rng;
 use serde_json::json;
 use std::collections::HashMap;
 
-use super::{Fetcher, Service, ServiceMap, TeamService};
+use super::{Fetcher, FetcherError, Service, ServiceMap, TeamService};
 
 #[derive(Debug)]
 pub struct DummyFetcher {
@@ -13,7 +13,9 @@ pub struct DummyFetcher {
 
 #[async_trait]
 impl Fetcher for DummyFetcher {
-    async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
+    type Error = FetcherError;
+
+    async fn services(&self) -> Result<ServiceMap, Self::Error> {
         let mut all_services = HashMap::new();
 
         for name in ["testservice", "otherservice"] {
@@ -44,7 +46,7 @@ impl Fetcher for DummyFetcher {
         Ok(ServiceMap(all_services))
     }
 
-    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
         Ok((1..=10).map(|i| format!("10.0.{i}.1")).collect())
     }
 }

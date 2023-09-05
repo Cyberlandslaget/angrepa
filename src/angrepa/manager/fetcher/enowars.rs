@@ -1,4 +1,4 @@
-use super::{Fetcher, Service, ServiceMap, ServiceOld, TeamService};
+use super::{Fetcher, FetcherError, Service, ServiceMap, ServiceOld, TeamService};
 use async_trait::async_trait;
 use serde::{self, Deserialize};
 use std::collections::HashMap;
@@ -66,14 +66,16 @@ impl EnowarsFetcher {
 
 #[async_trait]
 impl Fetcher for EnowarsFetcher {
-    async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
+    type Error = FetcherError;
+
+    async fn services(&self) -> Result<ServiceMap, Self::Error> {
         // TODO handle failures more gracefully (retry?)
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
         Ok(resp.services.into())
     }
 
-    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
         let resp: String = self
             .client
             .get(&self.ips_endpoint)
