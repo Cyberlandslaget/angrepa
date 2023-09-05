@@ -173,7 +173,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                 Ok(v) => break 'lp v,
                 Err(_) => {
                     warn!("Failed to fetch services, giving up for this tick");
-                    break 'outer;
+                    continue 'outer;
                 }
             };
         };
