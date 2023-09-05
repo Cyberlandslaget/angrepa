@@ -31,7 +31,10 @@ pub struct FaustFetcher {
 
 impl FaustFetcher {
     pub fn new(teams: String, scoreboard: String, format: String) -> Self {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .pool_max_idle_per_host(0) // should disable pooling which fixes errors against some hosts
+            .build()
+            .unwrap();
 
         Self {
             client,
