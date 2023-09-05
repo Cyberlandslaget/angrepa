@@ -146,7 +146,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let tick_number = common.current_tick(chrono::Utc::now());
 
         // get updated info
-        let services = 'lp: loop {
+        let services = 'lp: {
             match tokio::time::timeout(
                 tokio::time::Duration::from_secs(config.common.tick / 2),
                 async {
