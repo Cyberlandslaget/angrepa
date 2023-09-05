@@ -150,7 +150,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             match tokio::time::timeout(
                 tokio::time::Duration::from_secs(config.common.tick / 2),
                 async {
-                    'inner: loop {
+                    loop {
                         let before = std::time::Instant::now();
                         match tokio::time::timeout(
                             tokio::time::Duration::from_secs(5),
@@ -158,7 +158,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                         )
                         .await
                         {
-                            Ok(Ok(s)) => break 'inner s,
+                            Ok(Ok(s)) => break s,
                             e => {
                                 let delta = before.elapsed();
                                 info!("Failed fetching {:?}: after {:?}", e, delta);
