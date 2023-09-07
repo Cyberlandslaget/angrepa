@@ -5,8 +5,8 @@ use chrono::NaiveDateTime;
 use regex::Regex;
 
 use color_eyre::Report;
-use futures::future::join_all;
-use tokio::spawn;
+use futures::{future::join_all, StreamExt};
+use tokio::{spawn, time::timeout};
 use tracing::{info, warn};
 
 use angrepa::{
@@ -19,13 +19,20 @@ use angrepa::{
 mod exploit;
 use exploit::{docker::InitalizedExploit, Exploit};
 
+use self::exploit::RunLog;
+
 mod server;
 mod ws_server;
 
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(flag_regex: Regex, db_url: &String, earliest_valid_time: NaiveDateTime) {
+    async fn tick(
+        config: config::Root,
+        flag_regex: Regex,
+        db_url: &String,
+        earliest_valid_time: NaiveDateTime,
+    ) {
         let mut conn = db_connect(db_url).unwrap();
         let mut db = Db::new(&mut conn);
 
@@ -57,9 +64,11 @@ impl Runner {
                 let flag_regex = flag_regex.clone();
                 let db_url = db_url.to_owned();
 
-                let run = instance.run(target.team, target.flag_id).await;
+                let run = instance
+                    .run(&config.common, target.team, target.flag_id)
+                    .await;
 
-                let log_future = match run {
+                let (exec_future, rx) = match run {
                     Ok(run) => run,
                     Err(err) => {
                         warn!("Failed to run exploit: {:?}", err);
@@ -70,7 +79,20 @@ impl Runner {
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
 
-                    let log = log_future.await.unwrap();
+                    // a long ass time, should never happen that it doesnt quit before this due to other timeout mesaures, but we should be notified if it doesnt
+                    let exec = timeout(tokio::time::Duration::from_secs(600), exec_future).await;
+                    let exec = exec.map(|inner| inner.unwrap());
+
+                    let mut logs: String = rx.stream().collect().await;
+
+                    let exec = match exec {
+                        Ok(exec) => exec,
+                        Err(_) => {
+                            warn!("Execution didn't stop after 10 minutes. Quite bad!");
+                            logs += "angrepa: listener killed due to timeout. this is bad!";
+                            RunLog { exit_code: 0 }
+                        }
+                    };
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
@@ -79,8 +101,8 @@ impl Runner {
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id,
-                            output: log.output.clone(),
-                            exit_code: log.exit_code as i32,
+                            output: logs.clone(),
+                            exit_code: exec.exit_code as i32,
                             started_at,
                             finished_at,
                             target_id: target.id,
@@ -89,7 +111,7 @@ impl Runner {
 
                     // only unique flags
                     let flags: HashSet<String> = flag_regex
-                        .captures_iter(&log.output)
+                        .captures_iter(&logs)
                         .map(|cap| cap[0].to_string())
                         .collect();
 
@@ -134,7 +156,11 @@ impl Runner {
             let earliest_valid_time = chrono::Utc::now().naive_utc()
                 - chrono::Duration::from_std(flag_validity_period).unwrap();
 
-            spawn(async move { Runner::tick(flag_regex, &db_url, earliest_valid_time).await });
+            let config = config.clone();
+
+            spawn(
+                async move { Runner::tick(config, flag_regex, &db_url, earliest_valid_time).await },
+            );
         }
     }
 }

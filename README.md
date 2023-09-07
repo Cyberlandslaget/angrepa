@@ -60,6 +60,12 @@ cargo build --release
 ./target/release/angrepa config/CONFIG.toml
 ```
 
+# Notes about exploits
+The docker CMD is rewritten so the spawned containers idle forever, and exploit
+executions are run using exec with that original cmd, prepending with a
+`timeout`. Therefore, do not write any complex CMDs with parenthasis, etc, and
+make sure `timeout` exists on the system (or is implemented by the shell).
+
 ## Debugging
 angrepa uses `tracing` for logging, so you can set the `RUST_LOG` environment
 variable to enable more logging. additionally the `--debug` flag automatically
