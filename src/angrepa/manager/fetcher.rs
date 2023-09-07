@@ -6,7 +6,7 @@ use color_eyre::{eyre::eyre, Report};
 use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
@@ -159,6 +159,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         info!("tick {}", tick_number);
 
+        let mut target_skipped = 0;
+        let mut target_tried = 0;
+
         for (service_name, service) in &services.0 {
             // sort by team_ip
             let mut teams = service.teams.iter().collect::<Vec<_>>();
@@ -167,6 +170,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             for (team_ip, service) in teams {
                 for (tick, flag_ids) in &service.ticks {
                     for flag_id in flag_ids {
+                        target_tried += 1;
+
                         let flag_id_str = match serde_json::to_string(flag_id) {
                             Ok(s) => s,
                             Err(err) => {
@@ -184,6 +189,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                         ));
 
                         if !new {
+                            target_skipped += 1;
                             continue;
                         }
 
@@ -215,6 +221,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     }
                 }
             }
+
+            debug!("{} targets added, skipped {}", target_tried, target_skipped);
         }
     }
 }

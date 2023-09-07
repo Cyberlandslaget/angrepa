@@ -23,11 +23,13 @@ async fn submit(submitter: impl Submitter + Send + Sync + Clone + 'static, db_ur
         .iter()
         .filter(|(_, status)| matches!(status, FlagStatus::Ok));
 
-    info!(
-        "Got {} results, {} accepted.",
-        results.len(),
-        accepted.count()
-    );
+    if !results.is_empty() {
+        info!(
+            "Got {} results, {} accepted.",
+            results.len(),
+            accepted.count()
+        );
+    }
 
     for (flag_str, status) in results {
         db.update_flag_status(&flag_str, &status.to_string())
