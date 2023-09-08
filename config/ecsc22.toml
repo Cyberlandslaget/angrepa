@@ -1,6 +1,6 @@
 [common]
 start = "2023-09-04T17:15:00Z"
-format = 'ECSC\w{32}'
+format = 'ECSC_\w{32}'
 tick = 60
 flag_validity = 3 # no clue
 services = [
