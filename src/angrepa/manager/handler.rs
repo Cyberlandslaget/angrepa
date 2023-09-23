@@ -1,4 +1,5 @@
 use angrepa::{db::Db, db_connect};
+use std::collections::HashSet;
 use tokio::spawn;
 use tracing::info;
 
@@ -41,16 +42,28 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(1));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
+    let mut seen_flags: HashSet<String> = HashSet::new();
+
     loop {
         send_signal.tick().await;
 
         // extract out flags from the queue, then delete them
         let flags = db.get_unsubmitted_flags().unwrap();
-        let flag_strings = flags.iter().map(|f| f.text.clone()).collect::<Vec<_>>();
+        //let flag_strings = flags.iter().map(|f| f.text.clone()).collect::<Vec<_>>();
+        let mut flag_strings: Vec<String> = Vec::new();
+
+        for flag in &flag_strings {
+            seen_flags.insert(flag.clone());
+        }
 
         // preemtively mark them as submitted
         for flag in flags {
+            if seen_flags.contains(&flag.text) {
+                continue;
+            }
+
             db.set_flag_submitted(flag.id).unwrap();
+            flag_strings.push(flag.text);
         }
 
         spawn(submit(submitter.clone(), db_url.to_owned(), flag_strings));
