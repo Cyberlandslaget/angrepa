@@ -38,8 +38,8 @@ async fn submit(submitter: impl Submitter + Send + Sync + Clone + 'static, db_ur
 }
 
 pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
-    // submit every 5s
-    let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(5));
+    // submit every 500ms
+    let mut send_signal = tokio::time::interval(std::time::Duration::from_millis(500));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {
