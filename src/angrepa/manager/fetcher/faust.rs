@@ -3,7 +3,7 @@ use serde::{self, Deserialize};
 use std::collections::HashMap;
 use tracing::warn;
 
-use super::{Fetcher, Service, ServiceMap, TeamService};
+use super::{Fetcher, FetcherError, Service, ServiceMap, TeamService};
 
 #[derive(Deserialize, Debug)]
 pub struct AttackInfo {
@@ -31,7 +31,10 @@ pub struct FaustFetcher {
 
 impl FaustFetcher {
     pub fn new(teams: String, scoreboard: String, format: String) -> Self {
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .pool_max_idle_per_host(0) // should disable pooling which fixes errors against some hosts
+            .build()
+            .unwrap();
 
         Self {
             client,
@@ -44,7 +47,9 @@ impl FaustFetcher {
 
 #[async_trait]
 impl Fetcher for FaustFetcher {
-    async fn services(&self) -> Result<ServiceMap, color_eyre::Report> {
+    type Error = FetcherError;
+
+    async fn services(&self) -> Result<ServiceMap, Self::Error> {
         let scoreboard: Scoreboard = self
             .client
             .get(&self.scoreboard)
@@ -98,7 +103,7 @@ impl Fetcher for FaustFetcher {
         Ok(ServiceMap(services))
     }
 
-    async fn ips(&self) -> Result<Vec<String>, color_eyre::Report> {
+    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
         let resp: AttackInfo = self.client.get(&self.teams).send().await?.json().await?;
 
         let ips = resp

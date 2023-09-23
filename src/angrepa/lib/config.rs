@@ -23,6 +23,20 @@ pub struct Common {
 }
 
 impl Common {
+    pub fn services_with_renames(&self) -> HashSet<String> {
+        self.services
+            .iter()
+            .map(|original| {
+                if let Some(mapping) = &self.rename {
+                    mapping.get(original).unwrap_or(original)
+                } else {
+                    original
+                }
+                .to_owned()
+            })
+            .collect()
+    }
+
     pub async fn sleep_until_start(&self) {
         let current_time = chrono::Utc::now();
         let difference =

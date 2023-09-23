@@ -6,6 +6,7 @@ use color_eyre::{eyre::eyre, Report};
 use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use tracing::{debug, error, info, warn};
 
 mod enowars;
@@ -84,23 +85,29 @@ pub struct TeamService {
     ticks: HashMap<i32, Vec<serde_json::Value>>,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum FetcherError {
+    #[error("reqwest failed")]
+    Reqwest(#[from] reqwest::Error),
+}
+
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
+    type Error: std::error::Error + Send + Sync + Debug + 'static;
     /// services (with flagids)
-    async fn services(&self) -> Result<ServiceMap, Report>;
+    async fn services(&self) -> Result<ServiceMap, Self::Error>;
     /// "backup" raw get all ips
-    async fn ips(&self) -> Result<Vec<String>, Report>;
+    async fn ips(&self) -> Result<Vec<String>, Self::Error>;
 }
 
 // routine
 pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let common = &config.common;
 
-    let mut tick_interval = common
-        .get_tick_interval(tokio::time::Duration::from_secs(1))
-        .await
-        .unwrap();
+    // 10% of 60s = 6s, a reasonable amount
+    let offset = tokio::time::Duration::from_secs(common.tick) / 10;
+    let mut tick_interval = common.get_tick_interval(offset).await.unwrap();
 
     let db_url = config.database.url();
     let db_pool = match get_connection_pool(&db_url) {
@@ -130,15 +137,46 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         }
     });
 
-    let mut seen_flagids: HashSet<(i32, String, String, String)> = HashSet::new();
+    let mut seen_flagids: HashSet<(String, String, String)> = HashSet::new();
 
-    loop {
+    'outer: loop {
         // wait for new tick
         tick_interval.tick().await;
         let tick_number = common.current_tick(chrono::Utc::now());
 
         // get updated info
-        let services = fetcher.services().await.unwrap();
+        let services = 'lp: {
+            match tokio::time::timeout(
+                tokio::time::Duration::from_secs(config.common.tick / 2),
+                async {
+                    loop {
+                        let before = std::time::Instant::now();
+                        match tokio::time::timeout(
+                            tokio::time::Duration::from_secs(5),
+                            fetcher.services(),
+                        )
+                        .await
+                        {
+                            Ok(Ok(s)) => break s,
+                            e => {
+                                let delta = before.elapsed();
+                                info!("Failed fetching {:?}: after {:?}", e, delta);
+                                // wait 1s before retrying
+                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                            }
+                        }
+                    }
+                },
+            )
+            .await
+            {
+                Ok(v) => break 'lp v,
+                Err(_) => {
+                    warn!("Failed to fetch services, giving up for this tick");
+                    continue 'outer;
+                }
+            };
+        };
 
         // rename?
         let services = if let Some(ref rename) = config.common.rename {
@@ -149,7 +187,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         let service_names = services.0.keys().cloned().collect::<HashSet<_>>();
 
-        if service_names != common.services {
+        let configured_names = config.common.services_with_renames();
+
+        if service_names != configured_names {
             error!(
                 "Fetcher and config disagree on service names! (after applying renames) got:{:?} != fetched:{:?}",
                 service_names, common.services
@@ -182,7 +222,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
                         // this wont work cross-restarts, but hey a few extra runs wont hurt, right? right??
                         let new = seen_flagids.insert((
-                            *tick,
+                            // no tick, because ecsc, faust, etc gives all flagids, and we just remove dups
                             service_name.clone(),
                             team_ip.clone(),
                             flag_id_str,
