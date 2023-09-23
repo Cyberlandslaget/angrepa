@@ -173,7 +173,7 @@ impl<'a> Db<'a> {
         let out: Vec<_> = target::table
             .filter(target::team.eq(nop_ip))
             .filter(target::service.eq(service))
-            .order(target::created_at.asc())
+            .order(target::created_at.desc())
             .limit(1)
             .load::<TargetModel>(self.conn)?;
 
