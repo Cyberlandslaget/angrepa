@@ -5,6 +5,14 @@ format = 'FAUST_[A-Za-z0-9/+]{32}'
 tick = 180 # 3min
 flag_validity = 5
 services = [
+    "image-galoisry",
+    "chat-app",
+    #"jokes",
+    "tic-tac-toe",
+    #"office-supplies",
+    "buerographie",
+    "rsamail",
+    "auction service",
 ]
 
 own = "fd66:666:901::2"
