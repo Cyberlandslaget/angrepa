@@ -190,10 +190,16 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let configured_names = config.common.services_with_renames();
 
         if service_names != configured_names {
+            let missing = service_names.difference(&configured_names);
+            let extra = configured_names.difference(&service_names);
+
             error!(
                 "Fetcher and config disagree on service names! (after applying renames) got:{:?} != fetched:{:?}",
                 service_names, common.services
             );
+
+            error!("Missing: {:?}.    Extra: {:?}", missing, extra);
+
             continue;
         }
 
