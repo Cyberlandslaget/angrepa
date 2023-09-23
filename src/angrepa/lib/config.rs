@@ -24,9 +24,8 @@ pub struct Common {
 }
 
 impl Common {
-    pub fn services_with_renames(&self) -> HashSet<String> {
-        let flagid_services: HashSet<String> = self
-            .services
+    pub fn flagid_servies_with_renames(&self) -> HashSet<String> {
+        self.services
             .iter()
             .map(|original| {
                 if let Some(mapping) = &self.rename {
@@ -36,14 +35,18 @@ impl Common {
                 }
                 .to_owned()
             })
-            .collect();
-
-        let nonflagid_services = self.services_without_flagid.clone();
-
-        flagid_services
-            .union(&nonflagid_services)
-            .cloned()
             .collect()
+    }
+
+    pub fn nonflagid_services(&self) -> HashSet<String> {
+        self.services_without_flagid.iter().cloned().collect()
+    }
+
+    pub fn all_services_some_renamed(&self) -> HashSet<String> {
+        let a = self.flagid_servies_with_renames();
+        let b = self.nonflagid_services();
+
+        a.union(&b).cloned().collect()
     }
 
     pub async fn sleep_until_start(&self) {
