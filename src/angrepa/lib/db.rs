@@ -163,11 +163,16 @@ impl<'a> Db<'a> {
         Ok(())
     }
 
-    pub fn get_latest_nop_target(&mut self, nop_ip: &str) -> Result<Option<TargetModel>, DbError> {
+    pub fn get_latest_nop_target(
+        &mut self,
+        nop_ip: &str,
+        service: &str,
+    ) -> Result<Option<TargetModel>, DbError> {
         use crate::schema::target;
 
         let out: Vec<_> = target::table
             .filter(target::team.eq(nop_ip))
+            .filter(target::service.eq(service))
             .order(target::created_at.asc())
             .limit(1)
             .load::<TargetModel>(self.conn)?;
