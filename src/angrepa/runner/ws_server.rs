@@ -1,5 +1,5 @@
 use angrepa::data_types::{ExecutionData, ExploitData, FlagData};
-use angrepa::{config, db::Db, db_connect};
+use angrepa::{config, db::Db, get_connection_pool};
 use bus::Bus;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -55,11 +55,13 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
 
         info!("Spawned DB listener");
 
+        let db_pool = get_connection_pool(&config.database.url()).unwrap();
+
         loop {
             while let Ok(notification) = listener.recv().await {
                 match from_str::<DbTrigger>(notification.payload()) {
                     Ok(data) => {
-                        let mut conn = db_connect(&config.database.url()).unwrap();
+                        let mut conn = db_pool.get().unwrap();
                         let mut db = Db::new(&mut conn);
 
                         match data.table.as_str() {

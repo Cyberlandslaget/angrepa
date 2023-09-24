@@ -18,7 +18,7 @@ pub struct AppState {
     config: config::Root,
 }
 
-pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &String) {
+pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &str) {
     let app_state = Arc::new(AppState {
         db: get_connection_pool(db_url).unwrap(),
         config,

@@ -1,4 +1,4 @@
-use angrepa::{db::Db, db_connect};
+use angrepa::{db::Db, db_connect, get_connection_pool};
 use std::collections::HashSet;
 use tokio::spawn;
 use tracing::info;
@@ -8,10 +8,9 @@ use super::submitter::{FlagStatus, Submitter};
 /// Submits flags
 async fn submit(
     submitter: impl Submitter + Send + Sync + Clone + 'static,
-    db_url: String,
     flag_strings: Vec<String>,
+    mut conn: diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<diesel::PgConnection>>,
 ) {
-    let mut conn = db_connect(&db_url).unwrap();
     let mut db = Db::new(&mut conn);
 
     let results = submitter.submit(flag_strings).await.unwrap();
@@ -35,7 +34,7 @@ async fn submit(
 }
 
 pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
-    let mut conn = db_connect(&db_url).unwrap();
+    let mut conn = db_connect(db_url).unwrap();
     let mut db = Db::new(&mut conn);
 
     // submit every 1s
@@ -43,6 +42,7 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     let mut seen_flags: HashSet<String> = HashSet::new();
+    let db_pool = get_connection_pool(db_url).unwrap();
 
     loop {
         send_signal.tick().await;
@@ -66,6 +66,8 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
             flag_strings.push(flag.text);
         }
 
-        spawn(submit(submitter.clone(), db_url.to_owned(), flag_strings));
+        let conn = db_pool.get().unwrap();
+
+        spawn(submit(submitter.clone(), flag_strings, conn));
     }
 }

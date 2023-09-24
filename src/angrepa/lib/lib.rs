@@ -15,7 +15,10 @@ pub fn db_connect(url: &str) -> Result<PgConnection, Report> {
     Ok(PgConnection::establish(url)?)
 }
 
-pub fn get_connection_pool(url: &String) -> Result<Pool<ConnectionManager<PgConnection>>, Report> {
+pub fn get_connection_pool(url: &str) -> Result<Pool<ConnectionManager<PgConnection>>, Report> {
     let manager = ConnectionManager::<PgConnection>::new(url);
-    Ok(Pool::builder().test_on_check_out(true).build(manager)?)
+    Ok(Pool::builder()
+        .max_size(100)
+        .test_on_check_out(true)
+        .build(manager)?)
 }
