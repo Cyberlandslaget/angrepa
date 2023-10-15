@@ -7,9 +7,7 @@ flag_validity = 5
 services = [
     "image-galoisry",
     "chat-app",
-    #"jokes",
     "tic-tac-toe",
-    #"office-supplies",
     "buerographie",
     "rsamail",
     "auction service",
