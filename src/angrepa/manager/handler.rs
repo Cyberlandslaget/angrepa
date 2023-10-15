@@ -41,8 +41,8 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
     let mut conn = db_connect(db_url).unwrap();
     let mut db = Db::new(&mut conn);
 
-    // submit every 1s
-    let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(1));
+    // submit every 3s
+    let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(3));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     let mut seen_flags: HashSet<String> = HashSet::new();
