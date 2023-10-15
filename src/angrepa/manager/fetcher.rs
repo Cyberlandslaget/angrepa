@@ -187,7 +187,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         let service_names = services.0.keys().cloned().collect::<HashSet<_>>();
 
-        let configured_names = config.common.flagid_servies_with_renames();
+        let configured_names = config.common.flagid_services_with_renames();
 
         if service_names != configured_names {
             let missing = service_names.difference(&configured_names);

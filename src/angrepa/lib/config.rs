@@ -24,7 +24,7 @@ pub struct Common {
 }
 
 impl Common {
-    pub fn flagid_servies_with_renames(&self) -> HashSet<String> {
+    pub fn flagid_services_with_renames(&self) -> HashSet<String> {
         self.services
             .iter()
             .map(|original| {
@@ -43,7 +43,7 @@ impl Common {
     }
 
     pub fn all_services_some_renamed(&self) -> HashSet<String> {
-        let a = self.flagid_servies_with_renames();
+        let a = self.flagid_services_with_renames();
         let b = self.nonflagid_services();
 
         a.union(&b).cloned().collect()
