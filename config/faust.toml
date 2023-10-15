@@ -19,8 +19,6 @@ services_without_flagid = [
     "office-supplies"
 ]
 
-# TODO add jokes and office-supplies somehow
-
 own = "fd66:666:901::2"
 nop = "fd66:666:1::2"
 
