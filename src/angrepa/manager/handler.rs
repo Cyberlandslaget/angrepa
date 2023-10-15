@@ -1,4 +1,8 @@
 use angrepa::{db::Db, db_connect, get_connection_pool};
+use diesel::{
+    r2d2::{ConnectionManager, PooledConnection},
+    PgConnection,
+};
 use std::collections::HashSet;
 use tokio::spawn;
 use tracing::info;
@@ -9,7 +13,7 @@ use super::submitter::{FlagStatus, Submitter};
 async fn submit(
     submitter: impl Submitter + Send + Sync + Clone + 'static,
     flag_strings: Vec<String>,
-    mut conn: diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<diesel::PgConnection>>,
+    mut conn: PooledConnection<ConnectionManager<PgConnection>>,
 ) {
     let mut db = Db::new(&mut conn);
 
