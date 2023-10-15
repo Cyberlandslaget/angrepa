@@ -18,7 +18,7 @@ scoreboard = "http://172.16.1.255:8000/competition/scoreboard-v2/scoreboard_curr
 format = "172.16.{x}.1"
 
 [runner]
-http_server = "0.0.0.0:8000"
+http_server = "[::]:8000"
 
 [database]
 username = "angrepa"

@@ -28,8 +28,8 @@ scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_curren
 format = '172.16.{x}.1'
 
 [runner]
-http_server = "0.0.0.0:8000"
-ws_server = "0.0.0.0:8001"
+http_server = "[::]:8000"
+ws_server = "[::]:8001"
 
 [database]
 username = "angrepa"

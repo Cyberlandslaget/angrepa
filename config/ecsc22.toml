@@ -33,8 +33,8 @@ scoreboard = 'http://gameserver1.cybl:5000/competition/scoreboard-v2/scoreboard_
 format = '192.168.10{x}.5'
 
 [runner]
-http_server = "0.0.0.0:8000"
-ws_server = "0.0.0.0:8001"
+http_server = "[::]:8000"
+ws_server = "[::]:8001"
 
 [database]
 username = "angrepa"
