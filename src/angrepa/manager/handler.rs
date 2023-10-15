@@ -49,7 +49,6 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
 
         // extract out flags from the queue, then delete them
         let flags = db.get_unsubmitted_flags().unwrap();
-        //let flag_strings = flags.iter().map(|f| f.text.clone()).collect::<Vec<_>>();
         let mut flag_strings: Vec<String> = Vec::new();
 
         for flag in &flag_strings {
