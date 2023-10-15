@@ -152,7 +152,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     loop {
                         let before = std::time::Instant::now();
                         match tokio::time::timeout(
-                            tokio::time::Duration::from_secs(5),
+                            tokio::time::Duration::from_secs(15),
                             fetcher.services(),
                         )
                         .await
