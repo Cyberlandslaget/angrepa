@@ -1,0 +1,47 @@
+[common]
+start = "2023-09-29T17:46:00Z"
+format = 'ECSC_[A-Za-z0-9/+]{32}'
+tick = 180 # 3min
+flag_validity = 5
+services = [
+    "techbay_1",
+    "techbay_2",
+    "dewaste",
+    "blinkygram_1",
+    "blinkygram_2",
+]
+services_without_flagid = [
+    "hps"
+]
+
+[common.rename]
+"Service 2 Checker 1" = "techbay_1"
+"Service 2 Checker 2" = "techbay_2"
+"Service 3 Checker 1" = "dewaste"
+"Service 5 Checker 1" = "blinkygram_1"
+"Service 5 Checker 2" = "blinkygram_2"
+
+own = "192.168.101.5"
+nop = "192.168.101.5"
+
+[manager]
+submitter_name = 'faust'
+fetcher_name = 'faust'
+[manager.submitter]
+# host = 'submission.faustctf.net:666'
+host = '192.168.100.50:31337'
+[manager.fetcher]
+teams = 'http://gameserver1.cybl:5000/competition/teams.json'
+scoreboard = 'http://gameserver1.cybl:5000/competition/scoreboard-v2/scoreboard_current.json'
+# format = 'fd66:666:{x}::2'
+format = '192.168.10{x}.5'
+
+[runner]
+http_server = "0.0.0.0:8000"
+ws_server = "0.0.0.0:8001"
+
+[database]
+username = "angrepa"
+password = "a"
+host = "localhost"
+db = "angrepa"
