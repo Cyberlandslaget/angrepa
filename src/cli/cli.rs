@@ -113,7 +113,7 @@ impl Untarrer {
         for file in tar.entries()? {
             let mut file = file?;
 
-            let full_path = out_dir.clone().join(file.header().path()?);
+            let full_path = out_dir.join(file.header().path()?);
 
             if full_path
                 .to_str()
