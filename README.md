@@ -30,6 +30,7 @@ See [CLI Examples](#cli-by-example) for some usage examples.
 # Server Setup
 0. Tooling
 ```
+sudo apt install build-essential libpq-dev
 cargo install diesel_cli --no-default-features --features postgres
 ```
 
