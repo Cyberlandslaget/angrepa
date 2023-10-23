@@ -12,7 +12,7 @@ use tracing::{info, warn};
 use angrepa::{
     config::{self},
     db::Db,
-    db_connect,
+    db_connect, get_connection_pool,
     models::{ExecutionInserter, FlagInserter},
 };
 
@@ -30,7 +30,7 @@ impl Runner {
     async fn tick(
         config: config::Root,
         flag_regex: Regex,
-        db_url: &String,
+        db_url: &str,
         earliest_valid_time: NaiveDateTime,
     ) {
         let mut conn = db_connect(db_url).unwrap();
@@ -45,6 +45,8 @@ impl Runner {
                 return;
             }
         };
+
+        let db_pool = get_connection_pool(db_url).unwrap();
 
         for (targets, exploit) in targets {
             let docker = docker.clone();
@@ -62,7 +64,6 @@ impl Runner {
                 }
 
                 let flag_regex = flag_regex.clone();
-                let db_url = db_url.to_owned();
 
                 let run = instance
                     .run(&config.common, target.team, target.flag_id)
@@ -75,6 +76,8 @@ impl Runner {
                         continue;
                     }
                 };
+
+                let db_pool = db_pool.clone();
 
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
@@ -96,7 +99,7 @@ impl Runner {
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
-                    let mut conn = db_connect(&db_url).unwrap();
+                    let mut conn = db_pool.get().unwrap();
                     let mut db = Db::new(&mut conn);
                     let execution = db
                         .add_execution(&ExecutionInserter {

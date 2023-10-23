@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Instant};
 
 use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
@@ -23,6 +23,8 @@ impl Submitter for FaustSubmitter {
         if flags.is_empty() {
             return Ok(Vec::new());
         }
+
+        let inst = Instant::now();
 
         let socket = tokio::net::TcpStream::connect(&self.host).await?;
 
@@ -114,6 +116,14 @@ impl Submitter for FaustSubmitter {
 
             statuses.push((flag.to_string(), status));
         }
+
+        let elapsed = inst.elapsed();
+
+        debug!(
+            "Submitted {} flags in {}ms",
+            flags.len(),
+            elapsed.as_millis()
+        );
 
         Ok(statuses)
     }

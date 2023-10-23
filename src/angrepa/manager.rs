@@ -18,7 +18,7 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
     let mut conn = db_connect(&config.database.url()).unwrap();
     let mut db = Db::new(&mut conn);
 
-    for service in &config.common.services_with_renames() {
+    for service in &config.common.all_services_some_renamed() {
         // a NOP if service already exists
         if let Err(e) = db.add_service_checked(service) {
             warn!("Failed to add service: '{service}'. Error: {}", e);

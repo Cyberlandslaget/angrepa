@@ -16,6 +16,7 @@ pub struct Common {
     pub format: String,
     pub start: DateTime<chrono::Utc>,
     pub services: HashSet<String>,
+    pub services_without_flagid: HashSet<String>,
     pub flag_validity: u32,
     pub rename: Option<HashMap<String, String>>,
     pub nop: Option<String>,
@@ -23,7 +24,7 @@ pub struct Common {
 }
 
 impl Common {
-    pub fn services_with_renames(&self) -> HashSet<String> {
+    pub fn flagid_services_with_renames(&self) -> HashSet<String> {
         self.services
             .iter()
             .map(|original| {
@@ -35,6 +36,17 @@ impl Common {
                 .to_owned()
             })
             .collect()
+    }
+
+    pub fn nonflagid_services(&self) -> HashSet<String> {
+        self.services_without_flagid.iter().cloned().collect()
+    }
+
+    pub fn all_services_some_renamed(&self) -> HashSet<String> {
+        let a = self.flagid_services_with_renames();
+        let b = self.nonflagid_services();
+
+        a.union(&b).cloned().collect()
     }
 
     pub async fn sleep_until_start(&self) {
@@ -230,6 +242,7 @@ mod tests {
                 chrono::Utc,
             ),
             services: HashSet::new(),
+            services_without_flagid: HashSet::new(),
             flag_validity: 10,
             rename: None,
             nop: None,

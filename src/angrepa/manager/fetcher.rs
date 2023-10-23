@@ -187,13 +187,19 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         let service_names = services.0.keys().cloned().collect::<HashSet<_>>();
 
-        let configured_names = config.common.services_with_renames();
+        let configured_names = config.common.flagid_services_with_renames();
 
         if service_names != configured_names {
+            let missing = service_names.difference(&configured_names);
+            let extra = configured_names.difference(&service_names);
+
             error!(
                 "Fetcher and config disagree on service names! (after applying renames) got:{:?} != fetched:{:?}",
                 service_names, common.services
             );
+
+            error!("Missing: {:?}.    Extra: {:?}", missing, extra);
+
             continue;
         }
 
@@ -202,6 +208,40 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let mut target_skipped = 0;
         let mut target_tried = 0;
 
+        // services without flagid
+        let all_ips = fetcher.ips().await.unwrap();
+
+        for service_name in &common.services_without_flagid {
+            for team_ip in &all_ips {
+                let conn = &mut match db_pool.get() {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!("Could not acquire a database connection: {}", e);
+                        continue;
+                    }
+                };
+
+                let inserter = TargetInserter {
+                    flag_id: String::from(""),
+                    service: service_name.to_owned(),
+                    team: team_ip.to_owned(),
+                    created_at: chrono::Utc::now().naive_utc(),
+                    target_tick: tick_number as i32,
+                };
+
+                let mut db = Db::new(conn);
+
+                match db.add_target(&inserter) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        error!("Could not add target: {}", e);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // services with flagid
         for (service_name, service) in &services.0 {
             // sort by team_ip
             let mut teams = service.teams.iter().collect::<Vec<_>>();
