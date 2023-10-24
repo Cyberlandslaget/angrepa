@@ -25,7 +25,10 @@ host = '192.168.100.50:31337'
 [manager.fetcher]
 teams = 'https://ad.ctf.ecsc.no/competition/teams.json'
 scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_current.json'
-format = '172.16.{x}.1'
+
+# yeah... use ecsc_hosts in /etc/hosts
+format = 'team_{x}'
+#format = '172.16.{x}.1'
 
 [runner]
 http_server = "[::]:8000"
