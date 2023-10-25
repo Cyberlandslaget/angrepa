@@ -8,8 +8,11 @@ services = [
     #"Service 1 Checker",
 ]
 services_without_flagid = [
-    #"twotask",
-    #"threetask"
+    "airport",
+    "crm",
+    "jassem",
+    "pymaps",
+    "spotify",
 ]
 #[common.rename]
 "media library Checker" = "media library"
