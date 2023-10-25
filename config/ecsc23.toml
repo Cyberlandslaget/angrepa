@@ -1,6 +1,5 @@
 [common]
-# TODO change for actual ecsc
-start = "2023-10-13T14:00:00Z"
+start = "2023-10-20T08:00:00Z"
 format = 'ECSC_\w{32}'
 tick = 180
 flag_validity = 5
@@ -14,18 +13,20 @@ services_without_flagid = [
 [common.rename]
 "Service 1 Checker" = "onetask"
 
-own = '172.16.20.1'
-nop = '172.16.1.1'
+#own = '172.16.20.1'
+own = '129.241.150.151'
+#nop = '172.16.1.1'
 
 [manager]
 submitter_name = 'faust'
 fetcher_name = 'faust'
 [manager.submitter]
-host = '192.168.100.50:31337'
+host = '129.241.150.151:31337'
 [manager.fetcher]
 teams = 'https://ad.ctf.ecsc.no/competition/teams.json'
 scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_current.json'
-format = '172.16.{x}.1'
+
+format = 'lol_{x}'
 
 [runner]
 http_server = "[::]:8000"
