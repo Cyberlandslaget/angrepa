@@ -46,17 +46,7 @@ impl FaustFetcher {
 }
 
 fn fix_team(team: String) -> String {
-    team.replace("lol_1", "129.241.150.218")
-        .replace("lol_2", "129.241.150.84")
-        .replace("lol_3", "129.241.150.59")
-        .replace("lol_4", "129.241.150.226")
-        .replace("lol_5", "129.241.150.105")
-        .replace("lol_6", "129.241.150.42")
-        .replace("lol_7", "129.241.150.123")
-        .replace("lol_8", "129.241.150.254")
-        .replace("lol_9", "129.241.150.160")
-        .replace("lol_10", "129.241.150.209")
-        .replace("lol_11", "129.241.150.153")
+    team.replace("lol_11", "129.241.150.153")
         .replace("lol_12", "129.241.150.241")
         .replace("lol_13", "129.241.150.188")
         .replace("lol_14", "129.241.150.248")
@@ -81,6 +71,16 @@ fn fix_team(team: String) -> String {
         .replace("lol_33", "129.241.150.15")
         .replace("lol_34", "129.241.150.233")
         .replace("lol_35", "129.241.150.171")
+        .replace("lol_10", "129.241.150.209")
+        .replace("lol_1", "129.241.150.218")
+        .replace("lol_2", "129.241.150.84")
+        .replace("lol_3", "129.241.150.59")
+        .replace("lol_4", "129.241.150.226")
+        .replace("lol_5", "129.241.150.105")
+        .replace("lol_6", "129.241.150.42")
+        .replace("lol_7", "129.241.150.123")
+        .replace("lol_8", "129.241.150.254")
+        .replace("lol_9", "129.241.150.160")
 }
 
 #[async_trait]
