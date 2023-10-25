@@ -28,7 +28,7 @@ teams = 'https://ad.ctf.ecsc.no/competition/teams.json'
 scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_current.json'
 
 # yeah... use ecsc_hosts in /etc/hosts
-format = 'team_{x}.cybl'
+format = 'lol_{x}.cybl'
 #format = '172.16.{x}.1'
 
 [runner]
