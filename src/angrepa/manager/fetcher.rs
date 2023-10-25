@@ -132,7 +132,19 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             None
         };
 
-        if let Err(e) = db.add_team_checked(&ip, name) {
+        let mut ip_to_use = ip.clone();
+
+        // TODO fix this shit
+        let resolved_ip = dns_lookup::lookup_host(&ip);
+
+        if let Ok(resolved_ip) = resolved_ip {
+            ip_to_use = resolved_ip[0].to_string();
+            info!("Resolved {} to {:?}, using {}", ip, resolved_ip, ip_to_use);
+        } else {
+            info!("Failed to look up {}: {:?}", ip, resolved_ip);
+        }
+
+        if let Err(e) = db.add_team_checked(&ip_to_use, name) {
             warn!("Failed to add team: '{ip}'. Error: {}", e);
         }
     });
