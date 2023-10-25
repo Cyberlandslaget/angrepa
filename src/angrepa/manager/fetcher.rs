@@ -122,7 +122,15 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     let mut db = Db::new(conn);
 
-    fetcher.ips().await.unwrap().into_iter().for_each(|ip| {
+    let ips = loop {
+        let result = fetcher.ips().await;
+        if let Ok(f) = result {
+            break f;
+        }
+        info!("Failed {:?} to fetch ips, retrying", result);
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    };
+    ips.into_iter().for_each(|ip| {
         // set default names
         let name = if Some(&ip) == config.common.nop.as_ref() {
             Some("nop")
