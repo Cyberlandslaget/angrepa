@@ -217,7 +217,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let mut target_tried = 0;
 
         // services without flagid
-        let all_ips = fetcher.ips().await.unwrap();
+        let all_ips = loop {
+            let result = fetcher.ips().await;
+            if let Ok(f) = result {
+                break f;
+            }
+            info!("Failed {:?} to fetch ips, retrying", result);
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        };
 
         for service_name in &common.services_without_flagid {
             for team_ip in &all_ips {
