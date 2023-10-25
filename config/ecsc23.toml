@@ -1,17 +1,22 @@
 [common]
-start = "2023-10-20T08:00:00Z"
+start = "2023-10-25T08:30:00Z"
 format = 'ECSC_\w{32}'
 tick = 180
 flag_validity = 5
 services = [
-    "Service 1 Checker",
+    #"Service 1 Checker",
 ]
 services_without_flagid = [
-    "twotask",
-    "threetask"
+    #"twotask",
+    #"threetask"
 ]
-[common.rename]
-"Service 1 Checker" = "onetask"
+#[common.rename]
+#"" = "airport"
+#"" = "crm"
+#"" = "jassem"
+#"" = "media-library"
+#"" = "pymaps"
+#"" = "spotify"
 
 #own = '172.16.20.1'
 own = '129.241.150.151'
