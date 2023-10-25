@@ -18,9 +18,8 @@ services_without_flagid = [
 #"" = "pymaps"
 #"" = "spotify"
 
-#own = '172.16.20.1'
 own = '129.241.150.151'
-#nop = '172.16.1.1'
+nop = '129.241.150.185'
 
 [manager]
 submitter_name = 'faust'
