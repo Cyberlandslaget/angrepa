@@ -4,6 +4,7 @@ format = 'ECSC_\w{32}'
 tick = 180
 flag_validity = 5
 services = [
+    "media library Checker"
     #"Service 1 Checker",
 ]
 services_without_flagid = [
@@ -11,6 +12,7 @@ services_without_flagid = [
     #"threetask"
 ]
 #[common.rename]
+"media library Checker" = "media library"
 #"" = "airport"
 #"" = "crm"
 #"" = "jassem"
