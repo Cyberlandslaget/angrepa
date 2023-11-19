@@ -104,7 +104,7 @@ impl Runner {
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id,
-                            output: logs.clone().replace("\x00", ""), // fix this ugly shit
+                            output: logs.clone().replace('\x00', ""), // fix this ugly shit
                             exit_code: exec.exit_code as i32,
                             started_at,
                             finished_at,
