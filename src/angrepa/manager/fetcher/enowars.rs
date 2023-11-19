@@ -66,16 +66,14 @@ impl EnowarsFetcher {
 
 #[async_trait]
 impl Fetcher for EnowarsFetcher {
-    type Error = FetcherError;
-
-    async fn services(&self) -> Result<ServiceMap, Self::Error> {
+    async fn services(&self) -> Result<ServiceMap, FetcherError> {
         // TODO handle failures more gracefully (retry?)
         let resp: AttackInfo = self.client.get(&self.endpoint).send().await?.json().await?;
 
         Ok(resp.services.into())
     }
 
-    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
+    async fn ips(&self) -> Result<Vec<String>, FetcherError> {
         let resp: String = self
             .client
             .get(&self.ips_endpoint)

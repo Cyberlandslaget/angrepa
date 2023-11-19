@@ -13,9 +13,7 @@ pub struct DummyFetcher {
 
 #[async_trait]
 impl Fetcher for DummyFetcher {
-    type Error = FetcherError;
-
-    async fn services(&self) -> Result<ServiceMap, Self::Error> {
+    async fn services(&self) -> Result<ServiceMap, FetcherError> {
         let mut all_services = HashMap::new();
 
         for name in ["testservice", "otherservice"] {
@@ -46,7 +44,7 @@ impl Fetcher for DummyFetcher {
         Ok(ServiceMap(all_services))
     }
 
-    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
+    async fn ips(&self) -> Result<Vec<String>, FetcherError> {
         Ok((1..=10).map(|i| format!("10.0.{i}.1")).collect())
     }
 }

@@ -94,11 +94,10 @@ pub enum FetcherError {
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
-    type Error: std::error::Error + Send + Sync + Debug + 'static;
     /// services (with flagids)
-    async fn services(&self) -> Result<ServiceMap, Self::Error>;
+    async fn services(&self) -> Result<ServiceMap, FetcherError>;
     /// "backup" raw get all ips
-    async fn ips(&self) -> Result<Vec<String>, Self::Error>;
+    async fn ips(&self) -> Result<Vec<String>, FetcherError>;
 }
 
 // routine

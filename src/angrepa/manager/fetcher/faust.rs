@@ -47,9 +47,7 @@ impl FaustFetcher {
 
 #[async_trait]
 impl Fetcher for FaustFetcher {
-    type Error = FetcherError;
-
-    async fn services(&self) -> Result<ServiceMap, Self::Error> {
+    async fn services(&self) -> Result<ServiceMap, FetcherError> {
         let scoreboard: Scoreboard = self
             .client
             .get(&self.scoreboard)
@@ -103,7 +101,7 @@ impl Fetcher for FaustFetcher {
         Ok(ServiceMap(services))
     }
 
-    async fn ips(&self) -> Result<Vec<String>, Self::Error> {
+    async fn ips(&self) -> Result<Vec<String>, FetcherError> {
         let resp: AttackInfo = self.client.get(&self.teams).send().await?.json().await?;
 
         let ips = resp
