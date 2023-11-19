@@ -285,9 +285,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     }
                 }
             }
-
-            debug!("{} targets added, skipped {}", target_tried, target_skipped);
         }
+        debug!("{} targets added, skipped {}", target_tried, target_skipped);
     }
 }
 
