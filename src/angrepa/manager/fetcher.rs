@@ -206,14 +206,6 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
         for service_name in &common.services_without_flagid {
             for team_ip in &ips {
-                let conn = &mut match db_pool.get() {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        error!("Could not acquire a database connection: {}", e);
-                        continue;
-                    }
-                };
-
                 let inserter = TargetInserter {
                     flag_id: String::from(""),
                     service: service_name.to_owned(),
@@ -221,8 +213,6 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     created_at: chrono::Utc::now().naive_utc(),
                     target_tick: tick_number as i32,
                 };
-
-                let mut db = Db::new(conn);
 
                 match db.add_target(&inserter) {
                     Ok(_) => (),
