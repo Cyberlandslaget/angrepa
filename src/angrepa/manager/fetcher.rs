@@ -7,7 +7,9 @@ use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use tracing::{debug, error, info, warn};
+use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::Retry;
+use tracing::{debug, error, info, trace, warn};
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
@@ -89,6 +91,9 @@ pub struct TeamService {
 pub enum FetcherError {
     #[error("reqwest failed")]
     Reqwest(#[from] reqwest::Error),
+    #[error("general error")]
+    // useful for testing
+    General,
 }
 
 /// Implements fetching flagids and hosts
@@ -148,6 +153,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     'outer: loop {
         // wait for new tick
+        trace!("waiting for tick");
         tick_interval.tick().await;
         let tick_number = common.current_tick(chrono::Utc::now());
 
@@ -155,25 +161,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let services = 'lp: {
             match tokio::time::timeout(
                 tokio::time::Duration::from_secs(config.common.tick / 2),
-                async {
-                    loop {
-                        let before = std::time::Instant::now();
-                        match tokio::time::timeout(
-                            tokio::time::Duration::from_secs(15),
-                            fetcher.services(),
-                        )
-                        .await
-                        {
-                            Ok(Ok(s)) => break s,
-                            e => {
-                                let delta = before.elapsed();
-                                info!("Failed fetching {:?}: after {:?}", e, delta);
-                                // wait 1s before retrying
-                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                            }
-                        }
-                    }
-                },
+                Retry::spawn(ExponentialBackoff::from_millis(10), || fetcher.services()),
             )
             .await
             {
@@ -184,6 +172,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                 }
             };
         };
+
+        // if we are here, the resulting type isn't Err (if it was, it would've retired)
+        let services = services.unwrap();
 
         // rename?
         let services = if let Some(ref rename) = config.common.rename {

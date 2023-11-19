@@ -33,6 +33,7 @@ tabled = { version = "0.13.0", features = ["color"] }
 tar = "0.4.39"
 thiserror = "1.0.43"
 tokio = { version = "1.29.1", features = ["full"] }
+tokio-retry = "0.3.0"
 tokio-util = { version = "0.7.8", features = ["io"] }
 toml = "0.7.6"
 tower-http = { version = "0.4.3", features = ["cors"] }
