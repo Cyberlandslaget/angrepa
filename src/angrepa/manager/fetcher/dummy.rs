@@ -15,7 +15,7 @@ pub struct DummyFetcher {
 impl Fetcher for DummyFetcher {
     async fn services(&self) -> Result<ServiceMap, FetcherError> {
         // simulate poor network conditions
-        if dbg!(rand::random::<bool>()) {
+        if rand::random::<bool>() {
             return Err(FetcherError::General);
         }
 
@@ -51,9 +51,9 @@ impl Fetcher for DummyFetcher {
 
     async fn ips(&self) -> Result<Vec<String>, FetcherError> {
         // simulate poor network conditions
-        //if rand::random::<bool>() {
-        //    return Err(FetcherError::General);
-        //}
+        if rand::random::<bool>() {
+           return Err(FetcherError::General);
+        }
 
         Ok((1..=10).map(|i| format!("10.0.{i}.1")).collect())
     }
