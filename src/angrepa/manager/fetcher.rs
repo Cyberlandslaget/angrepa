@@ -130,11 +130,11 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         .await
         .unwrap();
 
-    ips.into_iter().for_each(|ip| {
+    ips.iter().for_each(|ip| {
         // set default names
-        let name = if Some(&ip) == config.common.nop.as_ref() {
+        let name = if Some(ip) == config.common.nop.as_ref() {
             Some("nop")
-        } else if Some(&ip) == config.common.own.as_ref() {
+        } else if Some(ip) == config.common.own.as_ref() {
             Some("own")
         } else {
             None
@@ -202,13 +202,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let mut target_skipped = 0;
         let mut target_tried = 0;
 
-        // services without flagid
-        let all_ips = Retry::spawn(FibonacciBackoff::from_millis(10), || fetcher.ips())
-            .await
-            .unwrap();
-
         for service_name in &common.services_without_flagid {
-            for team_ip in &all_ips {
+            for team_ip in &ips {
                 let conn = &mut match db_pool.get() {
                     Ok(conn) => conn,
                     Err(e) => {
