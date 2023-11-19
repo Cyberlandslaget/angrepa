@@ -265,16 +265,6 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                             target_tick: *tick,
                         };
 
-                        let conn = &mut match db_pool.get() {
-                            Ok(conn) => conn,
-                            Err(e) => {
-                                error!("Could not acquire a database connection: {}", e);
-                                continue;
-                            }
-                        };
-
-                        let mut db = Db::new(conn);
-
                         match db.add_target(&inserter) {
                             Ok(_) => (),
                             Err(e) => {
