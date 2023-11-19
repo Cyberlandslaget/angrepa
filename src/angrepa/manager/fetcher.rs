@@ -153,6 +153,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         tick_interval.tick().await;
         let tick_number = common.current_tick(chrono::Utc::now());
 
+        info!("tick {}", tick_number);
+
         // get updated info
         let services = 'lp: {
             match tokio::time::timeout(
@@ -197,7 +199,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             continue;
         }
 
-        info!("tick {}", tick_number);
+        info!("tick {} fetched data", tick_number);
 
         let mut target_skipped = 0;
         let mut target_tried = 0;
