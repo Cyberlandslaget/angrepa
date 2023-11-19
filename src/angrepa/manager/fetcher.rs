@@ -204,6 +204,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let mut target_skipped = 0;
         let mut target_tried = 0;
 
+        // servicess without flagids
         for service_name in &common.services_without_flagid {
             for team_ip in &ips {
                 let inserter = TargetInserter {
