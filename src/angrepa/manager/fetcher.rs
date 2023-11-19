@@ -7,7 +7,7 @@ use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::strategy::FibonacciBackoff;
 use tokio_retry::Retry;
 use tracing::{debug, error, info, trace, warn};
 
@@ -126,7 +126,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     let mut db = Db::new(conn);
 
-    let ips = Retry::spawn(ExponentialBackoff::from_millis(10), || fetcher.ips())
+    let ips = Retry::spawn(FibonacciBackoff::from_millis(100), || fetcher.ips())
         .await
         .unwrap();
 
@@ -157,7 +157,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let services = 'lp: {
             match tokio::time::timeout(
                 tokio::time::Duration::from_secs(config.common.tick / 2),
-                Retry::spawn(ExponentialBackoff::from_millis(10), || fetcher.services()),
+                Retry::spawn(FibonacciBackoff::from_millis(10), || fetcher.services()),
             )
             .await
             {
@@ -203,7 +203,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
         let mut target_tried = 0;
 
         // services without flagid
-        let all_ips = Retry::spawn(ExponentialBackoff::from_millis(10), || fetcher.ips())
+        let all_ips = Retry::spawn(FibonacciBackoff::from_millis(10), || fetcher.ips())
             .await
             .unwrap();
 
