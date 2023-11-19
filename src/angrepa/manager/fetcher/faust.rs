@@ -45,44 +45,6 @@ impl FaustFetcher {
     }
 }
 
-fn fix_team(team: String) -> String {
-    team.replace("lol_10", "129.241.150.235")
-        .replace("lol_11", "129.241.150.70")
-        .replace("lol_12", "129.241.150.222")
-        .replace("lol_13", "129.241.150.86")
-        .replace("lol_14", "129.241.150.83")
-        .replace("lol_15", "129.241.150.203")
-        .replace("lol_16", "129.241.150.190")
-        .replace("lol_17", "129.241.150.52")
-        .replace("lol_18", "129.241.150.251")
-        .replace("lol_19", "129.241.150.239")
-        .replace("lol_20", "129.241.150.151")
-        .replace("lol_21", "129.241.150.73")
-        .replace("lol_22", "129.241.150.221")
-        .replace("lol_23", "129.241.150.128")
-        .replace("lol_24", "129.241.150.240")
-        .replace("lol_25", "129.241.150.95")
-        .replace("lol_26", "129.241.150.230")
-        .replace("lol_27", "129.241.150.88")
-        .replace("lol_28", "129.241.150.49")
-        .replace("lol_29", "129.241.150.72")
-        .replace("lol_30", "129.241.150.193")
-        .replace("lol_31", "129.241.150.252")
-        .replace("lol_32", "129.241.150.142")
-        .replace("lol_33", "129.241.150.103")
-        .replace("lol_34", "129.241.150.166")
-        .replace("lol_35", "129.241.150.20")
-        .replace("lol_1", "129.241.150.185")
-        .replace("lol_2", "129.241.150.148")
-        .replace("lol_3", "129.241.150.170")
-        .replace("lol_4", "129.241.150.247")
-        .replace("lol_5", "129.241.150.202")
-        .replace("lol_6", "129.241.150.80")
-        .replace("lol_7", "129.241.150.10")
-        .replace("lol_8", "129.241.150.191")
-        .replace("lol_9", "129.241.150.77")
-}
-
 #[async_trait]
 impl Fetcher for FaustFetcher {
     type Error = FetcherError;
@@ -123,7 +85,7 @@ impl Fetcher for FaustFetcher {
                 .to_owned();
 
                 let team = team.parse::<i32>().unwrap();
-                let team = fix_team(self.format.replace("{x}", &format!("{}", team)));
+                let team = self.format.replace("{x}", &format!("{}", team));
 
                 let mut ticks = HashMap::new();
                 ticks.insert(current_tick, flagids); // just this one
@@ -147,7 +109,7 @@ impl Fetcher for FaustFetcher {
         let ips = resp
             .teams
             .into_iter()
-            .map(|team_nr| fix_team(self.format.replace("{x}", &format!("{}", team_nr))))
+            .map(|team_nr| self.format.replace("{x}", &format!("{}", team_nr)))
             .collect();
 
         Ok(ips)
