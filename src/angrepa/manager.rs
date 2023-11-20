@@ -37,6 +37,9 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
             Submitters::Faust(submitter) => {
                 handler::run(submitter, &db_url).await;
             }
+            Submitters::Dctf(submitter) => {
+                handler::run(submitter, &db_url).await;
+            }
         }
     });
 

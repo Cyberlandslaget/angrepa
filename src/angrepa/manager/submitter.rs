@@ -4,6 +4,8 @@ use color_eyre::{eyre::eyre, Report};
 use thiserror::Error;
 
 // implementations
+mod dctf;
+pub use dctf::DctfSubmitter;
 mod faust;
 pub use faust::FaustSubmitter;
 mod dummy;
@@ -13,6 +15,7 @@ pub use dummy::DummySubmitter;
 pub enum Submitters {
     Dummy(DummySubmitter),
     Faust(FaustSubmitter),
+    Dctf(DctfSubmitter),
 }
 
 /// Did not manage to submit
@@ -23,6 +26,10 @@ pub enum SubmitError {
     #[error("Format error")]
     /// The format of the response was not as expected
     FormatError,
+    #[error("serde")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("reqwest")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 /// Adapted from <https://web.archive.org/web/20230325144340/https://docs.ecsc2022.eu/ad_platform/>
@@ -66,6 +73,27 @@ impl Submitters {
                 let faust = FaustSubmitter::new(host);
 
                 Ok(Self::Faust(faust))
+            }
+            "dctf" => {
+                let url = manager
+                    .submitter
+                    .get("url")
+                    .ok_or(eyre!("DCTF submitter requires url"))?
+                    .as_str()
+                    .ok_or(eyre!("DCTF submitter url must be a string"))?
+                    .to_owned();
+
+                let cookie = manager
+                    .submitter
+                    .get("cookie")
+                    .ok_or(eyre!("DCTF submitter requires cookie"))?
+                    .as_str()
+                    .ok_or(eyre!("DCTF submitter cookie must be a string"))?
+                    .to_owned();
+
+                let dctf = DctfSubmitter::new(url, cookie);
+
+                Ok(Self::Dctf(dctf))
             }
             _ => Err(eyre!("Unknown submitter {}", manager.submitter_name)),
         }

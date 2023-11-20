@@ -1,0 +1,39 @@
+[common]
+#start = "2023-11-23T??:??:??Z"
+format = 'ey\w*\.ey\w*.\w*'
+tick = 120
+flag_validity = 5
+services = []
+services_without_flagid = []
+
+#[common.rename]
+#"media library Checker" = "media library"
+
+#own = '129.241.150.151'
+
+# nop is 17 but if we attack it we get penalized xD
+#nop = '129.241.150.185'
+
+[manager]
+submitter_name = 'dctf'
+#fetcher_name = 'faust'
+[manager.submitter]
+url = "https://api.cyber-edu.co/v1/domain/dctf23-final/challenge/submit-ad-attempt"
+#cookie = "cyberedu_session=<..>"
+
+#[manager.fetcher]
+#teams = 'https://ad.ctf.ecsc.no/competition/teams.json'
+#scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_current.json'
+
+# there are two different formats in the docs...
+format = '10.1.{x}.2'
+
+[runner]
+http_server = "[::]:8000"
+ws_server = "[::]:8001"
+
+[database]
+username = "angrepa"
+password = "a"
+host = "localhost"
+db = "angrepa"
