@@ -34,6 +34,8 @@ pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &str)
             CorsLayer::new()
                 .allow_methods(Any)
                 .allow_origin(Any)
+                .allow_private_network(true)
+                .allow_credentials(true)
                 .allow_headers(Any),
         );
 
