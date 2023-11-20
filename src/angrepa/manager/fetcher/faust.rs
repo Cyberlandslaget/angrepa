@@ -17,7 +17,7 @@ pub struct Scoreboard {
     pub current_tick: i32,
 }
 
-/// teamid -> Vec<flagid>
+/// teamid -> `Vec<flagid>`
 #[derive(Deserialize, Debug)]
 pub struct ServiceContent(HashMap<String, serde_json::Value>); // treat all the flagids as one
 
