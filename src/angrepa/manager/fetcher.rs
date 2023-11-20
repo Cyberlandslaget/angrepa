@@ -140,7 +140,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             None
         };
 
-        if let Err(e) = db.add_team_checked(&ip, name) {
+        if let Err(e) = db.add_team_checked(ip, name) {
             warn!("Failed to add team: '{ip}'. Error: {}", e);
         }
     });
