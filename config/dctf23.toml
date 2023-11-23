@@ -18,7 +18,7 @@ submitter_name = 'dctf'
 fetcher_name = 'statisk'
 [manager.submitter]
 url = "https://api.cyber-edu.co/v1/domain/dctf23-final/challenge/submit-ad-attempt"
-#cookie = "cyberedu_session=<..>"
+cookie = "cyberedu_session=eyJpdiI6IkJZSGVXWnB0eVVFTVRMMGZNdVlLdmc9PSIsInZhbHVlIjoid2FxeE4xZHQ5eVJmeDdEaDg0bjFVbFlweUxNRHAvbGhkNTZWUEZoUXdIM1hTOHlmL0tJekJsSlpmNnlXVnBQcjlMQWQxL003eHFsMGtoNzFJWU5KbzNKMmlmdDhvK1BXS0hVSUtmSGJ3ZmdzcFRobElhYWNudENBVzlyR1JmZE8iLCJtYWMiOiJiNDhmZTIzNzFjMThjZmExOGY1MmM1ZjQ2M2RkYzBhNTdiNTJjM2JhYWQ3ZDdmNGE1NjUwODZlMDZjYTBlN2VhIiwidGFnIjoiIn0="
 
 [manager.fetcher]
 ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
