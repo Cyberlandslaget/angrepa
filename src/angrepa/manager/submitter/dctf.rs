@@ -69,6 +69,8 @@ impl Submitter for DctfSubmitter {
                     flag,
                     match message.as_str() {
                         "Flag is too old." => FlagStatus::Old,
+                        "You cannot submit your own flag." => FlagStatus::Own,
+                        "Invalid flag format." => FlagStatus::Invalid,
                         "Flag already submitted." => FlagStatus::Duplicate,
                         "Flag submitted." => FlagStatus::Ok,
                         other => {
