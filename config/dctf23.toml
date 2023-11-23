@@ -1,6 +1,7 @@
 [common]
 start = "2023-11-23T8:30:00Z"
-format = 'ey\w*\.ey\w*.\w*'
+#format = 'ey[\w-]*\.ey\w*.\w*'
+format = '[\w-]{36}\.[\w-]{134}\.[\w-]*'
 tick = 120
 flag_validity = 5
 services = []
