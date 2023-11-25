@@ -7,7 +7,9 @@ use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use tracing::{debug, error, info, warn};
+use tokio_retry::strategy::FibonacciBackoff;
+use tokio_retry::Retry;
+use tracing::{debug, error, info, trace, warn};
 
 mod enowars;
 pub use enowars::EnowarsFetcher;
@@ -89,16 +91,18 @@ pub struct TeamService {
 pub enum FetcherError {
     #[error("reqwest failed")]
     Reqwest(#[from] reqwest::Error),
+    #[error("general error")]
+    // useful for testing
+    General,
 }
 
 /// Implements fetching flagids and hosts
 #[async_trait]
 pub trait Fetcher {
-    type Error: std::error::Error + Send + Sync + Debug + 'static;
     /// services (with flagids)
-    async fn services(&self) -> Result<ServiceMap, Self::Error>;
+    async fn services(&self) -> Result<ServiceMap, FetcherError>;
     /// "backup" raw get all ips
-    async fn ips(&self) -> Result<Vec<String>, Self::Error>;
+    async fn ips(&self) -> Result<Vec<String>, FetcherError>;
 }
 
 // routine
@@ -122,25 +126,21 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     let mut db = Db::new(conn);
 
-    let ips = loop {
-        let result = fetcher.ips().await;
-        if let Ok(f) = result {
-            break f;
-        }
-        info!("Failed {:?} to fetch ips, retrying", result);
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    };
-    ips.into_iter().for_each(|ip| {
+    let ips = Retry::spawn(FibonacciBackoff::from_millis(100), || fetcher.ips())
+        .await
+        .unwrap();
+
+    ips.iter().for_each(|ip| {
         // set default names
-        let name = if Some(&ip) == config.common.nop.as_ref() {
+        let name = if Some(ip) == config.common.nop.as_ref() {
             Some("nop")
-        } else if Some(&ip) == config.common.own.as_ref() {
+        } else if Some(ip) == config.common.own.as_ref() {
             Some("own")
         } else {
             None
         };
 
-        if let Err(e) = db.add_team_checked(&ip, name) {
+        if let Err(e) = db.add_team_checked(ip, name) {
             warn!("Failed to add team: '{ip}'. Error: {}", e);
         }
     });
@@ -149,32 +149,17 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
 
     'outer: loop {
         // wait for new tick
+        trace!("waiting for tick");
         tick_interval.tick().await;
         let tick_number = common.current_tick(chrono::Utc::now());
+
+        info!("tick {}", tick_number);
 
         // get updated info
         let services = 'lp: {
             match tokio::time::timeout(
                 tokio::time::Duration::from_secs(config.common.tick / 2),
-                async {
-                    loop {
-                        let before = std::time::Instant::now();
-                        match tokio::time::timeout(
-                            tokio::time::Duration::from_secs(15),
-                            fetcher.services(),
-                        )
-                        .await
-                        {
-                            Ok(Ok(s)) => break s,
-                            e => {
-                                let delta = before.elapsed();
-                                info!("Failed fetching {:?}: after {:?}", e, delta);
-                                // wait 1s before retrying
-                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                            }
-                        }
-                    }
-                },
+                Retry::spawn(FibonacciBackoff::from_millis(10), || fetcher.services()),
             )
             .await
             {
@@ -185,6 +170,9 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                 }
             };
         };
+
+        // if we are here, the resulting type isn't Err (if it was, it would've retired)
+        let services = services.unwrap();
 
         // rename?
         let services = if let Some(ref rename) = config.common.rename {
@@ -211,31 +199,14 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             continue;
         }
 
-        info!("tick {}", tick_number);
+        info!("tick {} fetched data", tick_number);
 
         let mut target_skipped = 0;
         let mut target_tried = 0;
 
-        // services without flagid
-        let all_ips = loop {
-            let result = fetcher.ips().await;
-            if let Ok(f) = result {
-                break f;
-            }
-            info!("Failed {:?} to fetch ips, retrying", result);
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        };
-
+        // servicess without flagids
         for service_name in &common.services_without_flagid {
-            for team_ip in &all_ips {
-                let conn = &mut match db_pool.get() {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        error!("Could not acquire a database connection: {}", e);
-                        continue;
-                    }
-                };
-
+            for team_ip in &ips {
                 let inserter = TargetInserter {
                     flag_id: String::from(""),
                     service: service_name.to_owned(),
@@ -243,8 +214,6 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     created_at: chrono::Utc::now().naive_utc(),
                     target_tick: tick_number as i32,
                 };
-
-                let mut db = Db::new(conn);
 
                 match db.add_target(&inserter) {
                     Ok(_) => (),
@@ -296,16 +265,6 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                             target_tick: *tick,
                         };
 
-                        let conn = &mut match db_pool.get() {
-                            Ok(conn) => conn,
-                            Err(e) => {
-                                error!("Could not acquire a database connection: {}", e);
-                                continue;
-                            }
-                        };
-
-                        let mut db = Db::new(conn);
-
                         match db.add_target(&inserter) {
                             Ok(_) => (),
                             Err(e) => {
@@ -316,9 +275,8 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     }
                 }
             }
-
-            debug!("{} targets added, skipped {}", target_tried, target_skipped);
         }
+        debug!("{} targets added, skipped {}", target_tried, target_skipped);
     }
 }
 

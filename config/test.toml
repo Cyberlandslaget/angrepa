@@ -5,6 +5,7 @@ tick = 30
 flag_validity = 10
 # service names, if renamed, then the name they are renamed to
 services = ["testservice", "otherservice"]
+services_without_flagid = []
 # optional
 nop = "10.0.1.1"
 own = "10.0.4.1"

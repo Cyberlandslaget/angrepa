@@ -5,6 +5,7 @@ use diesel::r2d2::Pool;
 use diesel::PgConnection;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
+use tracing::info;
 
 use angrepa::get_connection_pool;
 
@@ -34,10 +35,11 @@ pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &str)
             CorsLayer::new()
                 .allow_methods(Any)
                 .allow_origin(Any)
+                .allow_private_network(true)
                 .allow_headers(Any),
         );
 
-    tracing::info!("Webserver started on {addr}");
+    info!("Webserver started on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
