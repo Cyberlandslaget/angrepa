@@ -1,0 +1,38 @@
+[common]
+start = "2023-11-23T8:30:00Z"
+format = 'ey[\w-]*\.ey\w*.\w*'
+tick = 120
+flag_validity = 5
+services = []
+services_without_flagid = ["telemetry", "worldchat"]
+
+#[common.rename]
+#"media library Checker" = "media library"
+
+own = '10.10.8.2'
+nop = '10.10.17.2'
+
+[manager]
+submitter_name = 'dctf'
+fetcher_name = 'statisk'
+[manager.submitter]
+url = "https://api.cyber-edu.co/v1/domain/dctf23-final/challenge/submit-ad-attempt"
+cookie = "cyberedu_session=eyJpdiI6IkJZSGVXWnB0eVVFTVRMMGZNdVlLdmc9PSIsInZhbHVlIjoid2FxeE4xZHQ5eVJmeDdEaDg0bjFVbFlweUxNRHAvbGhkNTZWUEZoUXdIM1hTOHlmL0tJekJsSlpmNnlXVnBQcjlMQWQxL003eHFsMGtoNzFJWU5KbzNKMmlmdDhvK1BXS0hVSUtmSGJ3ZmdzcFRobElhYWNudENBVzlyR1JmZE8iLCJtYWMiOiJiNDhmZTIzNzFjMThjZmExOGY1MmM1ZjQ2M2RkYzBhNTdiNTJjM2JhYWQ3ZDdmNGE1NjUwODZlMDZjYTBlN2VhIiwidGFnIjoiIn0="
+
+[manager.fetcher]
+ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+#teams = 'https://ad.ctf.ecsc.no/competition/teams.json'
+#scoreboard = 'https://ad.ctf.ecsc.no/competition/scoreboard-v2/scoreboard_current.json'
+
+# there are two different formats in the docs...
+format = '10.10.{x}.2'
+
+[runner]
+http_server = "[::]:8000"
+ws_server = "[::]:8001"
+
+[database]
+username = "angrepa"
+password = "a"
+host = "localhost"
+db = "angrepa"

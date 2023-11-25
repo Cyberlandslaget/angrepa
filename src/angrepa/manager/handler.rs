@@ -5,7 +5,7 @@ use diesel::{
 };
 use std::collections::HashSet;
 use tokio::spawn;
-use tracing::info;
+use tracing::{info, trace};
 
 use super::submitter::{FlagStatus, Submitter};
 
@@ -69,8 +69,11 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
             flag_strings.push(flag.text);
         }
 
-        let conn = db_pool.get().unwrap();
-
-        spawn(submit(submitter.clone(), flag_strings, conn));
+        let chunks = flag_strings.chunks(150);
+        trace!("chunk len {}", chunks.len());
+        for flags in chunks {
+            let conn = db_pool.get().unwrap();
+            spawn(submit(submitter.clone(), flags.to_vec(), conn));
+        }
     }
 }

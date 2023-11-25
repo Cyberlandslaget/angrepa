@@ -37,6 +37,9 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
             Submitters::Faust(submitter) => {
                 handler::run(submitter, &db_url).await;
             }
+            Submitters::Dctf(submitter) => {
+                handler::run(submitter, &db_url).await;
+            }
         }
     });
 
@@ -48,6 +51,7 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
             fetcher::Fetchers::Enowars(fetcher) => fetcher::run(fetcher, &config).await,
             fetcher::Fetchers::Faust(fetcher) => fetcher::run(fetcher, &config).await,
             fetcher::Fetchers::Dummy(fetcher) => fetcher::run(fetcher, &config).await,
+            fetcher::Fetchers::Statisk(fetcher) => fetcher::run(fetcher, &config).await,
         };
     });
 

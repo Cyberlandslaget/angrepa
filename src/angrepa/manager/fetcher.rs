@@ -11,6 +11,8 @@ use tokio_retry::strategy::FibonacciBackoff;
 use tokio_retry::Retry;
 use tracing::{debug, error, info, trace, warn};
 
+mod statisk;
+pub use statisk::StatiskFetcher;
 mod enowars;
 pub use enowars::EnowarsFetcher;
 mod dummy;
@@ -41,6 +43,7 @@ pub enum Fetchers {
     Enowars(EnowarsFetcher),
     Faust(FaustFetcher),
     Dummy(DummyFetcher),
+    Statisk(StatiskFetcher),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -337,6 +340,23 @@ impl Fetchers {
                     .to_owned();
 
                 Ok(Self::Enowars(EnowarsFetcher::new(endpoint, ips_endpoint)))
+            }
+            "statisk" => {
+                let ids = config
+                    .manager
+                    .fetcher
+                    .get("ids")
+                    .ok_or(eyre!("Statisk fetcher requires ip endpoint"))?
+                    .as_array()
+                    .ok_or(eyre!("Statisk fetcher requires ip endpoint be an array"))?
+                    .to_owned();
+
+                let ids = ids
+                    .iter()
+                    .map(|id| id.as_integer().unwrap() as u8)
+                    .collect::<Vec<_>>();
+
+                Ok(Self::Statisk(StatiskFetcher { ids }))
             }
             _ => Err(eyre!("Unknown fetcher {}", config.manager.fetcher_name)),
         }

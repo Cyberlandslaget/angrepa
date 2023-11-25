@@ -2,11 +2,10 @@ use std::{str::FromStr, time::Instant};
 
 use super::{FlagStatus, SubmitError, Submitter};
 use async_trait::async_trait;
-use serde::Deserialize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tracing::{debug, warn};
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct FaustSubmitter {
     host: String,
 }
