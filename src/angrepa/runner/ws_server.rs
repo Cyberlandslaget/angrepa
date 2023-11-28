@@ -56,14 +56,13 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         info!("Spawned DB listener");
 
         let db_pool = get_connection_pool(&config.database.url()).unwrap();
+        let mut conn = db_pool.get().unwrap();
+        let mut db = Db::new(&mut conn);
 
         loop {
             while let Ok(notification) = listener.recv().await {
                 match from_str::<DbTrigger>(notification.payload()) {
                     Ok(data) => {
-                        let mut conn = db_pool.get().unwrap();
-                        let mut db = Db::new(&mut conn);
-
                         match data.table.as_str() {
                             "exploit" => {
                                 let exp = db.exploit(data.id).unwrap();
