@@ -21,7 +21,7 @@ struct QueryPage {
 
 // GET /logs/exploits
 async fn exploits_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    match state.sqlx.exploits().await {
+    match state.db.exploits().await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -36,7 +36,7 @@ async fn exploit_one(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> (StatusCode, Json<Value>) {
-    match state.sqlx.exploit(id).await {
+    match state.db.exploit(id).await {
         Ok(Some(exp)) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Ok(None) => (
             StatusCode::NOT_FOUND,
@@ -58,7 +58,7 @@ async fn exploit_flags(
 ) -> (StatusCode, Json<Value>) {
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match state.sqlx.exploit_flags_since(id, since).await {
+    match state.db.exploit_flags_since(id, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -75,7 +75,7 @@ async fn flags(
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
     let flags =
-        match state.sqlx.flags_since_extended(since).await {
+        match state.db.flags_since_extended(since).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -106,7 +106,7 @@ async fn flags_by_id(
     Json(payload): Json<FlagIdVector>,
 ) -> (StatusCode, Json<Value>) {
     let flags =
-        match state.sqlx.flags_by_id_extended(&payload.ids).await {
+        match state.db.flags_by_id_extended(&payload.ids).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -133,7 +133,7 @@ async fn executions(
 ) -> (StatusCode, Json<Value>) {
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    let executions = match state.sqlx.executions_since_extended(since).await {
+    let executions = match state.db.executions_since_extended(since).await {
         Ok(executions) => executions,
         Err(e) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -158,7 +158,7 @@ async fn service_exploits(
     State(state): State<Arc<AppState>>,
     Path(service): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    match state.sqlx.exploits_for_service(&service).await {
+    match state.db.exploits_for_service(&service).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -176,7 +176,7 @@ async fn service_flags(
 ) -> (StatusCode, Json<Value>) {
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match state.sqlx.flags_from_service_since(&service, since).await {
+    match state.db.flags_from_service_since(&service, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -194,7 +194,7 @@ async fn service_executions(
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
     match state
-        .sqlx
+        .db
         .executions_for_service_since(&service, since)
         .await
     {

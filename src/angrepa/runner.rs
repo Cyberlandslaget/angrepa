@@ -12,7 +12,7 @@ use tracing::{info, warn};
 
 use angrepa::{
     config::{self},
-    db::SDb,
+    db::Db,
     models::{ExecutionInserter, FlagInserter},
 };
 
@@ -32,7 +32,7 @@ impl Runner {
             .connect(&config.database.url())
             .await
             .unwrap();
-        let db = SDb::wrap(pool);
+        let db = Db::wrap(pool);
 
         let docker = Docker::connect_with_local_defaults().unwrap();
 

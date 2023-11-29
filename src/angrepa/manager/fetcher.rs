@@ -1,5 +1,5 @@
 use angrepa::config;
-use angrepa::db::SDb;
+use angrepa::db::Db;
 use angrepa::types::TargetInserter;
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
@@ -117,7 +117,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let offset = tokio::time::Duration::from_secs(common.tick) / 10;
     let mut tick_interval = common.get_tick_interval(offset).await.unwrap();
 
-    let db = SDb::wrap(
+    let db = Db::wrap(
         PgPoolOptions::new()
             .connect(&config.database.url())
             .await

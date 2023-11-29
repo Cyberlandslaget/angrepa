@@ -1,6 +1,6 @@
 use angrepa::config;
 use angrepa::data_types::{ExecutionData, FlagData};
-use angrepa::db::SDb;
+use angrepa::db::Db;
 use bus::Bus;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -54,7 +54,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         let mut listener = PgListener::connect_with(&sqlxpool).await.unwrap();
         listener.listen("db_notifications").await.unwrap();
 
-        let db = SDb::wrap(sqlxpool);
+        let db = Db::wrap(sqlxpool);
 
         info!("Spawned DB listener");
 

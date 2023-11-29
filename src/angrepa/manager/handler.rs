@@ -1,4 +1,4 @@
-use angrepa::db::SDb;
+use angrepa::db::Db;
 use sqlx::postgres::PgPoolOptions;
 use std::collections::HashSet;
 use tokio::spawn;
@@ -10,7 +10,7 @@ use super::submitter::{FlagStatus, Submitter};
 async fn submit(
     submitter: impl Submitter + Send + Sync + Clone + 'static,
     flag_strings: Vec<String>,
-    db: SDb,
+    db: Db,
 ) {
     let results = submitter.submit(flag_strings).await.unwrap();
 
@@ -34,7 +34,7 @@ async fn submit(
 }
 
 pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
-    let db = SDb::wrap(PgPoolOptions::new().connect(db_url).await.unwrap());
+    let db = Db::wrap(PgPoolOptions::new().connect(db_url).await.unwrap());
 
     // submit every 3s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(3));

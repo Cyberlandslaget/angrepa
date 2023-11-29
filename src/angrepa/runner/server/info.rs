@@ -25,7 +25,7 @@ async fn internal_tick(State(state): State<Arc<AppState>>) -> (StatusCode, Json<
 
 // GET /info/teams
 async fn teams(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    match state.sqlx.teams().await {
+    match state.db.teams().await {
         Ok(teams) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": teams}).into(),
@@ -42,7 +42,7 @@ async fn team(
     State(state): State<Arc<AppState>>,
     Path(ip): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    match state.sqlx.team_by_ip(&ip).await {
+    match state.db.team_by_ip(&ip).await {
         Ok(Some(team)) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": team}).into(),
@@ -69,7 +69,7 @@ async fn team_set_name(
     State(state): State<Arc<AppState>>,
     extract::Json(ipname): extract::Json<JsonConfig>,
 ) -> (StatusCode, Json<Value>) {
-    match state.sqlx.team_set_name(&ipname.ip, &ipname.name).await {
+    match state.db.team_set_name(&ipname.ip, &ipname.name).await {
         Ok(()) => (StatusCode::OK, json!({ "status": "ok"}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,7 +81,7 @@ async fn team_set_name(
 
 // GET /info/services
 async fn services(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    match state.sqlx.services().await {
+    match state.db.services().await {
         Ok(services) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": services}).into(),

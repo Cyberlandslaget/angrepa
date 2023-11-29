@@ -1,5 +1,5 @@
 use angrepa::config;
-use angrepa::db::SDb;
+use angrepa::db::Db;
 use axum::{http::StatusCode, routing::get, Router};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
@@ -12,18 +12,19 @@ mod logs;
 mod templates;
 
 pub struct AppState {
-    sqlx: SDb,
+    db: Db,
     config: config::Root,
 }
 
 pub async fn run(addr: std::net::SocketAddr, config: config::Root) {
-    let pool = PgPoolOptions::new()
-        .connect(&config.database.url())
-        .await
-        .unwrap();
-    let sdb = SDb::wrap(pool);
+    let db = Db::wrap(
+        PgPoolOptions::new()
+            .connect(&config.database.url())
+            .await
+            .unwrap(),
+    );
 
-    let app_state = Arc::new(AppState { sqlx: sdb, config });
+    let app_state = Arc::new(AppState { db, config });
 
     let app = Router::new()
         .route("/ping", get(|| async { (StatusCode::OK, "pong") }))

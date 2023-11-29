@@ -6,11 +6,11 @@ use chrono::NaiveDateTime;
 use lexical_sort::natural_lexical_cmp;
 
 #[derive(Clone)]
-pub struct SDb {
+pub struct Db {
     conn: sqlx::Pool<sqlx::Postgres>,
 }
 
-impl SDb {
+impl Db {
     pub fn wrap(conn: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self { conn }
     }
