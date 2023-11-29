@@ -7,9 +7,6 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
 use lexical_sort::natural_lexical_cmp;
-
-mod data;
-
 pub struct SDb {
     conn: sqlx::Pool<sqlx::Postgres>,
 }
@@ -117,6 +114,14 @@ impl SDb {
         )
     }
 
+    pub async fn exploits_for_service(&self, service: &str) -> Result<Vec<Exploit>, DbError> {
+        Ok(
+            sqlx::query_as!(Exploit, "SELECT * FROM exploit WHERE service = $1", service)
+                .fetch_all(&self.conn)
+                .await?,
+        )
+    }
+
     // does not check the exploit exists
     pub async fn exploit_flags_since(
         &self,
@@ -159,6 +164,24 @@ impl SDb {
                 .fetch_all(&self.conn)
                 .await?,
         )
+    }
+
+    pub async fn flags_from_service_since(
+        &self,
+        service: &str,
+        since: NaiveDateTime,
+    ) -> Result<Vec<Flag>, DbError> {
+        let exploits = self.exploits_for_service(service).await?;
+        let exploit_ids: Vec<_> = exploits.iter().map(|e| e.id).collect();
+
+        Ok(sqlx::query_as!(
+            Flag,
+            "SELECT * FROM flag WHERE timestamp >= $1 AND exploit_id = ANY($2)",
+            since,
+            &exploit_ids
+        )
+        .fetch_all(&self.conn)
+        .await?)
     }
 
     pub async fn flags_since_extended(
@@ -228,6 +251,24 @@ impl SDb {
             Execution,
             "SELECT * FROM execution WHERE started_at >= $1",
             since,
+        )
+        .fetch_all(&self.conn)
+        .await?)
+    }
+
+    pub async fn executions_for_service_since(
+        &self,
+        service: &str,
+        since: NaiveDateTime,
+    ) -> Result<Vec<Execution>, DbError> {
+        let exploits = self.exploits_for_service(service).await?;
+        let exploit_ids: Vec<_> = exploits.iter().map(|e| e.id).collect();
+
+        Ok(sqlx::query_as!(
+            Execution,
+            "SELECT * FROM execution WHERE started_at >= $1 AND exploit_id = ANY($2)",
+            since,
+            &exploit_ids
         )
         .fetch_all(&self.conn)
         .await?)

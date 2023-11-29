@@ -1,3 +1,4 @@
+use angrepa::data_types::{ExecutionData, FlagData};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -8,11 +9,6 @@ use chrono::NaiveDateTime;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
-
-use angrepa::{
-    data_types::{ExecutionData, FlagData},
-    db::Db,
-};
 
 use super::AppState;
 
@@ -162,10 +158,7 @@ async fn service_exploits(
     State(state): State<Arc<AppState>>,
     Path(service): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.service_exploits(&service) {
+    match state.sqlx.exploits_for_service(&service).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -181,12 +174,9 @@ async fn service_flags(
     Path(service): Path<String>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.service_flags_since(&service, since) {
+    match state.sqlx.flags_from_service_since(&service, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -201,12 +191,13 @@ async fn service_executions(
     Path(service): Path<String>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.service_executions_since(&service, since) {
+    match state
+        .sqlx
+        .executions_for_service_since(&service, since)
+        .await
+    {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
