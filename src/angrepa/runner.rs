@@ -11,8 +11,9 @@ use tracing::{info, warn};
 
 use angrepa::{
     config::{self},
+    db::Db,
     db_connect,
-    inserter::{FlagInserter, ExecutionInserter},
+    inserter::{ExecutionInserter, FlagInserter},
 };
 
 mod exploit;
@@ -26,9 +27,12 @@ mod ws_server;
 pub struct Runner {}
 
 impl Runner {
-    async fn tick(config: config::Root, flag_regex: Regex, earliest_valid_time: NaiveDateTime) {
-        let db = db_connect(&config.database.url()).await.unwrap();
-
+    async fn tick(
+        db: Db,
+        config: config::Root,
+        flag_regex: Regex,
+        earliest_valid_time: NaiveDateTime,
+    ) {
         let docker = Docker::connect_with_local_defaults().unwrap();
 
         let targets = match db
@@ -137,6 +141,8 @@ impl Runner {
 
         let flag_regex = Regex::new(&config.common.format).unwrap();
 
+        let db = db_connect(&config.database.url()).await.unwrap();
+
         loop {
             tick_interval.tick().await;
 
@@ -152,8 +158,9 @@ impl Runner {
                 - chrono::Duration::from_std(flag_validity_period).unwrap();
 
             let config = config.clone();
+            let db = db.clone();
 
-            spawn(async move { Runner::tick(config, flag_regex, earliest_valid_time).await });
+            spawn(async move { Runner::tick(db, config, flag_regex, earliest_valid_time).await });
         }
     }
 }
