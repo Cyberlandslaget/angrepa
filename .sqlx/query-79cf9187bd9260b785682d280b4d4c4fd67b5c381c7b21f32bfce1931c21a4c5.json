@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM exploit WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "service",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "blacklist",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "docker_image",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "docker_containers",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "pool_size",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "79cf9187bd9260b785682d280b4d4c4fd67b5c381c7b21f32bfce1931c21a4c5"
+}

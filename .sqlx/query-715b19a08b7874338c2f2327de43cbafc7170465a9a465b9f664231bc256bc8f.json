@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO execution (exploit_id, output, exit_code, started_at, finished_at, target_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "exploit_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "output",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "started_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "finished_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "Int4",
+        "Timestamp",
+        "Timestamp",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "715b19a08b7874338c2f2327de43cbafc7170465a9a465b9f664231bc256bc8f"
+}

@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM execution WHERE started_at >= $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "exploit_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "output",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "started_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "finished_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5b968d69192f6fb2582b5b6b94eb7ed299c92c43a9dcb90f4c28089fb2525328"
+}

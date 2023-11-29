@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO team (ip, name) VALUES ($1, $2) ON CONFLICT (ip) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a29ada6fa683b956b277cc3cda69dbbfbddaae0e309f072bd48fc419414c562e"
+}

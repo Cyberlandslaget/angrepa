@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                (e.id, e.exploit_id, e.output, e.exit_code, e.started_at, e.finished_at, e.target_id) as \"execution!: Execution\",\n                (t.id, t.flag_id, t.service, t.team, t.created_at, t.target_tick) as \"target!: Target\"\n            FROM\n                execution as e\n                INNER JOIN target as t ON e.target_id = t.id\n            WHERE\n                e.id = ANY($1)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "execution!: Execution",
+        "type_info": "Record"
+      },
+      {
+        "ordinal": 1,
+        "name": "target!: Target",
+        "type_info": "Record"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "a51bb41be0c6d64bb351dfaccdcf977bb5f511ca9743c581f3c836f0a13a62c9"
+}

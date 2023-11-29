@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                *\n            FROM\n                execution\n            WHERE\n                finished_at >= $1 AND exploit_id = ANY($2)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "exploit_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "output",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "started_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "finished_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamp",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "86b99278f97185c9772ba73305005bda823097a98ce2c0dde7704a0c2292867d"
+}

@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM flag WHERE exploit_id = $1 AND timestamp >= $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "submitted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "timestamp",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "execution_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "exploit_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f824d11b8bc1d83e2004f7df0eab0e77ff95b2f258906d18dd5accc816dfc840"
+}

@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO target (flag_id, service, team, created_at, target_tick) VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e74848b057c7b55948a02939f0ea132889c03af8c36ddd7b57fd6c2a312cb7d9"
+}
