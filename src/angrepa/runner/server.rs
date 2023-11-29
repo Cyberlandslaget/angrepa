@@ -1,15 +1,10 @@
 use angrepa::config;
 use angrepa::db::SDb;
 use axum::{http::StatusCode, routing::get, Router};
-use diesel::r2d2::ConnectionManager;
-use diesel::r2d2::Pool;
-use diesel::PgConnection;
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
-
-use angrepa::get_connection_pool;
 
 mod exploit;
 mod info;
@@ -17,24 +12,18 @@ mod logs;
 mod templates;
 
 pub struct AppState {
-    db: Pool<ConnectionManager<PgConnection>>,
-    // sqlx: sqlx::Pool<sqlx::Postgres>,
     sqlx: SDb,
     config: config::Root,
 }
 
-pub async fn run(addr: std::net::SocketAddr, config: config::Root, db_url: &str) {
+pub async fn run(addr: std::net::SocketAddr, config: config::Root) {
     let pool = PgPoolOptions::new()
         .connect(&config.database.url())
         .await
         .unwrap();
     let sdb = SDb::wrap(pool);
 
-    let app_state = Arc::new(AppState {
-        db: get_connection_pool(db_url).unwrap(),
-        sqlx: sdb,
-        config,
-    });
+    let app_state = Arc::new(AppState { sqlx: sdb, config });
 
     let app = Router::new()
         .route("/ping", get(|| async { (StatusCode::OK, "pong") }))

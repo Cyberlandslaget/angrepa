@@ -1,8 +1,5 @@
-use angrepa::{db::Db, db_connect, get_connection_pool};
-use diesel::{
-    r2d2::{ConnectionManager, PooledConnection},
-    PgConnection,
-};
+use angrepa::db::SDb;
+use sqlx::postgres::PgPoolOptions;
 use std::collections::HashSet;
 use tokio::spawn;
 use tracing::{info, trace};
@@ -13,10 +10,8 @@ use super::submitter::{FlagStatus, Submitter};
 async fn submit(
     submitter: impl Submitter + Send + Sync + Clone + 'static,
     flag_strings: Vec<String>,
-    mut conn: PooledConnection<ConnectionManager<PgConnection>>,
+    db: SDb,
 ) {
-    let mut db = Db::new(&mut conn);
-
     let results = submitter.submit(flag_strings).await.unwrap();
 
     let accepted = results
@@ -33,26 +28,25 @@ async fn submit(
 
     for (flag_str, status) in results {
         db.update_flag_status(&flag_str, &status.to_string())
+            .await
             .unwrap();
     }
 }
 
 pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
-    let mut conn = db_connect(db_url).unwrap();
-    let mut db = Db::new(&mut conn);
+    let db = SDb::wrap(PgPoolOptions::new().connect(db_url).await.unwrap());
 
     // submit every 3s
     let mut send_signal = tokio::time::interval(std::time::Duration::from_secs(3));
     send_signal.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     let mut seen_flags: HashSet<String> = HashSet::new();
-    let db_pool = get_connection_pool(db_url).unwrap();
 
     loop {
         send_signal.tick().await;
 
         // extract out flags from the queue, then delete them
-        let flags = db.get_unsubmitted_flags().unwrap();
+        let flags = db.get_unsubmitted_flags().await.unwrap();
         let mut flag_strings: Vec<String> = Vec::new();
 
         for flag in &flag_strings {
@@ -65,15 +59,15 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
                 continue;
             }
 
-            db.set_flag_submitted(flag.id).unwrap();
+            db.set_flag_submitted(flag.id).await.unwrap();
             flag_strings.push(flag.text);
         }
 
         let chunks = flag_strings.chunks(150);
         trace!("chunk len {}", chunks.len());
         for flags in chunks {
-            let conn = db_pool.get().unwrap();
-            spawn(submit(submitter.clone(), flags.to_vec(), conn));
+            let db = db.clone();
+            spawn(submit(submitter.clone(), flags.to_vec(), db));
         }
     }
 }
