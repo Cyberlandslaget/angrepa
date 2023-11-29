@@ -1,8 +1,6 @@
-use angrepa::config;
-use angrepa::db::Db;
+use angrepa::{config, db_connect};
 use color_eyre::Report;
 use futures::future::join_all;
-use sqlx::postgres::PgPoolOptions;
 use tracing::{info, warn};
 
 mod submitter;
@@ -15,12 +13,7 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config)?;
 
-    let db = Db::wrap(
-        PgPoolOptions::new()
-            .connect(&config.database.url())
-            .await
-            .unwrap(),
-    );
+    let db = db_connect(&config.database.url()).await.unwrap();
 
     // first insert service names
     for service in &config.common.all_services_some_renamed() {

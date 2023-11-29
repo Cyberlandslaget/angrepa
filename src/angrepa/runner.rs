@@ -6,14 +6,13 @@ use regex::Regex;
 
 use color_eyre::Report;
 use futures::{future::join_all, StreamExt};
-use sqlx::postgres::PgPoolOptions;
 use tokio::{spawn, time::timeout};
 use tracing::{info, warn};
 
 use angrepa::{
     config::{self},
-    db::Db,
-    models::{ExecutionInserter, FlagInserter},
+    db_connect,
+    inserter::{FlagInserter, ExecutionInserter},
 };
 
 mod exploit;
@@ -28,11 +27,7 @@ pub struct Runner {}
 
 impl Runner {
     async fn tick(config: config::Root, flag_regex: Regex, earliest_valid_time: NaiveDateTime) {
-        let pool = PgPoolOptions::new()
-            .connect(&config.database.url())
-            .await
-            .unwrap();
-        let db = Db::wrap(pool);
+        let db = db_connect(&config.database.url()).await.unwrap();
 
         let docker = Docker::connect_with_local_defaults().unwrap();
 
@@ -54,7 +49,7 @@ impl Runner {
                 .await
                 .unwrap();
 
-            let blacklist: HashSet<_> = exploit.blacklist.iter().flatten().cloned().collect();
+            let blacklist: HashSet<_> = exploit.blacklist.iter().collect();
 
             for target in targets {
                 if blacklist.contains(&target.team) {

@@ -1,7 +1,4 @@
-use crate::{
-    models::ExploitModel,
-    types::{Execution, Flag, Target},
-};
+use crate::types::{Execution, Exploit, Flag, Target};
 use chrono::NaiveDateTime;
 use tabled::Tabled;
 
@@ -79,7 +76,7 @@ pub struct ExploitData {
 }
 
 impl ExploitData {
-    pub fn from_model(exploit: ExploitModel) -> Self {
+    pub fn from_model(exploit: Exploit) -> Self {
         Self {
             id: exploit.id,
             name: exploit.name,
@@ -88,7 +85,6 @@ impl ExploitData {
             blacklist: exploit
                 .blacklist
                 .into_iter()
-                .flatten()
                 .collect::<Vec<String>>()
                 .join(", "),
             pool_size: exploit.pool_size,

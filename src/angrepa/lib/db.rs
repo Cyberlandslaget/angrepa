@@ -1,5 +1,5 @@
-use crate::models::{
-    ExecutionInserter, ExploitInserter, ExploitModel, FlagInserter, FlagModel, TargetModel,
+use crate::inserter::{
+    ExecutionInserter, ExploitInserter, FlagInserter,
 };
 use crate::types::{Execution, Exploit, Flag, Service, Target, TargetInserter, Team};
 use chrono::NaiveDateTime;
@@ -395,7 +395,7 @@ impl Db {
     pub async fn get_exploitable_targets_updating(
         &self,
         oldest: chrono::NaiveDateTime,
-    ) -> Result<Vec<(Vec<TargetModel>, ExploitModel)>, DbError> {
+    ) -> Result<Vec<(Vec<Target>, Exploit)>, DbError> {
         // to be exploitable a target must
         // 1. not already be exploited by the specific exploit
         //       (but can be exploited by another exploit)
@@ -473,7 +473,7 @@ impl Db {
             target_exploits.push((targets, exploit.clone()));
         }
 
-        todo!();
+        Ok(target_exploits)
     }
 
     // == flags ==
@@ -511,9 +511,9 @@ impl Db {
         Ok(())
     }
 
-    pub async fn get_unsubmitted_flags(&self) -> Result<Vec<FlagModel>, DbError> {
+    pub async fn get_unsubmitted_flags(&self) -> Result<Vec<Flag>, DbError> {
         Ok(
-            sqlx::query_as!(FlagModel, "SELECT * FROM flag WHERE submitted = false")
+            sqlx::query_as!(Flag, "SELECT * FROM flag WHERE submitted = false")
                 .fetch_all(&self.conn)
                 .await?,
         )

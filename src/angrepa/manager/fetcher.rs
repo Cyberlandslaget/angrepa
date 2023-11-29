@@ -1,11 +1,9 @@
-use angrepa::config;
-use angrepa::db::Db;
 use angrepa::types::TargetInserter;
+use angrepa::{config, db_connect};
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPoolOptions;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use tokio_retry::strategy::FibonacciBackoff;
@@ -117,12 +115,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let offset = tokio::time::Duration::from_secs(common.tick) / 10;
     let mut tick_interval = common.get_tick_interval(offset).await.unwrap();
 
-    let db = Db::wrap(
-        PgPoolOptions::new()
-            .connect(&config.database.url())
-            .await
-            .unwrap(),
-    );
+    let db = db_connect(&config.database.url()).await.unwrap();
 
     let ips = Retry::spawn(FibonacciBackoff::from_millis(100), || fetcher.ips())
         .await

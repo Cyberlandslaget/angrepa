@@ -32,7 +32,7 @@ pub struct TargetInserter {
     pub target_tick: i32,
 }
 
-#[derive(sqlx::FromRow, serde::Serialize, Debug, Clone)]
+#[derive(sqlx::FromRow, serde::Serialize, Debug, Clone, serde::Deserialize)]
 pub struct Exploit {
     pub id: i32,
     pub name: String,

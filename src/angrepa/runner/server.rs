@@ -1,7 +1,6 @@
-use angrepa::config;
+use angrepa::{config, db_connect};
 use angrepa::db::Db;
 use axum::{http::StatusCode, routing::get, Router};
-use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
@@ -17,12 +16,7 @@ pub struct AppState {
 }
 
 pub async fn run(addr: std::net::SocketAddr, config: config::Root) {
-    let db = Db::wrap(
-        PgPoolOptions::new()
-            .connect(&config.database.url())
-            .await
-            .unwrap(),
-    );
+    let db = db_connect(&config.database.url()).await.unwrap();
 
     let app_state = Arc::new(AppState { db, config });
 
