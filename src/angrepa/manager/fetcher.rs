@@ -1,10 +1,11 @@
-use angrepa::db::Db;
-use angrepa::get_connection_pool;
-use angrepa::{config, models::TargetInserter};
+use angrepa::config;
+use angrepa::db::SDb;
+use angrepa::types::TargetInserter;
 use async_trait::async_trait;
 use color_eyre::{eyre::eyre, Report};
 use lexical_sort::natural_lexical_cmp;
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgPoolOptions;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use tokio_retry::strategy::FibonacciBackoff;
@@ -116,24 +117,18 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
     let offset = tokio::time::Duration::from_secs(common.tick) / 10;
     let mut tick_interval = common.get_tick_interval(offset).await.unwrap();
 
-    let db_url = config.database.url();
-    let db_pool = match get_connection_pool(&db_url) {
-        Ok(db) => db,
-        Err(e) => return warn!("Could not acquire a database pool: {e}"),
-    };
-
-    let conn = &mut match db_pool.get() {
-        Ok(conn) => conn,
-        Err(e) => return warn!("Could not acquire a database connection: {}", e),
-    };
-
-    let mut db = Db::new(conn);
+    let db = SDb::wrap(
+        PgPoolOptions::new()
+            .connect(&config.database.url())
+            .await
+            .unwrap(),
+    );
 
     let ips = Retry::spawn(FibonacciBackoff::from_millis(100), || fetcher.ips())
         .await
         .unwrap();
 
-    ips.iter().for_each(|ip| {
+    for ip in &ips {
         // set default names
         let name = if Some(ip) == config.common.nop.as_ref() {
             Some("nop")
@@ -143,10 +138,10 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
             None
         };
 
-        if let Err(e) = db.add_team_checked(ip, name) {
+        if let Err(e) = db.add_team_checked(ip, name).await {
             warn!("Failed to add team: '{ip}'. Error: {}", e);
         }
-    });
+    }
 
     let mut seen_flagids: HashSet<(String, String, String)> = HashSet::new();
 
@@ -218,7 +213,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                     target_tick: tick_number as i32,
                 };
 
-                match db.add_target(&inserter) {
+                match db.add_target(&inserter).await {
                     Ok(_) => (),
                     Err(e) => {
                         error!("Could not add target: {}", e);
@@ -268,7 +263,7 @@ pub async fn run(fetcher: impl Fetcher, config: &config::Root) {
                             target_tick: *tick,
                         };
 
-                        match db.add_target(&inserter) {
+                        match db.add_target(&inserter).await {
                             Ok(_) => (),
                             Err(e) => {
                                 error!("Could not add target: {}", e);

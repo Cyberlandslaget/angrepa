@@ -1,4 +1,7 @@
-use crate::models::{ExecutionModel, ExploitModel, FlagModel, TargetModel};
+use crate::{
+    models::ExploitModel,
+    types::{Execution, Flag, Target},
+};
 use chrono::NaiveDateTime;
 use tabled::Tabled;
 
@@ -18,7 +21,7 @@ pub struct ExecutionData {
 }
 
 impl ExecutionData {
-    pub fn from_models(exec: ExecutionModel, target: TargetModel) -> Self {
+    pub fn from_parts(exec: Execution, target: Target) -> Self {
         Self {
             exit_code: exec.exit_code,
             exploit_id: exec.exploit_id,
@@ -49,7 +52,7 @@ pub struct FlagData {
 }
 
 impl FlagData {
-    pub fn from_models(flag: FlagModel, target: TargetModel) -> Self {
+    pub fn from_parts(flag: Flag, target: Target) -> Self {
         Self {
             execution_id: flag.execution_id,
             exploit_id: flag.exploit_id,

@@ -25,10 +25,7 @@ struct QueryPage {
 
 // GET /logs/exploits
 async fn exploits_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.exploits() {
+    match state.sqlx.exploits().await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -43,11 +40,12 @@ async fn exploit_one(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.exploit(id) {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+    match state.sqlx.exploit(id).await {
+        Ok(Some(exp)) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            json!({ "status": "error", "message": "not found" }).into(),
+        ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             json!({ "status": "error", "message": format!("Failed to get exploit: {:?}", e) })
@@ -62,12 +60,9 @@ async fn exploit_flags(
     Path(id): Path<i32>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.exploit_flags_since(id, since) {
+    match state.sqlx.exploit_flags_since(id, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,13 +76,10 @@ async fn flags(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
     let flags =
-        match db.flags_since_extended(since) {
+        match state.sqlx.flags_since_extended(since).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -98,7 +90,7 @@ async fn flags(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
+        .map(|(flag, _exec, target)| FlagData::from_parts(flag, target))
         .collect();
 
     (
@@ -117,11 +109,8 @@ async fn flags_by_id(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FlagIdVector>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let flags =
-        match db.flags_by_id_extended(payload.ids) {
+        match state.sqlx.flags_by_id_extended(&payload.ids).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -132,7 +121,7 @@ async fn flags_by_id(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
+        .map(|(flag, _exec, target)| FlagData::from_parts(flag, target))
         .collect();
 
     (
@@ -146,12 +135,9 @@ async fn executions(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    let executions = match db.executions_since_extended(since) {
+    let executions = match state.sqlx.executions_since_extended(since).await {
         Ok(executions) => executions,
         Err(e) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -162,7 +148,7 @@ async fn executions(
 
     let executions: Vec<ExecutionData> = executions
         .into_iter()
-        .map(|(exec, target, _flag)| ExecutionData::from_models(exec, target))
+        .map(|(exec, target)| ExecutionData::from_parts(exec, target))
         .collect();
 
     (

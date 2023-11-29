@@ -4,6 +4,7 @@ pub mod data_types;
 pub mod db;
 pub mod models;
 pub mod schema;
+pub mod types;
 pub mod wh;
 
 use color_eyre::Report;
