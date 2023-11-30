@@ -1,6 +1,4 @@
-use crate::inserter::{
-    ExecutionInserter, ExploitInserter, FlagInserter,
-};
+use crate::inserter::{ExecutionInserter, ExploitInserter, FlagInserter};
 use crate::types::{Execution, Exploit, Flag, Service, Target, TargetInserter, Team};
 use chrono::NaiveDateTime;
 use lexical_sort::natural_lexical_cmp;
@@ -508,6 +506,20 @@ impl Db {
         )
         .execute(&self.conn)
         .await?;
+        Ok(())
+    }
+
+    pub async fn update_flag_statuses(&self, all: &[(String, String)]) -> Result<(), DbError> {
+        let mut transaction = self.conn.begin().await?;
+
+        for (flag, status) in all {
+            sqlx::query!("UPDATE flag SET status=$2 WHERE text=$1", flag, status)
+                .execute(&mut *transaction)
+                .await?;
+        }
+
+        transaction.commit().await?;
+
         Ok(())
     }
 

@@ -25,11 +25,12 @@ async fn submit(
         );
     }
 
-    for (flag_str, status) in results {
-        db.update_flag_status(&flag_str, &status.to_string())
-            .await
-            .unwrap();
-    }
+    let results: Vec<_> = results
+        .into_iter()
+        .map(|(a, b)| (a, b.to_string()))
+        .collect();
+
+    db.update_flag_statuses(&results).await.unwrap();
 }
 
 pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_url: &str) {
