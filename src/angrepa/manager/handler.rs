@@ -64,7 +64,9 @@ pub async fn run(submitter: impl Submitter + Send + Sync + Clone + 'static, db_u
         }
 
         let chunks = flag_strings.chunks(150);
-        trace!("chunk len {}", chunks.len());
+        if chunks.len() > 1 {
+            trace!("chunk len {}", chunks.len());
+        }
         for flags in chunks {
             let db = db.clone();
             spawn(submit(submitter.clone(), flags.to_vec(), db));
