@@ -1,5 +1,6 @@
-use angrepa::data_types::{ExecutionData, ExploitData, FlagData};
-use angrepa::{config, db::Db, get_connection_pool};
+use angrepa::config;
+use angrepa::data_types::{ExecutionData, FlagData};
+use angrepa::db::Db;
 use bus::Bus;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json};
@@ -53,11 +54,9 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
         let mut listener = PgListener::connect_with(&sqlxpool).await.unwrap();
         listener.listen("db_notifications").await.unwrap();
 
-        info!("Spawned DB listener");
+        let db = Db::wrap(sqlxpool);
 
-        let db_pool = get_connection_pool(&config.database.url()).unwrap();
-        let mut conn = db_pool.get().unwrap();
-        let mut db = Db::new(&mut conn);
+        info!("Spawned DB listener");
 
         loop {
             while let Ok(notification) = listener.recv().await {
@@ -65,8 +64,7 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                     Ok(data) => {
                         match data.table.as_str() {
                             "exploit" => {
-                                let exp = db.exploit(data.id).unwrap();
-                                let exp = ExploitData::from_model(exp.clone());
+                                let exp = db.exploit(data.id).await.unwrap().unwrap();
 
                                 let mut bus = bus.lock().unwrap();
                                 bus.broadcast(
@@ -75,12 +73,11 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                             }
                             "flag" => {
                                 let flag = db
-                                    .flags_by_id_extended(vec![data.id])
+                                    .flags_by_id_extended(&[data.id])
+                                    .await
                                     .unwrap()
                                     .into_iter()
-                                    .map(|(flag, _exec, target)| {
-                                        FlagData::from_models(flag, target)
-                                    })
+                                    .map(|(flag, _exec, target)| FlagData::from_parts(flag, target))
                                     .next() // the first and only flag
                                     .unwrap();
 
@@ -91,12 +88,11 @@ pub async fn run(config: config::Root, addr: std::net::SocketAddr) {
                             }
                             "execution" => {
                                 let exec = db
-                                    .executions_by_id_extended(vec![data.id])
+                                    .executions_by_id_extended(&[data.id])
+                                    .await
                                     .unwrap()
                                     .into_iter()
-                                    .map(|(exec, target, _flag)| {
-                                        ExecutionData::from_models(exec, target)
-                                    })
+                                    .map(|(exec, target)| ExecutionData::from_parts(exec, target))
                                     .next()
                                     .unwrap();
 

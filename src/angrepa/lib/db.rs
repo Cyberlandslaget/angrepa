@@ -1,193 +1,399 @@
-use crate::models::{
-    ExecutionInserter, ExecutionModel, ExploitInserter, ExploitModel, FlagInserter, FlagModel,
-    TargetInserter, TargetModel,
-};
-use diesel::prelude::*;
-use diesel::{ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl};
+use crate::inserter::{ExecutionInserter, ExploitInserter, FlagInserter};
+use crate::types::{Execution, Exploit, Flag, Service, Target, TargetInserter, Team};
+use chrono::NaiveDateTime;
 use lexical_sort::natural_lexical_cmp;
 
-mod data;
-
-pub struct Db<'a> {
-    conn: &'a mut PgConnection,
+#[derive(Clone)]
+pub struct Db {
+    conn: sqlx::Pool<sqlx::Postgres>,
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum DbError {
-    #[error("diesel error")]
-    Diesel(#[from] diesel::result::Error),
-}
-
-impl<'a> Db<'a> {
-    pub fn new(conn: &'a mut PgConnection) -> Self {
+impl Db {
+    pub fn wrap(conn: sqlx::Pool<sqlx::Postgres>) -> Self {
         Self { conn }
     }
 
-    pub fn conn(&self) -> &PgConnection {
-        self.conn
+    // == teams ==
+
+    pub async fn teams(&self) -> Result<Vec<Team>, DbError> {
+        Ok(sqlx::query_as!(Team, "SELECT * FROM team")
+            .fetch_all(&self.conn)
+            .await?)
     }
 
-    // exploits
-
-    pub fn get_exploits(&mut self) -> Result<Vec<ExploitModel>, DbError> {
-        use crate::schema::exploit::dsl::*;
-
-        let exploits = exploit.load::<ExploitModel>(self.conn)?;
-
-        Ok(exploits)
+    pub async fn team_by_ip(&self, ip: &str) -> Result<Option<Team>, DbError> {
+        Ok(
+            sqlx::query_as!(Team, "SELECT * from TEAM WHERE ip = $1", ip)
+                .fetch_optional(&self.conn)
+                .await?,
+        )
     }
 
-    pub fn add_exploit(&mut self, exp: &ExploitInserter) -> Result<ExploitModel, DbError> {
-        use crate::schema::exploit::dsl::*;
-
-        Ok(diesel::insert_into(exploit)
-            .values(exp)
-            .get_result(self.conn)?)
+    // doesn't verify the team exists
+    pub async fn team_set_name(&self, ip: &str, name: &str) -> Result<(), DbError> {
+        sqlx::query!("UPDATE team SET name = $1 WHERE ip = $2", name, ip)
+            .execute(&self.conn)
+            .await?;
+        Ok(())
     }
 
-    pub fn start_exploit(&mut self, target_id: i32) -> Result<(), DbError> {
-        use crate::schema::exploit::dsl::*;
+    // ignores conflicts
+    pub async fn add_team_checked(&self, ip: &str, name: Option<&str>) -> Result<(), DbError> {
+        sqlx::query!(
+            "INSERT INTO team (ip, name) VALUES ($1, $2) ON CONFLICT (ip) DO NOTHING",
+            ip,
+            name
+        )
+        .execute(&self.conn)
+        .await?;
+        Ok(())
+    }
 
-        diesel::update(exploit.filter(id.eq(target_id)))
-            .set(enabled.eq(true))
-            .execute(self.conn)?;
+    // == services ==
+
+    pub async fn services(&self) -> Result<Vec<Service>, DbError> {
+        Ok(sqlx::query_as!(Service, "SELECT * FROM service")
+            .fetch_all(&self.conn)
+            .await?)
+    }
+
+    // ignore dupes
+    pub async fn add_service_checked(&self, name: &str) -> Result<(), DbError> {
+        sqlx::query!(
+            "INSERT INTO service (name) VALUES ($1) ON CONFLICT (name) DO NOTHING",
+            name
+        )
+        .execute(&self.conn)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_service(&self, name: &str) -> Result<Option<Service>, DbError> {
+        Ok(
+            sqlx::query_as!(Service, "SELECT * FROM service WHERE name = $1", name)
+                .fetch_optional(&self.conn)
+                .await?,
+        )
+    }
+
+    // == target ==
+
+    pub async fn add_target(&self, target: &TargetInserter) -> Result<(), DbError> {
+        let TargetInserter {
+            flag_id,
+            service,
+            team,
+            created_at,
+            target_tick,
+        } = target;
+
+        sqlx::query!(
+            "INSERT INTO target (flag_id, service, team, created_at, target_tick) VALUES ($1, $2, $3, $4, $5)",
+            flag_id, service, team, created_at, target_tick
+        ).execute(&self.conn).await?;
 
         Ok(())
     }
 
-    pub fn stop_exploit(&mut self, target_id: i32) -> Result<(), DbError> {
-        use crate::schema::exploit::dsl::*;
-
-        diesel::update(exploit.filter(id.eq(target_id)))
-            .set(enabled.eq(false))
-            .execute(self.conn)?;
-
-        Ok(())
-    }
-
-    pub fn set_docker_containers(&mut self, ids: Vec<String>) -> Result<(), DbError> {
-        use crate::schema::exploit::dsl::*;
-
-        diesel::update(exploit)
-            .set(docker_containers.eq(ids))
-            .execute(self.conn)?;
-
-        Ok(())
-    }
-
-    // execution
-
-    pub fn add_execution(&mut self, exec: &ExecutionInserter) -> Result<ExecutionModel, DbError> {
-        use crate::schema::execution::dsl::*;
-
-        Ok(diesel::insert_into(execution)
-            .values(exec)
-            .get_result(self.conn)?)
-    }
-
-    // flag
-
-    pub fn add_flag(&mut self, fl: &FlagInserter) -> Result<(), DbError> {
-        use crate::schema::flag::dsl::*;
-
-        diesel::insert_into(flag).values(fl).execute(self.conn)?;
-
-        Ok(())
-    }
-
-    pub fn update_flag_status(
-        &mut self,
-        search_text: &str,
-        new_status: &str,
-    ) -> Result<(), DbError> {
-        use crate::schema::flag::dsl::*;
-
-        diesel::update(flag.filter(text.eq(search_text)))
-            .set(status.eq(new_status))
-            .execute(self.conn)?;
-
-        Ok(())
-    }
-
-    pub fn get_unsubmitted_flags(&mut self) -> Result<Vec<FlagModel>, DbError> {
-        use crate::schema::flag::dsl::*;
-
-        let flags = flag
-            .filter(submitted.eq(false))
-            .load::<FlagModel>(self.conn)?;
-
-        Ok(flags)
-    }
-
-    pub fn set_flag_submitted(&mut self, target_id: i32) -> Result<(), DbError> {
-        use crate::schema::flag::dsl::*;
-
-        diesel::update(flag.filter(id.eq(target_id)))
-            .set(submitted.eq(true))
-            .execute(self.conn)?;
-
-        Ok(())
-    }
-
-    // service
-
-    /// Ignores conflicts
-    pub fn add_service_checked(&mut self, name_str: &str) -> Result<(), DbError> {
-        use crate::schema::service::dsl::*;
-
-        diesel::insert_into(service)
-            .values(name.eq(name_str))
-            .on_conflict(name)
-            .do_nothing()
-            .execute(self.conn)?;
-
-        Ok(())
-    }
-
-    /// since service only has a name, only return a bool
-    pub fn service_exists(&mut self, name_str: &str) -> Result<bool, DbError> {
-        use crate::schema::service::dsl::*;
-
-        // is there an entry with name = name_str?
-        let exists = diesel::select(diesel::dsl::exists(service.filter(name.eq(name_str))))
-            .get_result(self.conn)?;
-
-        Ok(exists)
-    }
-
-    pub fn add_target(&mut self, trg: &TargetInserter) -> Result<(), DbError> {
-        use crate::schema::target::dsl::*;
-
-        diesel::insert_into(target).values(trg).execute(self.conn)?;
-
-        Ok(())
-    }
-
-    pub fn get_latest_nop_target(
-        &mut self,
+    pub async fn get_latest_nop_target(
+        &self,
         nop_ip: &str,
         service: &str,
-    ) -> Result<Option<TargetModel>, DbError> {
-        use crate::schema::target;
-
-        let out: Vec<_> = target::table
-            .filter(target::team.eq(nop_ip))
-            .filter(target::service.eq(service))
-            .order(target::created_at.desc())
-            .limit(1)
-            .load::<TargetModel>(self.conn)?;
-
-        let out = out.get(0).cloned();
-
-        Ok(out)
+    ) -> Result<Option<Target>, DbError> {
+        Ok(
+            sqlx::query_as!(Target, "SELECT * FROM target WHERE team = $1 AND service = $2 ORDER BY created_at DESC LIMIT 1", nop_ip, service)
+                .fetch_optional(&self.conn)
+                .await?,
+        )
     }
 
-    pub fn get_exploitable_targets_updating(
-        &mut self,
-        oldest: chrono::NaiveDateTime,
-    ) -> Result<Vec<(Vec<TargetModel>, ExploitModel)>, DbError> {
-        use crate::schema::{execution, exploit, target};
+    // == exploit ==
 
+    pub async fn exploits(&self) -> Result<Vec<Exploit>, DbError> {
+        Ok(sqlx::query_as!(Exploit, "SELECT * FROM exploit")
+            .fetch_all(&self.conn)
+            .await?)
+    }
+
+    pub async fn exploit(&self, id: i32) -> Result<Option<Exploit>, DbError> {
+        Ok(
+            sqlx::query_as!(Exploit, "SELECT * FROM exploit WHERE id = $1", id)
+                .fetch_optional(&self.conn)
+                .await?,
+        )
+    }
+
+    pub async fn exploits_for_service(&self, service: &str) -> Result<Vec<Exploit>, DbError> {
+        Ok(
+            sqlx::query_as!(Exploit, "SELECT * FROM exploit WHERE service = $1", service)
+                .fetch_all(&self.conn)
+                .await?,
+        )
+    }
+
+    // does not check the exploit exists
+    pub async fn exploit_flags_since(
+        &self,
+        exploit: i32,
+        since: NaiveDateTime,
+    ) -> Result<Vec<Flag>, DbError> {
+        Ok(sqlx::query_as!(
+            Flag,
+            "SELECT * FROM flag WHERE exploit_id = $1 AND timestamp >= $2",
+            exploit,
+            since,
+        )
+        .fetch_all(&self.conn)
+        .await?)
+    }
+
+    pub async fn exploit_edit_config(
+        &self,
+        id: i32,
+        name: String,
+        blacklist: &[String],
+        pool_size: i32,
+    ) -> Result<(), DbError> {
+        sqlx::query!(
+            "UPDATE exploit SET name=$2, blacklist=$3, pool_size=$4 WHERE id=$1",
+            id,
+            name,
+            blacklist,
+            pool_size
+        )
+        .execute(&self.conn)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn add_exploit(&self, exploit: &ExploitInserter) -> Result<Exploit, DbError> {
+        let ExploitInserter {
+            name,
+            service,
+            blacklist,
+            enabled,
+            docker_image,
+            docker_containers,
+            pool_size,
+        } = exploit;
+
+        Ok(sqlx::query_as!(Exploit, "INSERT INTO exploit (name, service, blacklist, enabled, docker_image, docker_containers, pool_size) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", name, service, &blacklist, enabled, docker_image, &docker_containers, pool_size).fetch_one(&self.conn).await?)
+    }
+
+    pub async fn start_exploit(&self, exploit: i32) -> Result<(), DbError> {
+        sqlx::query!("UPDATE exploit SET enabled=true WHERE id=$1", exploit)
+            .execute(&self.conn)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn stop_exploit(&self, exploit: i32) -> Result<(), DbError> {
+        sqlx::query!("UPDATE exploit SET enabled=false WHERE id=$1", exploit)
+            .execute(&self.conn)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_exploit_docker_containers(
+        &self,
+        exploit: i32,
+        containers: &[String],
+    ) -> Result<(), DbError> {
+        sqlx::query!(
+            "UPDATE exploit SET docker_containers=$2 WHERE id=$1",
+            exploit,
+            containers
+        )
+        .execute(&self.conn)
+        .await?;
+        Ok(())
+    }
+
+    // == flags ==
+    pub async fn flags_since(&self, since: NaiveDateTime) -> Result<Vec<Flag>, DbError> {
+        Ok(
+            sqlx::query_as!(Flag, "SELECT * FROM flag WHERE timestamp >= $1", since,)
+                .fetch_all(&self.conn)
+                .await?,
+        )
+    }
+
+    pub async fn flags_from_service_since(
+        &self,
+        service: &str,
+        since: NaiveDateTime,
+    ) -> Result<Vec<Flag>, DbError> {
+        let exploits = self.exploits_for_service(service).await?;
+        let exploit_ids: Vec<_> = exploits.iter().map(|e| e.id).collect();
+
+        Ok(sqlx::query_as!(
+            Flag,
+            "SELECT * FROM flag WHERE timestamp >= $1 AND exploit_id = ANY($2)",
+            since,
+            &exploit_ids
+        )
+        .fetch_all(&self.conn)
+        .await?)
+    }
+
+    pub async fn flags_since_extended(
+        &self,
+        since: NaiveDateTime,
+    ) -> Result<Vec<(Flag, Execution, Target)>, DbError> {
+        struct All {
+            flag: Flag,
+            execution: Execution,
+            target: Target,
+        }
+
+        Ok(sqlx::query_as!(All, r#"
+            SELECT
+                (f.id, f.text, f.status, f.submitted, f.timestamp, f.execution_id, f.exploit_id) as "flag!: Flag",
+                (e.id, e.exploit_id, e.output, e.exit_code, e.started_at, e.finished_at, e.target_id) as "execution!: Execution",
+                (t.id, t.flag_id, t.service, t.team, t.created_at, t.target_tick) as "target!: Target"
+            FROM
+                flag as f
+                INNER JOIN execution as e ON f.execution_id = e.id
+                INNER JOIN target as t ON e.target_id = t.id
+            WHERE
+                f.timestamp >= $1
+            "#, since
+        )
+        .fetch_all(&self.conn)
+        .await?
+        .into_iter()
+        .map(|a| (a.flag, a.execution, a.target))
+        .collect())
+    }
+
+    pub async fn flags_by_id_extended(
+        &self,
+        ids: &[i32],
+    ) -> Result<Vec<(Flag, Execution, Target)>, DbError> {
+        struct All {
+            flag: Flag,
+            execution: Execution,
+            target: Target,
+        }
+
+        Ok(sqlx::query_as!(All, r#"
+            SELECT
+                (f.id, f.text, f.status, f.submitted, f.timestamp, f.execution_id, f.exploit_id) as "flag!: Flag",
+                (e.id, e.exploit_id, e.output, e.exit_code, e.started_at, e.finished_at, e.target_id) as "execution!: Execution",
+                (t.id, t.flag_id, t.service, t.team, t.created_at, t.target_tick) as "target!: Target"
+            FROM
+                flag as f
+                INNER JOIN execution as e ON f.execution_id = e.id
+                INNER JOIN target as t ON e.target_id = t.id
+            WHERE
+                f.id = ANY($1)
+            "#, ids
+        )
+        .fetch_all(&self.conn)
+        .await?
+        .into_iter()
+        .map(|a| (a.flag, a.execution, a.target))
+        .collect())
+    }
+
+    // == executions ==
+
+    pub async fn add_execution(&self, execution: &ExecutionInserter) -> Result<Execution, DbError> {
+        let ExecutionInserter {
+            exploit_id,
+            output,
+            exit_code,
+            started_at,
+            finished_at,
+            target_id,
+        } = execution;
+        Ok(
+            sqlx::query_as!(Execution, "INSERT INTO execution (exploit_id, output, exit_code, started_at, finished_at, target_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", exploit_id, output, exit_code, started_at, finished_at, target_id)
+                .fetch_one(&self.conn)
+                .await?,
+        )
+    }
+
+    pub async fn executions_since(&self, since: NaiveDateTime) -> Result<Vec<Execution>, DbError> {
+        Ok(sqlx::query_as!(
+            Execution,
+            "SELECT * FROM execution WHERE started_at >= $1",
+            since,
+        )
+        .fetch_all(&self.conn)
+        .await?)
+    }
+
+    pub async fn executions_for_service_since(
+        &self,
+        service: &str,
+        since: NaiveDateTime,
+    ) -> Result<Vec<Execution>, DbError> {
+        let exploits = self.exploits_for_service(service).await?;
+        let exploit_ids: Vec<_> = exploits.iter().map(|e| e.id).collect();
+
+        Ok(sqlx::query_as!(
+            Execution,
+            "SELECT * FROM execution WHERE started_at >= $1 AND exploit_id = ANY($2)",
+            since,
+            &exploit_ids
+        )
+        .fetch_all(&self.conn)
+        .await?)
+    }
+
+    pub async fn executions_since_extended(
+        &self,
+        since: NaiveDateTime,
+    ) -> Result<Vec<(Execution, Target)>, DbError> {
+        struct All {
+            execution: Execution,
+            target: Target,
+        }
+
+        Ok(sqlx::query_as!(All, r#"
+            SELECT
+                (e.id, e.exploit_id, e.output, e.exit_code, e.started_at, e.finished_at, e.target_id) as "execution!: Execution",
+                (t.id, t.flag_id, t.service, t.team, t.created_at, t.target_tick) as "target!: Target"
+            FROM
+                execution as e
+                INNER JOIN target as t ON e.target_id = t.id
+            WHERE
+                e.started_at >= $1
+            "#, since
+            ).fetch_all(&self.conn).await?.into_iter().map(|a| (a.execution, a.target)).collect()
+        )
+    }
+
+    pub async fn executions_by_id_extended(
+        &self,
+        ids: &[i32],
+    ) -> Result<Vec<(Execution, Target)>, DbError> {
+        struct All {
+            execution: Execution,
+            target: Target,
+        }
+
+        Ok(sqlx::query_as!(All, r#"
+            SELECT
+                (e.id, e.exploit_id, e.output, e.exit_code, e.started_at, e.finished_at, e.target_id) as "execution!: Execution",
+                (t.id, t.flag_id, t.service, t.team, t.created_at, t.target_tick) as "target!: Target"
+            FROM
+                execution as e
+                INNER JOIN target as t ON e.target_id = t.id
+            WHERE
+                e.id = ANY($1)
+            "#, ids
+            ).fetch_all(&self.conn).await?.into_iter().map(|a| (a.execution, a.target)).collect()
+        )
+    }
+
+    // == targets ==
+
+    pub async fn get_exploitable_targets_updating(
+        &self,
+        oldest: chrono::NaiveDateTime,
+    ) -> Result<Vec<(Vec<Target>, Exploit)>, DbError> {
         // to be exploitable a target must
         // 1. not already be exploited by the specific exploit
         //       (but can be exploited by another exploit)
@@ -196,48 +402,145 @@ impl<'a> Db<'a> {
         //
         // targets will also be sorted by oldest first to prioritize flags that are about to expire
 
-        let active_exploits = exploit::table
-            .filter(exploit::enabled.eq(true))
-            .load::<ExploitModel>(self.conn)?;
+        // ^ i think this is outdated, esp point 2 is wrong
 
-        let relevant_executions = ExecutionModel::belonging_to(&active_exploits)
-            .filter(execution::finished_at.gt(oldest))
-            .select(execution::target_id)
-            .load::<i32>(self.conn)?;
+        let active_exploits = self
+            .exploits()
+            .await?
+            .into_iter()
+            .filter(|e| e.enabled)
+            .collect::<Vec<_>>();
+
+        let relevant_executions = sqlx::query_as!(
+            Execution,
+            r#"
+            SELECT
+                *
+            FROM
+                execution
+            WHERE
+                finished_at >= $1 AND exploit_id = ANY($2)
+            "#,
+            oldest,
+            &active_exploits.iter().map(|e| e.id).collect::<Vec<_>>()
+        )
+        .fetch_all(&self.conn)
+        .await?;
 
         let mut target_exploits = Vec::new();
-
         for exploit in active_exploits {
-            let mut targets: Vec<TargetModel> = target::table
-                .filter(target::id.ne_all(&relevant_executions)) // 1.
-                .filter(target::service.eq(&exploit.service)) // 2.
-                .filter(target::created_at.gt(oldest)) // 3.
-                .order(target::created_at.asc())
-                .load::<TargetModel>(self.conn)?;
+            // the statement generated from the diesel query:
+            // SELECT "target"."id", "target"."flag_id", "target"."service",
+            //        "target"."team", "target"."created_at", "target"."target_tick"
+            // FROM "target"
+            // WHERE ((("target"."id" != ALL($1))
+            //  AND ("target"."service" = $2))
+            //  AND ("target"."created_at" > $3))
+            // ORDER BY "target"."created_at" ASC
+            // -- binds: [[], "testservice", 2023-11-29T11:50:46.026072]
+
+            // so i think i did this right:
+
+            let mut targets: Vec<Target> = sqlx::query_as!(
+                Target,
+                r#"
+                SELECT
+                    *
+                FROM
+                    target
+                WHERE
+                    id != ALL($3)
+                    AND service = $1
+                    AND created_at >= $2
+                ORDER BY
+                    created_at ASC
+                "#,
+                exploit.service,
+                oldest,
+                &relevant_executions
+                    .iter()
+                    .map(|e| e.target_id)
+                    .collect::<Vec<_>>()
+            )
+            .fetch_all(&self.conn)
+            .await?;
 
             // sort by ip to make viewing an adminer easier
             targets.sort_by(|a, b| natural_lexical_cmp(&a.team, &b.team));
 
-            target_exploits.push((targets, exploit));
+            target_exploits.push((targets, exploit.clone()));
         }
 
         Ok(target_exploits)
     }
 
-    /// Ignores conflicts
-    pub fn add_team_checked(
-        &mut self,
-        ip_str: &str,
-        name_str: Option<&str>,
-    ) -> Result<(), DbError> {
-        use crate::schema::team::dsl::*;
+    // == flags ==
 
-        diesel::insert_into(team)
-            .values((ip.eq(ip_str), name.eq(name_str)))
-            .on_conflict(ip)
-            .do_nothing()
-            .execute(self.conn)?;
+    pub async fn add_flag(&self, flag: &FlagInserter) -> Result<(), DbError> {
+        let FlagInserter {
+            text,
+            status,
+            submitted,
+            timestamp,
+            execution_id,
+            exploit_id,
+        } = flag;
+
+        sqlx::query!(
+            "INSERT INTO flag (text, status, submitted, timestamp, execution_id, exploit_id) VALUES ($1, $2, $3, $4, $5, $6)",
+            text, status, submitted, timestamp, execution_id, exploit_id
+        ).execute(&self.conn).await?;
 
         Ok(())
     }
+
+    pub async fn update_flag_status(
+        &self,
+        search_flag: &str,
+        new_status: &str,
+    ) -> Result<(), DbError> {
+        sqlx::query!(
+            "UPDATE flag SET status=$2 WHERE text=$1",
+            search_flag,
+            new_status
+        )
+        .execute(&self.conn)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_flag_statuses(&self, all: &[(String, String)]) -> Result<(), DbError> {
+        let mut transaction = self.conn.begin().await?;
+
+        for (flag, status) in all {
+            sqlx::query!("UPDATE flag SET status=$2 WHERE text=$1", flag, status)
+                .execute(&mut *transaction)
+                .await?;
+        }
+
+        transaction.commit().await?;
+
+        Ok(())
+    }
+
+    pub async fn get_unsubmitted_flags(&self) -> Result<Vec<Flag>, DbError> {
+        Ok(
+            sqlx::query_as!(Flag, "SELECT * FROM flag WHERE submitted = false")
+                .fetch_all(&self.conn)
+                .await?,
+        )
+    }
+
+    pub async fn set_flag_submitted(&self, flag: i32) -> Result<(), DbError> {
+        sqlx::query!("UPDATE flag SET submitted=true WHERE id=$1", flag)
+            .execute(&self.conn)
+            .await?;
+        Ok(())
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DbError {
+    #[error("sqlx error")]
+    Sqlx(#[from] sqlx::Error),
 }

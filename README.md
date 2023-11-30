@@ -2,7 +2,9 @@
 ## Attack script runner for attack-defense CTFs
 
 # Client (CLI) Setup
-To install the `angrepa` cli, you need an up to date rust installation. `rustup` is strongly recommended, and a one-liner for your operating system can be found at https://rustup.rs/
+To install the `angrepa` cli, you need an up to date rust installation. `rustup`
+is strongly recommended, and a one-liner for your operating system can be found
+at https://rustup.rs/
 
 1. Downloading the repo
 ```
@@ -31,7 +33,7 @@ See [CLI Examples](#cli-by-example) for some usage examples.
 0. Tooling
 ```
 sudo apt install build-essential libpq-dev
-cargo install diesel_cli --no-default-features --features postgres
+cargo install sqlx-cli
 ```
 
 1. Create a [config](./config/)
@@ -47,8 +49,7 @@ docker compose up
 
 4. Setup DB
 ```
-diesel setup
-diesel migration run
+sqlx migrate run
 ```
 
 5. Run with the specific config

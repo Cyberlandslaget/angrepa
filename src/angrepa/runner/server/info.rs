@@ -8,8 +8,6 @@ use axum::{
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use angrepa::db::Db;
-
 use super::AppState;
 
 // GET /info/internal_tick
@@ -27,10 +25,7 @@ async fn internal_tick(State(state): State<Arc<AppState>>) -> (StatusCode, Json<
 
 // GET /info/teams
 async fn teams(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.teams() {
+    match state.db.teams().await {
         Ok(teams) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": teams}).into(),
@@ -47,13 +42,14 @@ async fn team(
     State(state): State<Arc<AppState>>,
     Path(ip): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.team_by_ip(ip) {
-        Ok(team) => (
+    match state.db.team_by_ip(&ip).await {
+        Ok(Some(team)) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": team}).into(),
+        ),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            json!({ "status": "error", "message": "team not found" }).into(),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -73,10 +69,7 @@ async fn team_set_name(
     State(state): State<Arc<AppState>>,
     extract::Json(ipname): extract::Json<JsonConfig>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.team_set_name(ipname.ip, ipname.name) {
+    match state.db.team_set_name(&ipname.ip, &ipname.name).await {
         Ok(()) => (StatusCode::OK, json!({ "status": "ok"}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -88,10 +81,7 @@ async fn team_set_name(
 
 // GET /info/services
 async fn services(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.services() {
+    match state.db.services().await {
         Ok(services) => (
             StatusCode::OK,
             json!({ "status": "ok", "data": services}).into(),

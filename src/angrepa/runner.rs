@@ -12,8 +12,8 @@ use tracing::{info, warn};
 use angrepa::{
     config::{self},
     db::Db,
-    db_connect, get_connection_pool,
-    models::{ExecutionInserter, FlagInserter},
+    db_connect,
+    inserter::{ExecutionInserter, FlagInserter},
 };
 
 mod exploit;
@@ -28,17 +28,17 @@ pub struct Runner {}
 
 impl Runner {
     async fn tick(
+        db: Db,
         config: config::Root,
         flag_regex: Regex,
-        db_url: &str,
         earliest_valid_time: NaiveDateTime,
     ) {
-        let mut conn = db_connect(db_url).unwrap();
-        let mut db = Db::new(&mut conn);
-
         let docker = Docker::connect_with_local_defaults().unwrap();
 
-        let targets = match db.get_exploitable_targets_updating(earliest_valid_time) {
+        let targets = match db
+            .get_exploitable_targets_updating(earliest_valid_time)
+            .await
+        {
             Ok(targets) => targets,
             Err(err) => {
                 warn!("Failed to get exploitable targets: {:?}", err);
@@ -46,17 +46,14 @@ impl Runner {
             }
         };
 
-        let db_pool = get_connection_pool(db_url).unwrap();
-
         for (targets, exploit) in targets {
             let docker = docker.clone();
 
-            let mut instance =
-                InitalizedExploit::from_model(docker, exploit.clone(), Db::new(&mut conn))
-                    .await
-                    .unwrap();
+            let mut instance = InitalizedExploit::from_model(docker, exploit.clone(), db.clone())
+                .await
+                .unwrap();
 
-            let blacklist: HashSet<_> = exploit.blacklist.iter().flatten().cloned().collect();
+            let blacklist: HashSet<_> = exploit.blacklist.iter().collect();
 
             for target in targets {
                 if blacklist.contains(&target.team) {
@@ -77,7 +74,7 @@ impl Runner {
                     }
                 };
 
-                let db_pool = db_pool.clone();
+                let db = db.clone();
 
                 tokio::spawn(async move {
                     let started_at = chrono::Utc::now().naive_utc();
@@ -99,8 +96,6 @@ impl Runner {
 
                     let finished_at = chrono::Utc::now().naive_utc();
 
-                    let mut conn = db_pool.get().unwrap();
-                    let mut db = Db::new(&mut conn);
                     let execution = db
                         .add_execution(&ExecutionInserter {
                             exploit_id: exploit.id,
@@ -110,6 +105,7 @@ impl Runner {
                             finished_at,
                             target_id: target.id,
                         })
+                        .await
                         .unwrap();
 
                     // only unique flags
@@ -127,6 +123,7 @@ impl Runner {
                             execution_id: execution.id,
                             exploit_id: exploit.id,
                         })
+                        .await
                         .unwrap();
                     }
                 });
@@ -144,11 +141,12 @@ impl Runner {
 
         let flag_regex = Regex::new(&config.common.format).unwrap();
 
+        let db = db_connect(&config.database.url()).await.unwrap();
+
         loop {
             tick_interval.tick().await;
 
             let flag_regex = flag_regex.clone();
-            let db_url = config.database.url();
 
             // mid inbetween so that if we start ex. 0.01s earlier than last tick, we dont take too many
             // -0.5 because of the afformentioned in-betweening
@@ -160,10 +158,9 @@ impl Runner {
                 - chrono::Duration::from_std(flag_validity_period).unwrap();
 
             let config = config.clone();
+            let db = db.clone();
 
-            spawn(
-                async move { Runner::tick(config, flag_regex, &db_url, earliest_valid_time).await },
-            );
+            spawn(async move { Runner::tick(db, config, flag_regex, earliest_valid_time).await });
         }
     }
 }
@@ -179,9 +176,8 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
     info!("CTF started {:?} ago", time_since_start);
 
     let server_addr = config.runner.http_server.parse()?;
-    let db_url = config.database.url();
     let config2 = config.clone();
-    let server_handle = spawn(async move { server::run(server_addr, config2, &db_url).await });
+    let server_handle = spawn(async move { server::run(server_addr, config2).await });
 
     let ws_addr = config.runner.ws_server.parse()?;
     let config2 = config.clone();

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE exploit SET name=$2, blacklist=$3, pool_size=$4 WHERE id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text",
+        "TextArray",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "58b9ea3510bf5720538560bcd16bd1a182ee2c92c9779f72dc866a5b7bdf0f67"
+}

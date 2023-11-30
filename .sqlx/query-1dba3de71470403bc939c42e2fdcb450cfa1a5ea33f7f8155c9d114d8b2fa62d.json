@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE exploit SET enabled=false WHERE id=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1dba3de71470403bc939c42e2fdcb450cfa1a5ea33f7f8155c9d114d8b2fa62d"
+}

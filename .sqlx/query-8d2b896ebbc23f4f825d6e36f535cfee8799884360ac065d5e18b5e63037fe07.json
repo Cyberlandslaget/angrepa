@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE flag SET status=$2 WHERE text=$1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8d2b896ebbc23f4f825d6e36f535cfee8799884360ac065d5e18b5e63037fe07"
+}

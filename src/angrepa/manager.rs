@@ -1,4 +1,3 @@
-use angrepa::db::Db;
 use angrepa::{config, db_connect};
 use color_eyre::Report;
 use futures::future::join_all;
@@ -14,13 +13,12 @@ pub async fn main(config: config::Root) -> Result<(), Report> {
     let sub = Submitters::from_conf(&config.manager)?;
     let fetch = fetcher::Fetchers::from_conf(&config)?;
 
-    // first insert service names
-    let mut conn = db_connect(&config.database.url()).unwrap();
-    let mut db = Db::new(&mut conn);
+    let db = db_connect(&config.database.url()).await.unwrap();
 
+    // first insert service names
     for service in &config.common.all_services_some_renamed() {
         // a NOP if service already exists
-        if let Err(e) = db.add_service_checked(service) {
+        if let Err(e) = db.add_service_checked(service).await {
             warn!("Failed to add service: '{service}'. Error: {}", e);
         }
     }

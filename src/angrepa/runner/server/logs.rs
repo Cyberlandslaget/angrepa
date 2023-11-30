@@ -1,3 +1,4 @@
+use angrepa::data_types::{ExecutionData, FlagData};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -8,11 +9,6 @@ use chrono::NaiveDateTime;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
-
-use angrepa::{
-    data_types::{ExecutionData, FlagData},
-    db::Db,
-};
 
 use super::AppState;
 
@@ -25,10 +21,7 @@ struct QueryPage {
 
 // GET /logs/exploits
 async fn exploits_all(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.exploits() {
+    match state.db.exploits().await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -43,11 +36,12 @@ async fn exploit_one(
     State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.exploit(id) {
-        Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+    match state.db.exploit(id).await {
+        Ok(Some(exp)) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            json!({ "status": "error", "message": "not found" }).into(),
+        ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             json!({ "status": "error", "message": format!("Failed to get exploit: {:?}", e) })
@@ -62,12 +56,9 @@ async fn exploit_flags(
     Path(id): Path<i32>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.exploit_flags_since(id, since) {
+    match state.db.exploit_flags_since(id, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,13 +72,10 @@ async fn flags(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
     let flags =
-        match db.flags_since_extended(since) {
+        match state.db.flags_since_extended(since).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -98,7 +86,7 @@ async fn flags(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
+        .map(|(flag, _exec, target)| FlagData::from_parts(flag, target))
         .collect();
 
     (
@@ -117,11 +105,8 @@ async fn flags_by_id(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FlagIdVector>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let flags =
-        match db.flags_by_id_extended(payload.ids) {
+        match state.db.flags_by_id_extended(&payload.ids).await {
             Ok(flags) => flags,
             Err(e) => return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -132,7 +117,7 @@ async fn flags_by_id(
 
     let flags: Vec<FlagData> = flags
         .into_iter()
-        .map(|(flag, _exec, target)| FlagData::from_models(flag, target))
+        .map(|(flag, _exec, target)| FlagData::from_parts(flag, target))
         .collect();
 
     (
@@ -146,12 +131,9 @@ async fn executions(
     State(state): State<Arc<AppState>>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    let executions = match db.executions_since_extended(since) {
+    let executions = match state.db.executions_since_extended(since).await {
         Ok(executions) => executions,
         Err(e) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -162,7 +144,7 @@ async fn executions(
 
     let executions: Vec<ExecutionData> = executions
         .into_iter()
-        .map(|(exec, target, _flag)| ExecutionData::from_models(exec, target))
+        .map(|(exec, target)| ExecutionData::from_parts(exec, target))
         .collect();
 
     (
@@ -176,10 +158,7 @@ async fn service_exploits(
     State(state): State<Arc<AppState>>,
     Path(service): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
-    match db.service_exploits(&service) {
+    match state.db.exploits_for_service(&service).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -195,12 +174,9 @@ async fn service_flags(
     Path(service): Path<String>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.service_flags_since(&service, since) {
+    match state.db.flags_from_service_since(&service, since).await {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -215,12 +191,13 @@ async fn service_executions(
     Path(service): Path<String>,
     query: Query<QueryPage>,
 ) -> (StatusCode, Json<Value>) {
-    let mut conn = state.db.get().unwrap();
-    let mut db = Db::new(&mut conn);
-
     let since = NaiveDateTime::from_timestamp_opt(query.since.unwrap_or(0), 0).unwrap();
 
-    match db.service_executions_since(&service, since) {
+    match state
+        .db
+        .executions_for_service_since(&service, since)
+        .await
+    {
         Ok(exp) => (StatusCode::OK, json!({ "status": "ok", "data": exp}).into()),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,

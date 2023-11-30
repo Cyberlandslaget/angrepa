@@ -6,6 +6,7 @@ on:
     branches: [ main ]
 env:
   CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: 1
 jobs:
   build:
     runs-on: ubuntu-latest

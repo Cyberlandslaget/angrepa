@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE team SET name = $1 WHERE ip = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf0be1cdb62f5e4d2f6363dd4f13da79117d0c6ffc9736d6458f0e314b3ee9c6"
+}
